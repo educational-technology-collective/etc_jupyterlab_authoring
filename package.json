@@ -18,7 +18,8 @@
   },
   "files": [
     "lib/**/*.{d.ts,eot,gif,html,jpg,js,js.map,json,png,svg,woff2,ttf}",
-    "style/**/*.{css,.js,eot,gif,html,jpg,json,png,svg,woff2,ttf}"
+    "style/**/*.{css,.js,eot,gif,html,jpg,json,png,svg,woff2,ttf}",
+    "style/icons/**/*.{svg}"
   ],
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -46,9 +47,21 @@
   },
   "dependencies": {
     "@jupyterlab/application": "^3.0.0",
+    "@jupyterlab/completer": "^3.0.5",
+    "@jupyterlab/console": "^3.0.6",
     "@jupyterlab/coreutils": "^5.0.0",
-    "@jupyterlab/services": "^6.0.0"
-
+    "@jupyterlab/launcher": "^3.0.5",
+    "@jupyterlab/mainmenu": "^3.0.5",
+    "@jupyterlab/notebook": "^3.0.7",
+    "@jupyterlab/services": "^6.0.5",
+    "@jupyterlab/settingregistry": "^3.0.5",
+    "@jupyterlab/rendermime": "^3.0.8",
+    "@jupyterlab/codemirror": "^3.0.2",
+    "@jupyterlab/logconsole": "^3.0.8",
+    "@jupyterlab/ui-components": "^3.0.6",
+    "@lumino/commands": "^1.12.0",
+    "@lumino/signaling": "^1.4.3",
+    "@types/codemirror": "0.0.87"
   },
   "devDependencies": {
     "@jupyterlab/builder": "^3.0.0",
