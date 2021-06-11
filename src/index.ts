@@ -81,6 +81,8 @@ import {
   CellsEvent,
   MessageReceivedEvent,
   RecordButton,
+  ExecutionEvent,
+  EditorEvent
   // RecordButton,
   // StartEvent,
   // StopEvent,
@@ -108,14 +110,22 @@ const extension: JupyterFrontEndPlugin<void> = {
       let messageReceivedEvent = new MessageReceivedEvent({ notebookPanel });
 
       let cellsEvent = new CellsEvent({ app, notebookPanel });
-      cellsEvent.cellChanged.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
+      cellsEvent.cellAdded.connect((sender: CellsEvent, cell: Cell<ICellModel>) => {
 
-      let recordButton = new RecordButton({ notebookPanel });
-      recordButton.buttonPressed.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
+        let editorEvent = new EditorEvent({ notebookPanel, cell });
+        editorEvent.cursorChanged.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
+
+        let executionEvent = new ExecutionEvent({ app, notebookPanel, cell });
+        executionEvent.executionStarted.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
+        executionEvent.executionFinished.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
+
+        let recordButton = new RecordButton({ notebookPanel });
+        recordButton.buttonPressed.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
+
+      });
 
     });
-
-   }
-};
+  }
+}
 
 export default extension;

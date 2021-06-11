@@ -289,7 +289,7 @@ export class EditorEvent {
         this._editor.editor.off('cursorActivity', this.editorEvent);
     }
 
-    editorEvent(instance: Editor) {
+    private editorEvent(instance: Editor) {
 
         let line = instance.getCursor().line;
         let text = instance.getLine(line);
@@ -315,7 +315,7 @@ export class EditorEvent {
 
 export class CellsEvent {
 
-    private _cellChanged: Signal<CellsEvent, any> = new Signal(this);
+    private _cellAdded: Signal<CellsEvent, Cell<ICellModel>> = new Signal(this);
     private _notebookPanel: NotebookPanel;
     private _app: JupyterFrontEnd;
 
@@ -345,6 +345,7 @@ export class CellsEvent {
         Signal.disconnectAll(this);
     }
 
+    
     private cellsChange(sender: any, args: IObservableList.IChangedArgs<ICellModel> | any) {
 
         if (args.type == "add" || args.type == "set") {
@@ -356,16 +357,8 @@ export class CellsEvent {
 
                 if (cell !== undefined) {
 
-                    let editorEvent = new EditorEvent({ notebookPanel: this._notebookPanel, cell });
-                    editorEvent.cursorChanged.connect(
-                        (sender: EditorEvent, args: any) => this._cellChanged.emit(args), this);
+                    this._cellAdded.emit(cell);
 
-                    let executionEvent = new ExecutionEvent({ app: this._app, notebookPanel: this._notebookPanel, cell });
-                    executionEvent.executionStarted.connect(
-                        (sender: ExecutionEvent, args: any) => this._cellChanged.emit(args), this);
-                    executionEvent.executionFinished.connect(
-                        (sender: ExecutionEvent, args: any) => this._cellChanged.emit(args), this);
-                        
                 }
             });
         }
@@ -374,7 +367,7 @@ export class CellsEvent {
         }
     }
 
-    get cellChanged(): ISignal<CellsEvent, any> {
-        return this._cellChanged;
+    get cellAdded(): ISignal<CellsEvent, Cell<ICellModel>> {
+        return this._cellAdded;
     }
 }
