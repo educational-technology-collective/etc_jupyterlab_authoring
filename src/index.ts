@@ -77,14 +77,14 @@ import { Time } from "@jupyterlab/coreutils";
 import { Editor } from "codemirror";
 
 import {
-  EOLEvent,
-  CellsChangedEvent,
+  // EOLEvent,
+  CellsEvent,
   MessageReceivedEvent,
   RecordButton,
-  StartEvent,
-  StopEvent,
-  CellSelectedEvent
-
+  // RecordButton,
+  // StartEvent,
+  // StopEvent,
+  // CellSelectedEvent
 } from "./events"
 
 
@@ -107,15 +107,12 @@ const extension: JupyterFrontEndPlugin<void> = {
 
       let messageReceivedEvent = new MessageReceivedEvent({ notebookPanel });
 
-      let cellsChangedEvent = new CellsChangedEvent({ app, messageReceivedEvent, notebookPanel });
+      let cellsEvent = new CellsEvent({ app, notebookPanel });
+      cellsEvent.cellChanged.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
 
       let recordButton = new RecordButton({ notebookPanel });
+      recordButton.buttonPressed.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
 
-      let startEvent = new StartEvent({ messageReceivedEvent, notebookPanel, recordButton });
-
-      let stopEvent = new StopEvent({ messageReceivedEvent, notebookPanel, recordButton });
-
-      let cellSelectedEvent = new CellSelectedEvent({ messageReceivedEvent, notebookPanel });
     });
 
    }
