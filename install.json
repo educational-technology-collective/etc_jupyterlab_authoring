@@ -1,5 +1,5 @@
 {
   "packageManager": "python",
-  "packageName": "etc-jupyterlab-authoring",
-  "uninstallInstructions": "Use your Python package manager (pip, conda, etc.) to uninstall the package etc-jupyterlab-authoring"
+  "packageName": "etc_jupyterlab_authoring",
+  "uninstallInstructions": "Use your Python package manager (pip, conda, etc.) to uninstall the package etc_jupyterlab_authoring"
 }

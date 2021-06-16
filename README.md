@@ -1,12 +1,12 @@
-# etc-jupyterlab-authoring
+# etc_jupyterlab_authoring
 
-![Github Actions Status](git@github.com:educational-technology-collective/etc-jupyterlab-authoring.git/workflows/Build/badge.svg)[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/git@github.com:educational-technology-collective/etc-jupyterlab-authoring.git/main?urlpath=lab)
+![Github Actions Status](git@github.com:educational-technology-collective/etc_jupyterlab_authoring.git/workflows/Build/badge.svg)[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/git@github.com:educational-technology-collective/etc_jupyterlab_authoring.git/main?urlpath=lab)
 
 A JupyterLab extension.
 
 
-This extension is composed of a Python package named `etc-jupyterlab-authoring`
-for the server extension and a NPM package named `etc-jupyterlab-authoring`
+This extension is composed of a Python package named `etc_jupyterlab_authoring`
+for the server extension and a NPM package named `@educational-technology-collective/etc_jupyterlab_authoring`
 for the frontend extension.
 
 
@@ -19,7 +19,7 @@ for the frontend extension.
 To install the extension, execute:
 
 ```bash
-pip install etc-jupyterlab-authoring
+pip install etc_jupyterlab_authoring
 ```
 
 ## Uninstall
@@ -27,7 +27,7 @@ pip install etc-jupyterlab-authoring
 To remove the extension, execute:
 
 ```bash
-pip uninstall etc-jupyterlab-authoring
+pip uninstall etc_jupyterlab_authoring
 ```
 
 
@@ -60,13 +60,13 @@ The `jlpm` command is JupyterLab's pinned version of
 
 ```bash
 # Clone the repo to your local environment
-# Change directory to the etc-jupyterlab-authoring directory
+# Change directory to the etc_jupyterlab_authoring directory
 # Install package in development mode
 pip install -e .
 # Link your development version of the extension with JupyterLab
 jupyter labextension develop . --overwrite
 # Server extension must be manually installed in develop mode
-jupyter server extension enable etc-jupyterlab-authoring
+jupyter server extension enable etc_jupyterlab_authoring
 # Rebuild extension Typescript source after making changes
 jlpm run build
 ```
@@ -92,10 +92,10 @@ jupyter lab build --minimize=False
 
 ```bash
 # Server extension must be manually disabled in develop mode
-jupyter server extension disable etc-jupyterlab-authoring
-pip uninstall etc-jupyterlab-authoring
+jupyter server extension disable etc_jupyterlab_authoring
+pip uninstall etc_jupyterlab_authoring
 ```
 
 In development mode, you will also need to remove the symlink created by `jupyter labextension develop`
 command. To find its location, you can run `jupyter labextension list` to figure out where the `labextensions`
-folder is located. Then you can remove the symlink named `etc-jupyterlab-authoring` within that folder.
+folder is located. Then you can remove the symlink named `@educational-technology-collective/etc_jupyterlab_authoring` within that folder.

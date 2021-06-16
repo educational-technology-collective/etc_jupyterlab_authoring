@@ -21,18 +21,24 @@ import {
   EditorEvent
 } from "./events"
 
+import { Signal } from "@lumino/signaling";
+
 
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
  */
 const extension: JupyterFrontEndPlugin<void> = {
-  id: 'etc-jupyterlab-authoring:plugin',
+  id: 'etc_jupyterlab_authoring:plugin',
   autoStart: true,
   requires: [
     INotebookTracker
   ],
   activate: (app: JupyterFrontEnd, notebookTracker: INotebookTracker) => {
-    console.log('JupyterLab extension etc-jupyterlab-authoring is activated!');
+    console.log('JupyterLab extension etc_jupyterlab_authoring is activated!');
+
+    Signal.setExceptionHandler((error: Error) => {
+      console.error(error);
+    })
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
 
@@ -41,20 +47,9 @@ const extension: JupyterFrontEndPlugin<void> = {
 
       let messageReceivedEvent = new MessageReceivedEvent({ notebookPanel });
 
-      let cellsEvent = new CellsEvent({ app, notebookPanel });
-      cellsEvent.cellAdded.connect((sender: CellsEvent, cell: Cell<ICellModel>) => {
+      let recordButton = new RecordButton({ notebookPanel });
 
-        let editorEvent = new EditorEvent({ notebookPanel, cell });
-        editorEvent.cursorChanged.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
-
-        let executionEvent = new ExecutionEvent({ app, notebookPanel, cell });
-        executionEvent.executionStarted.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
-        executionEvent.executionFinished.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
-
-        let recordButton = new RecordButton({ notebookPanel });
-        recordButton.buttonPressed.connect(messageReceivedEvent.receiveMessage, messageReceivedEvent);
-
-      });
+      let cellsEvent = new CellsEvent({ app, notebookPanel, messageReceivedEvent, recordButton });
 
     });
   }

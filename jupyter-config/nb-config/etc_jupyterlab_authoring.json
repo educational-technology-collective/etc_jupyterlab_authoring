@@ -1,7 +1,7 @@
 {
   "NotebookApp": {
     "nbserver_extensions": {
-      "etc-jupyterlab-authoring": true
+      "etc_jupyterlab_authoring": true
     }
   }
 }

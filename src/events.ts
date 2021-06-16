@@ -11,7 +11,8 @@ import {
 import {
     Cell,
     CodeCell,
-    ICellModel
+    ICellModel,
+    MarkdownCell
 } from "@jupyterlab/cells";
 
 import {
@@ -29,6 +30,7 @@ import recordOff from './icons/record_off.svg';
 
 import { CommandRegistry } from "@lumino/commands";
 import { Editor } from "codemirror";
+import { Message } from "@jupyterlab/services/lib/kernel/messages";
 
 export class MessageReceivedEvent {
 
@@ -47,7 +49,7 @@ export class MessageReceivedEvent {
         Signal.disconnectAll(this);
     }
 
-    receiveMessage(sender: any, args: any) {
+    onReceiveMessage(sender: any, args: any) {
         console.log(args);
     }
 }
@@ -56,6 +58,7 @@ export class ExecutionEvent {
 
     private _executionStarted: Signal<ExecutionEvent, any> = new Signal(this);
     private _executionFinished: Signal<ExecutionEvent, any> = new Signal(this);
+    private _app: JupyterFrontEnd;
     private _notebookPanel: NotebookPanel;
     private _cell: Cell<ICellModel>;
     private _runButton: Element | null;
@@ -68,9 +71,9 @@ export class ExecutionEvent {
                 cell: Cell<ICellModel>
             }
     ) {
+        this._app = app;
         this._cell = cell;
         this._notebookPanel = notebookPanel;
-
 
         for (
             this._runButton = notebookPanel.toolbar.node.querySelector("[data-icon='ui-components:run']");
@@ -80,12 +83,6 @@ export class ExecutionEvent {
         //  The only thing that uniquely identifies the run button in the DOM is the data-icon attr; hence, use it.
         //  The Button Widgets don't have unique class names; hence, climb the tree in order to get to the first DIV.
 
-        this._runButton.addEventListener("click", this.clickRun, { capture: false });
-
-        app.commands.commandExecuted.connect(this.commandExecuted, this);
-
-        NotebookActions.executed.connect(this.finishExecution, this);
-
         notebookPanel.disposed.connect(this.dispose, this);
         cell.disposed.connect(this.dispose, this);
     }
@@ -93,12 +90,27 @@ export class ExecutionEvent {
     public dispose() {
         Signal.disconnectAll(this);
         if (this._runButton) {
-            this._runButton.removeEventListener("click", this.clickRun, { capture: false });
+            this._runButton.removeEventListener("click", this.onClickRun, { capture: false });
         }
     }
 
+    public enable(sender: RecordButton, args: any) {
+        this._runButton.addEventListener("click", this.onClickRun, { capture: false });
 
-    private commandExecuted(sender: CommandRegistry, args: CommandRegistry.ICommandExecutedArgs) {
+        this._app.commands.commandExecuted.connect(this.onCommandExecuted, this);
+
+        NotebookActions.executed.connect(this.onFinishExecution, this);
+    }
+
+    public disable(sender: RecordButton, args: any) {
+        this._runButton.removeEventListener("click", this.onClickRun, { capture: false });
+
+        this._app.commands.commandExecuted.disconnect(this.onCommandExecuted, this);
+
+        NotebookActions.executed.disconnect(this.onFinishExecution, this);
+    }
+
+    private onCommandExecuted(sender: CommandRegistry, args: CommandRegistry.ICommandExecutedArgs) {
         if (
             this._notebookPanel.isVisible &&
             this._notebookPanel.content.activeCell == this._cell &&
@@ -110,7 +122,7 @@ export class ExecutionEvent {
         }
     }
 
-    private clickRun() {
+    private onClickRun() {
         if (
             this._notebookPanel.isVisible &&
             this._notebookPanel.content.activeCell == this._cell) {
@@ -121,7 +133,7 @@ export class ExecutionEvent {
         }
     }
 
-    public finishExecution(sender: any, args: {
+    public onFinishExecution(sender: any, args: {
         notebook: Notebook;
         cell: Cell<ICellModel>;
     }) {
@@ -153,7 +165,9 @@ export class ExecutionEvent {
 
 export class RecordButton extends Widget {
 
-    private _buttonPressed: Signal<RecordButton, any> = new Signal(this);
+    private _recordButtonEnabled: Signal<RecordButton, any> = new Signal(this);
+    private _recordButtonDisabled: Signal<RecordButton, any> = new Signal(this);
+
     private _on: boolean = false;
     private _notebookPanel: NotebookPanel;
 
@@ -167,19 +181,19 @@ export class RecordButton extends Widget {
 
         this.addClass("etc-jupyterlab-authoring-record-button");
 
-        this.press = this.press.bind(this);
+        this.onPress = this.onPress.bind(this);
         this.keydown = this.keydown.bind(this);
 
         notebookPanel.toolbar.insertItem(10, "RecordButton", this);
 
         this.node.innerHTML = recordOff + " Record";
 
-        this.node.addEventListener("click", this.press);
+        this.node.addEventListener("click", this.onPress);
         document.addEventListener("keydown", this.keydown)
     }
 
     public dispose() {
-        this.node.removeEventListener("click", this.press);
+        this.node.removeEventListener("click", this.onPress);
         document.removeEventListener("keydown", this.keydown);
         Signal.disconnectAll(this);
         super.dispose();
@@ -188,26 +202,30 @@ export class RecordButton extends Widget {
     private keydown(event: KeyboardEvent) {
         if (event.ctrlKey && event.key == "F9") {
             if (this._notebookPanel.isVisible) {
-                this.press();
+                this.onPress();
             }
         }
     }
 
-    public press() {
+    public onPress() {
         if (this._on) {
             this._on = false;
             this.node.innerHTML = recordOff + " Record";
-            this._buttonPressed.emit({ event: "record_off" });
+            this._recordButtonDisabled.emit({ event: "record_off" });
         }
         else {
             this._on = true;
             this.node.innerHTML = recordOn + " Record";
-            this._buttonPressed.emit({ event: "record_on" });
+            this._recordButtonEnabled.emit({ event: "record_on" });
         }
     }
 
-    get buttonPressed(): ISignal<RecordButton, any> {
-        return this._buttonPressed;
+    get recordButtonEnabled(): ISignal<RecordButton, any> {
+        return this._recordButtonEnabled;
+    }
+
+    get recordButtonDisabled(): ISignal<RecordButton, any> {
+        return this._recordButtonDisabled;
     }
 }
 
@@ -223,25 +241,33 @@ export class EditorEvent {
 
     constructor({ notebookPanel, cell }: { notebookPanel: NotebookPanel, cell: Cell }) {
 
-        this.editorEvent = this.editorEvent.bind(this);
+        this.onEditorEvent = this.onEditorEvent.bind(this);
         this.dispose = this.dispose.bind(this);
 
         this._notebookPanel = notebookPanel;
         this._cell = cell;
         this._editor = (cell.editorWidget.editor as CodeMirrorEditor);
 
-        this._editor.editor.on('cursorActivity', this.editorEvent);
-        this._editor.editor.on('focus', this.editorEvent);
         cell.disposed.connect(this.dispose);
     }
 
     dispose() {
         Signal.disconnectAll(this);
-        this._editor.editor.off('focus', this.editorEvent);
-        this._editor.editor.off('cursorActivity', this.editorEvent);
+        this._editor.editor.off('focus', this.onEditorEvent);
+        this._editor.editor.off('cursorActivity', this.onEditorEvent);
     }
 
-    private editorEvent(instance: Editor) {
+    public enable(sender: RecordButton, args: any) {
+        this._editor.editor.on('cursorActivity', this.onEditorEvent);
+        this._editor.editor.on('focus', this.onEditorEvent);
+    }
+
+    public disable(sender: RecordButton, args: any) {
+        this._editor.editor.off('focus', this.onEditorEvent);
+        this._editor.editor.off('cursorActivity', this.onEditorEvent);
+    }
+
+    private onEditorEvent(instance: Editor) {
 
         let line = instance.getCursor().line;
         let text = instance.getLine(line);
@@ -265,21 +291,85 @@ export class EditorEvent {
     }
 }
 
+export class ProgressEvent {
+
+    private _notebookPanel: NotebookPanel;
+    private _cell: Cell<ICellModel>;
+    private _editor: CodeMirrorEditor;
+
+    constructor({ notebookPanel, cell }: { notebookPanel: NotebookPanel, cell: Cell }) {
+        this._notebookPanel = notebookPanel;
+        this._cell = cell;
+        this._editor = (cell.editorWidget.editor as CodeMirrorEditor);
+
+        this.onEditorKeydown = this.onEditorKeydown.bind(this);
+        this.onNotebookPanelKeydown =  this.onNotebookPanelKeydown.bind(this);
+
+        cell.disposed.connect(this.dispose);
+        notebookPanel.disposed.connect(this.dispose);
+    }
+
+    public dispose() {
+        this._editor.editor.off("keydown", this.onEditorKeydown);
+        Signal.disconnectAll(this);
+    }
+
+    public enable(sender: RecordButton, args: any) {
+        this._editor.editor.on("keydown", this.onEditorKeydown);
+        this._notebookPanel.node.addEventListener("keydown", this.onNotebookPanelKeydown);
+    }
+
+    public disable(sender: RecordButton, args: any) {
+        this._editor.editor.off("keydown", this.onEditorKeydown);
+        this._notebookPanel.node.removeEventListener("keydown", this.onNotebookPanelKeydown);
+    }
+
+    private onNotebookPanelKeydown(event: KeyboardEvent) {
+        if (this._notebookPanel.content.activeCell == this._cell && !this._editor.hasFocus()) {
+
+            if (event.key == "Shift") {
+                this._editor.focus();
+                this._editor.setCursorPosition({ line: 0, column: 0 });
+            }
+        }
+    }
+    
+    private onEditorKeydown(instance: Editor, event: KeyboardEvent) {
+        event.stopPropagation();
+        if (event.key == "Shift") {
+            let cursor = this._editor.getCursor();
+            let lastLine = this._editor.lastLine();
+            if (cursor.line == lastLine) {
+                NotebookActions.selectBelow(this._notebookPanel.content);
+            }
+            else {
+                this._editor.setCursorPosition({ line: cursor.line + 1, column: cursor.ch });
+            }
+        }
+    }
+
+}
+
 export class CellsEvent {
 
-    private _cellAdded: Signal<CellsEvent, Cell<ICellModel>> = new Signal(this);
     private _notebookPanel: NotebookPanel;
     private _app: JupyterFrontEnd;
+    private _messageReceivedEvent: MessageReceivedEvent;
+    private _recordButton: RecordButton;
 
     constructor(
-        { app, notebookPanel }:
+        { app, notebookPanel, messageReceivedEvent, recordButton }:
             {
                 app: JupyterFrontEnd,
-                notebookPanel: NotebookPanel
+                notebookPanel: NotebookPanel,
+                messageReceivedEvent: MessageReceivedEvent,
+                recordButton: RecordButton
             }
     ) {
         this._notebookPanel = notebookPanel;
         this._app = app;
+        this._messageReceivedEvent = messageReceivedEvent;
+        this._recordButton = recordButton;
 
         notebookPanel.content.widgets.forEach(
             (value: Cell<ICellModel>) =>
@@ -297,7 +387,6 @@ export class CellsEvent {
         Signal.disconnectAll(this);
     }
 
-    
     private cellsChange(sender: any, args: IObservableList.IChangedArgs<ICellModel> | any) {
 
         if (args.type == "add" || args.type == "set") {
@@ -309,17 +398,40 @@ export class CellsEvent {
 
                 if (cell !== undefined) {
 
-                    this._cellAdded.emit(cell);
+                    //  EditorEvent
+                    let editorEvent = new EditorEvent(
+                        { notebookPanel: this._notebookPanel, cell });
+                    editorEvent.cursorChanged.connect(
+                        this._messageReceivedEvent.onReceiveMessage, this._messageReceivedEvent);
 
+                    this._recordButton.recordButtonEnabled.connect(editorEvent.enable, editorEvent);
+                    this._recordButton.recordButtonDisabled.connect(editorEvent.disable, editorEvent);
+                    //  EditorEvent
+
+                    //  ExecutionEvent
+                    let executionEvent = new ExecutionEvent(
+                        { app: this._app, notebookPanel: this._notebookPanel, cell });
+                    executionEvent.executionStarted.connect(
+                        this._messageReceivedEvent.onReceiveMessage, this._messageReceivedEvent);
+                    executionEvent.executionFinished.connect(
+                        this._messageReceivedEvent.onReceiveMessage, this._messageReceivedEvent);
+
+                    this._recordButton.recordButtonEnabled.connect(executionEvent.enable, executionEvent);
+                    this._recordButton.recordButtonDisabled.connect(executionEvent.disable, executionEvent);
+                    //  ExecutionEvent
+
+                    //  ProgressEvent
+                    let progressEvent = new ProgressEvent(
+                        { notebookPanel: this._notebookPanel, cell });
+
+                    this._recordButton.recordButtonEnabled.connect(progressEvent.enable, progressEvent);
+                    this._recordButton.recordButtonDisabled.connect(progressEvent.disable, progressEvent);
+                    //  ProgressEvent
                 }
             });
         }
         else {
             console.log("Unhandled cells changed event: ", args);
         }
-    }
-
-    get cellAdded(): ISignal<CellsEvent, Cell<ICellModel>> {
-        return this._cellAdded;
     }
 }

@@ -1,0 +1,8 @@
+{
+  "jupyter.lab.shortcuts": [],
+  "title": "@educational-technology-collective/etc_jupyterlab_authoring",
+  "description": "@educational-technology-collective/etc_jupyterlab_authoring settings.",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}

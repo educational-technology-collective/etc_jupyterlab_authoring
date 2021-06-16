@@ -1,5 +1,5 @@
 """
-etc-jupyterlab-authoring setup
+etc_jupyterlab_authoring setup
 """
 import json
 from pathlib import Path
@@ -9,9 +9,9 @@ import setuptools
 HERE = Path(__file__).parent.resolve()
 
 # The name of the project
-name = "etc-jupyterlab-authoring"
+name = "etc_jupyterlab_authoring"
 
-lab_path = (HERE / name / "labextension")
+lab_path = (HERE / name.replace("-", "_") / "labextension")
 
 # Representative files that should exist after a successful build
 ensured_targets = [
@@ -19,15 +19,15 @@ ensured_targets = [
     str(lab_path / "static/style.js")
 ]
 
-labext_name = "etc-jupyterlab-authoring"
+labext_name = "@educational-technology-collective/etc_jupyterlab_authoring"
 
 data_files_spec = [
     ("share/jupyter/labextensions/%s" % labext_name, str(lab_path), "**"),
     ("share/jupyter/labextensions/%s" % labext_name, str(HERE), "install.json"),("etc/jupyter/jupyter_server_config.d",
-     "jupyter-config/server-config", "etc-jupyterlab-authoring.json"),
+     "jupyter-config/server-config", "etc_jupyterlab_authoring.json"),
     # For backward compatibility with notebook server
     ("etc/jupyter/jupyter_notebook_config.d",
-     "jupyter-config/nb-config", "etc-jupyterlab-authoring.json"),
+     "jupyter-config/nb-config", "etc_jupyterlab_authoring.json"),
     
 ]
 
