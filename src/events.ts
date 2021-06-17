@@ -250,7 +250,7 @@ export class EditorEvent {
         this._cell = cell;
         this._editor = (cell.editorWidget.editor as CodeMirrorEditor);
 
-        cell.disposed.connect(this.dispose);
+        cell.disposed.connect(this.dispose, this);
     }
 
     public dispose() {
@@ -334,7 +334,7 @@ export class ProgressEvent {
         this.onEditorKeydown = this.onEditorKeydown.bind(this);
         this.onNotebookPanelKeydown = this.onNotebookPanelKeydown.bind(this);
 
-        cell.disposed.connect(this.dispose);
+        cell.disposed.connect(this.dispose, this);
         notebookPanel.disposed.connect(this.dispose);
     }
 
