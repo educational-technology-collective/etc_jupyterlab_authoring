@@ -19,18 +19,17 @@ import {
     IObservableList
 } from "@jupyterlab/observables";
 
-import { Widget } from '@lumino/widgets';
+import { Widget } from "@lumino/widgets";
 
-import { ISignal, Signal } from '@lumino/signaling';
+import { ISignal, Signal } from "@lumino/signaling";
 
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 
-import recordOn from './icons/record_on.svg';
-import recordOff from './icons/record_off.svg';
+import recordOn from "./icons/record_on.svg";
+import recordOff from "./icons/record_off.svg";
 
 import { CommandRegistry } from "@lumino/commands";
 import { Editor } from "codemirror";
-import { Message } from "@jupyterlab/services/lib/kernel/messages";
 
 export class MessageReceivedEvent {
 
@@ -81,7 +80,7 @@ export class ExecutionEvent {
             this._runButton = (this._runButton as Element).parentElement
         );
         //  The only thing that uniquely identifies the run button in the DOM is the data-icon attr; hence, use it.
-        //  The Button Widgets don't have unique class names; hence, climb the tree in order to get to the first DIV.
+        //  The Button Widgets don"t have unique class names; hence, climb the tree in order to get to the first DIV.
 
         notebookPanel.disposed.connect(this.dispose, this);
         cell.disposed.connect(this.dispose, this);
@@ -238,10 +237,13 @@ export class EditorEvent {
     private _notebookPanel: NotebookPanel;
     private _cell: Cell<ICellModel>;
     private _editor: CodeMirrorEditor;
+    private _line: number = -1;
 
     constructor({ notebookPanel, cell }: { notebookPanel: NotebookPanel, cell: Cell }) {
 
         this.onEditorEvent = this.onEditorEvent.bind(this);
+        this.onFocus = this.onFocus.bind(this);
+        this.onBlur = this.onBlur.bind(this);
         this.dispose = this.dispose.bind(this);
 
         this._notebookPanel = notebookPanel;
@@ -251,20 +253,36 @@ export class EditorEvent {
         cell.disposed.connect(this.dispose);
     }
 
-    dispose() {
+    public dispose() {
         Signal.disconnectAll(this);
-        this._editor.editor.off('focus', this.onEditorEvent);
-        this._editor.editor.off('cursorActivity', this.onEditorEvent);
+        this._editor.editor.off("focus", this.onEditorEvent);
+        this._editor.editor.off("cursorActivity", this.onEditorEvent);
     }
 
     public enable(sender: RecordButton, args: any) {
-        this._editor.editor.on('cursorActivity', this.onEditorEvent);
-        this._editor.editor.on('focus', this.onEditorEvent);
+        this._editor.editor.on("focus", this.onFocus);
+        this._editor.editor.on("blur", this.onBlur);
     }
 
     public disable(sender: RecordButton, args: any) {
-        this._editor.editor.off('focus', this.onEditorEvent);
-        this._editor.editor.off('cursorActivity', this.onEditorEvent);
+        this._editor.editor.off("focus", this.onEditorEvent);
+        this._editor.editor.off("cursorActivity", this.onEditorEvent);
+    }
+
+    private onFocus(instance: Editor) {
+        setTimeout(() => {
+            this.onEditorEvent(instance);
+            this._editor.editor.on("cursorActivity", this.onEditorEvent);
+        }, 0)
+    }
+
+    private onBlur(instance: Editor) {
+        setTimeout(() => {
+            if (this._notebookPanel.content.activeCell !== this._cell) {
+                this._editor.editor.off("cursorActivity", this.onEditorEvent);
+                this._line = -1;
+            }
+        }, 0)
     }
 
     private onEditorEvent(instance: Editor) {
@@ -272,8 +290,7 @@ export class EditorEvent {
         let line = instance.getCursor().line;
         let text = instance.getLine(line);
 
-        if (this._cell.model.id !== EditorEvent._id || line !== EditorEvent._line) {
-
+        if (line !== this._line) {
             this._cursorChanged.emit({
                 id: this._cell.model.id,
                 event: 'line_changed',
@@ -281,9 +298,21 @@ export class EditorEvent {
                 text: text
             });
 
-            EditorEvent._id = this._cell.model.id;
-            EditorEvent._line = line;
+            this._line = line;
         }
+        // if (this._cell.model.id !== EditorEvent._id || line !== EditorEvent._line) {
+
+        //     this._cursorChanged.emit({
+        //         id: this._cell.model.id,
+        //         event: 'line_changed',
+        //         line: line,
+        //         text: text
+        //     });
+
+        //     EditorEvent._id = this._cell.model.id;
+        //     EditorEvent._line = line;
+        // }
+
     }
 
     get cursorChanged(): ISignal<EditorEvent, any> {
@@ -303,7 +332,7 @@ export class ProgressEvent {
         this._editor = (cell.editorWidget.editor as CodeMirrorEditor);
 
         this.onEditorKeydown = this.onEditorKeydown.bind(this);
-        this.onNotebookPanelKeydown =  this.onNotebookPanelKeydown.bind(this);
+        this.onNotebookPanelKeydown = this.onNotebookPanelKeydown.bind(this);
 
         cell.disposed.connect(this.dispose);
         notebookPanel.disposed.connect(this.dispose);
@@ -325,25 +354,37 @@ export class ProgressEvent {
     }
 
     private onNotebookPanelKeydown(event: KeyboardEvent) {
-        if (this._notebookPanel.content.activeCell == this._cell && !this._editor.hasFocus()) {
+        // if (this._notebookPanel.content.activeCell == this._cell && !this._editor.hasFocus()) {
 
-            if (event.key == "Shift") {
-                this._editor.focus();
-                this._editor.setCursorPosition({ line: 0, column: 0 });
-            }
-        }
+        //     if (event.key == "Shift") {
+        //         this._editor.focus();
+        //         this._editor.setCursorPosition({ line: 0, column: 0 });
+        //     }
+        // }
     }
-    
+
     private onEditorKeydown(instance: Editor, event: KeyboardEvent) {
+
         event.stopPropagation();
+        //  It's an event on the Editor; hence, we don't want it to fire the keydown handler on the Notebook when it bubbles.
+
         if (event.key == "Shift") {
-            let cursor = this._editor.getCursor();
-            let lastLine = this._editor.lastLine();
+            let cursor = instance.getCursor();
+            let lastLine = instance.lastLine();
             if (cursor.line == lastLine) {
-                NotebookActions.selectBelow(this._notebookPanel.content);
+
+                let cell = this._notebookPanel.content.widgets[this._notebookPanel.content.activeCellIndex + 1];
+
+                if (cell) {
+                    if (cell.model.type == "markdown") {
+                        (cell as MarkdownCell).rendered = false;
+                    }
+                    cell.editorWidget.editor.setCursorPosition({ line: 0, column: 0 });
+                    cell.editorWidget.editor.focus();
+                }
             }
             else {
-                this._editor.setCursorPosition({ line: cursor.line + 1, column: cursor.ch });
+                this._editor.editor.setCursor({ line: cursor.line + 1, ch: cursor.ch });
             }
         }
     }
