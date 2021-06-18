@@ -9,20 +9,13 @@ import {
 } from "@jupyterlab/notebook";
 
 import {
-  Cell,
-  ICellModel
-} from "@jupyterlab/cells";
-
-import {
   CellsEvent,
   MessageReceivedEvent,
   RecordButton,
-  ExecutionEvent,
-  EditorEvent
+  PlayButton
 } from "./events"
 
 import { Signal } from "@lumino/signaling";
-
 
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
@@ -48,6 +41,12 @@ const extension: JupyterFrontEndPlugin<void> = {
       let messageReceivedEvent = new MessageReceivedEvent({ notebookPanel });
 
       let recordButton = new RecordButton({ notebookPanel });
+      recordButton.buttonEnabled.connect(messageReceivedEvent.onReceiveMessage, messageReceivedEvent);
+      recordButton.buttonDisabled.connect(messageReceivedEvent.onReceiveMessage, messageReceivedEvent);
+
+      let playButton = new PlayButton({ notebookPanel });
+      recordButton.buttonEnabled.connect(playButton.onOff, playButton);
+      playButton.buttonEnabled.connect(recordButton.onOff, recordButton);
 
       let cellsEvent = new CellsEvent({ app, notebookPanel, messageReceivedEvent, recordButton });
 

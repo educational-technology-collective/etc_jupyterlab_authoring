@@ -7,14 +7,15 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="16"
-   viewBox="0 0 23 23"
+   width="57.287964"
+   viewBox="0 0 82.351448 13.913043"
    data-icon="ui-components:circle-empty"
    data-icon-id="21e3c526-88b2-4356-a1e3-93b843930fb6"
    version="1.1"
    id="svg6"
-   sodipodi:docname="icon.svg"
-   inkscape:version="1.0.2 (e86c870879, 2021-01-15)">
+   sodipodi:docname="record_on.svg"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15)"
+   height="13.913043">
   <metadata
      id="metadata12">
     <rdf:RDF>
@@ -42,26 +43,28 @@
      inkscape:window-height="721"
      id="namedview8"
      showgrid="false"
-     inkscape:zoom="22.958333"
-     inkscape:cx="1.7713249"
-     inkscape:cy="9.1428313"
+     inkscape:zoom="1.4348958"
+     inkscape:cx="19.264411"
+     inkscape:cy="-2.0912216"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="g4-3" />
+     inkscape:current-layer="svg6"
+     inkscape:document-rotation="0" />
   <g
      class="jp-icon3"
      fill="#616161"
-     id="g4">
+     id="g4"
+     transform="translate(-2,-5.0434782)">
     <path
-       d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+       d="M 12,2 C 6.47,2 2,6.47 2,12 2,17.53 6.47,22 12,22 17.53,22 22,17.53 22,12 22,6.47 17.53,2 12,2 Z m 0,18 C 7.59,20 4,16.41 4,12 4,7.59 7.59,4 12,4 c 4.41,0 8,3.59 8,8 0,4.41 -3.59,8 -8,8 z"
        id="path2" />
   </g>
   <g
      class="jp-icon3"
      fill="#616161"
      id="g4-3"
-     transform="matrix(0.56875741,0,0,0.56875741,5.1655142,5.3618741)">
+     transform="matrix(0.56875741,0,0,0.56875741,3.1655142,0.17661882)">
     <circle
        style="fill:#d40000;stroke-width:3.19564"
        id="path38"
@@ -70,4 +73,26 @@
        transform="scale(-1,1)"
        r="10.856609" />
   </g>
+  <text
+     xml:space="preserve"
+     style="font-size:17.25px;line-height:1.25;font-family:sans-serif;stroke-width:1.4375"
+     x="24.318001"
+     y="12.672817"
+     id="text839"><tspan
+       sodipodi:role="line"
+       id="tspan837"
+       x="24.318001"
+       y="12.672817"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:17.25px;font-family:sans-serif;-inkscape-font-specification:sans-serif;stroke-width:1.4375">Record</tspan></text>
+  <text
+     xml:space="preserve"
+     style="font-size:30.6666px;line-height:1.25;font-family:sans-serif;stroke-width:1.4375"
+     x="32.893692"
+     y="-25.324512"
+     id="text843"><tspan
+       sodipodi:role="line"
+       id="tspan841"
+       x="32.893692"
+       y="-25.324512"
+       style="stroke-width:1.4375" /></text>
 </svg>

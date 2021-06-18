@@ -1,22 +1,12 @@
-.etc-jupyterlab-authoring-record-button {
+.etc-jupyterlab-authoring-button {
     border: 0;
+    padding: 0 8px 0 8px !important;
     margin: 0;
-    padding: 0;
-    background-color: white;
-    white-space: nowrap;
-    display: inline-block !important;
-    line-height: 1 !important;
-    padding: 0 10px 0 10px !important;
-    border: 2px solid black;
-    border-radius: 10px;
-    height: 100%;
-    box-sizing: border-box !important;
+    background: white;
 }
 
-.etc-jupyterlab-authoring-record-button svg {
+.etc-jupyterlab-authoring-button svg {
     background-color: white;
-    vertical-align: middle;
     display: inline-block;
-    width: 13px;
-    height: 13px;
+    height: 100%;
 }
