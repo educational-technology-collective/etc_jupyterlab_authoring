@@ -5,7 +5,9 @@ import {
 import {
     NotebookPanel,
     Notebook,
-    NotebookActions
+    NotebookActions,
+    INotebookTracker,
+    NotebookTracker
 } from "@jupyterlab/notebook";
 
 import {
@@ -30,42 +32,26 @@ import recordOff from "./icons/record_off.svg";
 import playOn from "./icons/play_on.svg";
 import playOff from "./icons/play_off.svg";
 
-import { Editor } from "codemirror";
+import { Editor, fromTextArea } from "codemirror";
 
 import { consoleIcon } from "@jupyterlab/ui-components";
+import { Message } from "@jupyterlab/services/lib/kernel/messages";
 
-interface EventMessage {
-    event: string;
-    notebook_id: string;
-    cell_id?: string;
-    line?: number;
-    input?: string;
-    output?: string;
-    timestamp: number;
-    start_timestamp?: number;
-    stop_timestamp?: number;
-    duration?: number;
-}
+import {EventMessage} from "./types";
 
-export class MessageReceivedEvent {
+import {ToggleButton} from "./widgets";
 
-    private _notebookPanel: NotebookPanel;
+export class MessageAggregator {
+
     private _eventMessage: EventMessage;
-    private _eventMessages: Array<EventMessage> = [];
+    public _eventMessages: Array<EventMessage> = [];
 
-    constructor(
-        { notebookPanel }:
-            { notebookPanel: NotebookPanel }
-    ) {
-        this._notebookPanel = notebookPanel;
-
+    constructor() {
         this._eventMessage = {
             event: "",
             notebook_id: "",
             timestamp: 0
         };
-
-        this._notebookPanel.disposed.connect(this.dispose, this);
     }
 
     private dispose() {
@@ -91,129 +77,22 @@ export class MessageReceivedEvent {
     }
 }
 
-export class NotebookMenuToggleButton extends Widget {
 
-    private _buttonEnabled: Signal<NotebookMenuToggleButton, EventMessage> = new Signal(this);
-    private _buttonDisabled: Signal<NotebookMenuToggleButton, EventMessage> = new Signal(this);
 
-    private _on: boolean = false;
-    private _notebookPanel: NotebookPanel;
-    private _keyBinding: string;
-    private _eventName: string;
-    private _htmlOff: string;
-    private _htmlOn: string;
+export class MessagePlayer {
 
-    constructor({ altName, eventName, className, htmlOn, htmlOff, position, keyBinding, notebookPanel }:
-        { altName: string, eventName: string, className: string, htmlOn: string, htmlOff: string, keyBinding: string, position: number, notebookPanel: NotebookPanel }) {
-        super({ tag: "button" });
+    private _messageAggregator: MessageAggregator;
 
-        this.onToggle = this.onToggle.bind(this);
-        this.keydown = this.keydown.bind(this);
+    constructor(
+        { messageAggregator }:
+            { messageAggregator: MessageAggregator }
+    ) {
 
-        this._htmlOff = htmlOff;
-        this._htmlOn = htmlOn;
-
-        this._keyBinding = keyBinding;
-        this._eventName = eventName;
-
-        this._notebookPanel = notebookPanel;
-
-        this.addClass(className);
-
-        notebookPanel.toolbar.insertItem(position, altName, this);
-
-        this.node.innerHTML = htmlOff;
-
-        this.node.addEventListener("click", this.onToggle);
-        document.addEventListener("keydown", this.keydown)
+        this._messageAggregator = messageAggregator;
     }
 
-    public dispose() {
-        this.node.removeEventListener("click", this.onToggle);
-        document.removeEventListener("keydown", this.keydown);
-        Signal.disconnectAll(this);
-        super.dispose();
-    }
+    onPlay() {
 
-    private keydown(event: KeyboardEvent) {
-        if (event.ctrlKey && event.key == this._keyBinding) {
-            if (this._notebookPanel.isVisible) {
-                this.onToggle();
-            }
-        }
-    }
-
-    public onOff(sender?: any, args?: any) {
-        if (this._on) {
-            this._on = false;
-            this.node.blur();
-            this.node.innerHTML = this._htmlOff;
-            this._buttonDisabled.emit({
-                event: this._eventName + "_off",
-                notebook_id: this._notebookPanel.content.id,
-                timestamp: Date.now()
-            });
-        }
-    }
-
-    public onOn(sender?: any, args?: any) {
-        if (!this._on) {
-            this._on = true;
-            this.node.blur();
-            this.node.innerHTML = this._htmlOn;
-            this._buttonEnabled.emit({
-                event: this._eventName + "_on",
-                notebook_id: this._notebookPanel.content.id,
-                timestamp: Date.now()
-            });
-        }
-    }
-
-    public onToggle(sender?: any, args?: any) {
-        if (this._on) {
-            this.onOff();
-        }
-        else {
-            this.onOn();
-        }
-    }
-
-    get buttonEnabled(): ISignal<NotebookMenuToggleButton, any> {
-        return this._buttonEnabled;
-    }
-
-    get buttonDisabled(): ISignal<NotebookMenuToggleButton, any> {
-        return this._buttonDisabled;
-    }
-}
-
-export class RecordButton extends NotebookMenuToggleButton {
-    constructor({ notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super({
-            altName: "Record Button",
-            eventName: "record",
-            className: "etc-jupyterlab-authoring-button",
-            htmlOn: recordOn,
-            htmlOff: recordOff,
-            position: 10,
-            keyBinding: "F9",
-            notebookPanel: notebookPanel
-        })
-    }
-}
-
-export class PlayButton extends NotebookMenuToggleButton {
-    constructor({ notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super({
-            altName: "Play Button",
-            eventName: "play",
-            className: "etc-jupyterlab-authoring-button",
-            htmlOn: playOn,
-            htmlOff: playOff,
-            position: 11,
-            keyBinding: "F10",
-            notebookPanel: notebookPanel
-        })
     }
 }
 
@@ -247,11 +126,11 @@ export class ExecutionEvent {
         Signal.disconnectAll(this);
     }
 
-    public enable(sender: NotebookMenuToggleButton, args: any) {
+    public enable(sender: ToggleButton, args: any) {
         NotebookActions.executed.connect(this.onFinishExecution, this);
     }
 
-    public disable(sender: NotebookMenuToggleButton, args: any) {
+    public disable(sender: ToggleButton, args: any) {
         NotebookActions.executed.disconnect(this.onFinishExecution, this);
     }
 
@@ -272,6 +151,7 @@ export class ExecutionEvent {
                 event: "execution_finished",
                 notebook_id: this._notebookPanel.content.id,
                 cell_id: this._cell.model.id,
+                cell_index: this._notebookPanel.content.widgets.indexOf(this._cell),
                 output: output,
                 timestamp: Date.now()
             });
@@ -321,14 +201,14 @@ export class EditorEvent {
         Signal.disconnectAll(this);
     }
 
-    public enable(sender: NotebookMenuToggleButton, args: any) {
+    public enable(sender: ToggleButton, args: any) {
         this._editor.addKeyMap(this._keymap);
         this._editor.on("focus", this.onFocus);
         this._editor.on("blur", this.onBlur);
         this._notebookPanel.content.node.addEventListener("keydown", this.onCellStart, true);
     }
 
-    public disable(sender: NotebookMenuToggleButton, args: any) {
+    public disable(sender: ToggleButton, args: any) {
         this._editor.removeKeyMap(this._keymap);
         this._editor.off("focus", this.onFocus);
         this._editor.off("blur", this.onBlur);
@@ -353,9 +233,23 @@ export class EditorEvent {
         this._editor.on("cursorActivity", this.onCursorActivity);
     }
 
-    private onCellStart(event: Event) {
+    private onBlur(instance: Editor, event: Event) {
+        console.log("onBlur", this._cell.model.id);
 
-        if (this._cell == this._notebookPanel.content.activeCell && !this._editor.hasFocus()) {
+        if (this._isCapturing) {
+            this.stop();
+        }
+        this._editor.on("focus", this.onFocus);
+        this._editor.off("cursorActivity", this.onCursorActivity);
+    }
+
+    private onCellStart(event: KeyboardEvent) {
+
+        if (
+            this._cell == this._notebookPanel.content.activeCell &&
+            !this._editor.hasFocus() &&
+            event.code == "Space"
+        ) {
             console.log("onCellStart", this._cell.model.id);
 
             event.stopPropagation();
@@ -392,16 +286,6 @@ export class EditorEvent {
         }
     }
 
-    private onBlur(instance: Editor, event: Event) {
-        console.log("onBlur", this._cell.model.id);
-
-        if (this._isCapturing) {
-            this.stop();
-        }
-        this._editor.on("focus", this.onFocus);
-        this._editor.off("cursorActivity", this.onCursorActivity);
-    }
-
     private onCursorActivity(instance: Editor) {
         console.log("onCursorActivity", this._cell.model.id);
         let line = this._editor.getCursor().line;
@@ -422,6 +306,7 @@ export class EditorEvent {
             event: 'capture_started',
             notebook_id: this._notebookPanel.content.id,
             cell_id: this._cell.model.id,
+            cell_index: this._notebookPanel.content.widgets.indexOf(this._cell),
             line: this._line,
             input: this._text,
             timestamp: Date.now()
@@ -435,6 +320,7 @@ export class EditorEvent {
             event: 'capture_stopped',
             notebook_id: this._notebookPanel.content.id,
             cell_id: this._cell.model.id,
+            cell_index: this._notebookPanel.content.widgets.indexOf(this._cell),
             line: this._line,
             input: this._text,
             timestamp: Date.now()
@@ -454,21 +340,21 @@ export class CellsEvent {
 
     private _notebookPanel: NotebookPanel;
     private _app: JupyterFrontEnd;
-    private _messageReceivedEvent: MessageReceivedEvent;
-    private _recordButton: NotebookMenuToggleButton;
+    private _messageAggregator: MessageAggregator;
+    private _recordButton: ToggleButton;
 
     constructor(
-        { app, notebookPanel, messageReceivedEvent, recordButton }:
+        { app, notebookPanel, messageAggregator, recordButton }:
             {
                 app: JupyterFrontEnd,
                 notebookPanel: NotebookPanel,
-                messageReceivedEvent: MessageReceivedEvent,
-                recordButton: NotebookMenuToggleButton
+                messageAggregator: MessageAggregator,
+                recordButton: ToggleButton
             }
     ) {
         this._notebookPanel = notebookPanel;
         this._app = app;
-        this._messageReceivedEvent = messageReceivedEvent;
+        this._messageAggregator = messageAggregator;
         this._recordButton = recordButton;
 
         notebookPanel.content.widgets.forEach(
@@ -502,9 +388,9 @@ export class CellsEvent {
                     let editorEvent = new EditorEvent(
                         { app: this._app, notebookPanel: this._notebookPanel, cell });
                     editorEvent.captureStarted.connect(
-                        this._messageReceivedEvent.onReceiveMessage, this._messageReceivedEvent);
+                        this._messageAggregator.onReceiveMessage, this._messageAggregator);
                     editorEvent.captureStopped.connect(
-                        this._messageReceivedEvent.onReceiveMessage, this._messageReceivedEvent);
+                        this._messageAggregator.onReceiveMessage, this._messageAggregator);
 
                     this._recordButton.buttonEnabled.connect(editorEvent.enable, editorEvent);
                     this._recordButton.buttonDisabled.connect(editorEvent.disable, editorEvent);
@@ -515,7 +401,7 @@ export class CellsEvent {
                     let executionEvent = new ExecutionEvent(
                         { app: this._app, notebookPanel: this._notebookPanel, cell });
                     executionEvent.executionFinished.connect(
-                        this._messageReceivedEvent.onReceiveMessage, this._messageReceivedEvent);
+                        this._messageAggregator.onReceiveMessage, this._messageAggregator);
 
                     this._recordButton.buttonEnabled.connect(executionEvent.enable, executionEvent);
                     this._recordButton.buttonDisabled.connect(executionEvent.disable, executionEvent);
