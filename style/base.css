@@ -10,3 +10,7 @@
     display: inline-block;
     height: 100%;
 }
+
+.jp-StatusIndicator svg {
+    height: 100%;
+}

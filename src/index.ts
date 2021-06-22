@@ -1,5 +1,4 @@
 import {
-  ILabStatus,
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from "@jupyterlab/application";
@@ -10,22 +9,13 @@ import {
 } from "@jupyterlab/notebook";
 
 import {
-  CellsEvent,
-  MessageAggregator
+  CellsEvent
 } from "./events"
 
 import { Signal } from "@lumino/signaling";
-import { IMainMenu } from "@jupyterlab/mainmenu";
-import { Menu } from '@lumino/widgets';
-import { LabIcon } from "@jupyterlab/ui-components/lib/icon/labicon";
-import { MenuSvg } from "@jupyterlab/ui-components";
-import recordOn from "./icons/record_on.svg";
-import { RecordButton, PlayButton } from "./widgets";
+import { RecordButton, StatusIndicator } from "./authoring";
 import { IStatusBar } from "@jupyterlab/statusbar";
-import { Widget, Panel, PanelLayout } from "@lumino/widgets";
-
-
-const recordOnIcon = new LabIcon({ name: 'etc_jupyterlab_authoring:record_on', svgstr: recordOn });
+import { MessageAggregator } from "./authoring"
 
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
@@ -42,27 +32,29 @@ const extension: JupyterFrontEndPlugin<void> = {
     notebookTracker: INotebookTracker,
     statusBar: IStatusBar,
   ) => {
-    console.log('JupyterLab extension etc_jupyterlab_authoring is activated!');
+    console.log("JupyterLab extension etc_jupyterlab_authoring is activated!");
 
     Signal.setExceptionHandler((error: Error) => {
       console.error(error);
     })
 
-    let recordButton = new RecordButton({ notebookTracker });
-    let playButton = new PlayButton({ notebookTracker });
+    let statusIndicator = new StatusIndicator();
+
+    statusBar.registerStatusItem("etc_jupyterlab_authoring:plugin:status", {
+      item: statusIndicator,
+      align: "left",
+      rank: 9999999
+    });
+
+    let messageAggregator = new MessageAggregator();
+
+
+    let recordButton = new RecordButton({ notebookTracker, messageAggregator, statusIndicator });
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
 
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
-
-
-      let messageAggregator = new MessageAggregator();
-
-      recordButton.buttonEnabled.connect(messageAggregator.onReceiveMessage, messageAggregator);
-      recordButton.buttonDisabled.connect(messageAggregator.onReceiveMessage, messageAggregator);
-      recordButton.buttonEnabled.connect(playButton.off, playButton);
-      playButton.buttonEnabled.connect(recordButton.on, recordButton);
 
       let cellsEvent = new CellsEvent({ app, notebookPanel, messageAggregator, recordButton });
 
