@@ -39,28 +39,30 @@ import { Message } from "@jupyterlab/services/lib/kernel/messages";
 
 import { EventMessage } from "./types";
 
-import { MessageAggregator, RecordButton } from "./authoring"
+import { MessageAggregator, PlayButton, RecordButton, SaveButton } from "./authoring"
 
 export class ExecutionEvent {
 
-    private _executionFinished: Signal<ExecutionEvent, EventMessage> = new Signal(this);
     private _app: JupyterFrontEnd;
     private _notebookPanel: NotebookPanel;
     private _cell: Cell<ICellModel>;
     private _editor: Editor;
+    private _messageAggregator: MessageAggregator;
 
     constructor(
-        { app, notebookPanel, cell }:
+        { app, notebookPanel, cell, messageAggregator }:
             {
                 app: JupyterFrontEnd,
                 notebookPanel: NotebookPanel,
-                cell: Cell<ICellModel>
+                cell: Cell<ICellModel>,
+                messageAggregator: MessageAggregator
             }
     ) {
         this._app = app;
         this._cell = cell;
         this._notebookPanel = notebookPanel;
         this._editor = (cell.editorWidget.editor as CodeMirrorEditor).editor;
+        this._messageAggregator = messageAggregator;
 
         notebookPanel.disposed.connect(this.dispose, this);
         cell.disposed.connect(this.dispose, this);
@@ -91,7 +93,7 @@ export class ExecutionEvent {
                 output = JSON.stringify((this._cell as CodeCell).model.outputs.get(0));
             }
 
-            this._executionFinished.emit({
+            this._messageAggregator.aggregate({
                 event: "execution_finished",
                 notebook_id: this._notebookPanel.content.id,
                 cell_id: this._cell.model.id,
@@ -101,17 +103,11 @@ export class ExecutionEvent {
             });
         }
     }
-
-    get executionFinished(): ISignal<ExecutionEvent, any> {
-        return this._executionFinished;
-    }
 }
 
 export class EditorEvent {
 
     static _cell_id: string;
-    private _captureStarted: Signal<EditorEvent, EventMessage> = new Signal(this);
-    private _captureStopped: Signal<EditorEvent, EventMessage> = new Signal(this);
     private _notebookPanel: NotebookPanel;
     private _cell: Cell<ICellModel>;
     private _editor: Editor;
@@ -158,9 +154,13 @@ export class EditorEvent {
     }
 
     public disable(sender: any, args: any) {
+        if (this._isCapturing) {
+            this.stop();
+        }
         this._editor.removeKeyMap(this._keymap);
         this._editor.off("focus", this.onFocus);
         this._editor.off("blur", this.onBlur);
+        this._editor.off("cursorActivity", this.onCursorActivity);
         this._notebookPanel.content.node.removeEventListener("keydown", this.onCellStart, true);
     }
 
@@ -275,14 +275,6 @@ export class EditorEvent {
             timestamp: Date.now()
         });
     }
-
-    get captureStarted(): ISignal<EditorEvent, any> {
-        return this._captureStarted;
-    }
-
-    get captureStopped(): ISignal<EditorEvent, any> {
-        return this._captureStopped;
-    }
 }
 
 export class CellsEvent {
@@ -291,20 +283,26 @@ export class CellsEvent {
     private _app: JupyterFrontEnd;
     private _messageAggregator: MessageAggregator;
     private _recordButton: RecordButton;
+    private _playButton: PlayButton;
+    private _saveButton: SaveButton;
 
     constructor(
-        { app, notebookPanel, messageAggregator, recordButton }:
+        { app, notebookPanel, messageAggregator, recordButton, playButton, saveButton }:
             {
                 app: JupyterFrontEnd,
                 notebookPanel: NotebookPanel,
                 messageAggregator: MessageAggregator,
-                recordButton: RecordButton
+                recordButton: RecordButton,
+                playButton: PlayButton,
+                saveButton: SaveButton
             }
     ) {
         this._notebookPanel = notebookPanel;
         this._app = app;
         this._messageAggregator = messageAggregator;
         this._recordButton = recordButton;
+        this._playButton = playButton;
+        this._saveButton = saveButton;
 
         notebookPanel.content.widgets.forEach(
             (value: Cell<ICellModel>) =>
@@ -335,19 +333,32 @@ export class CellsEvent {
 
                     //  EditorEvent
                     let editorEvent = new EditorEvent(
-                        { app: this._app, notebookPanel: this._notebookPanel, cell, messageAggregator: this._messageAggregator });
+                        {
+                            app: this._app,
+                            notebookPanel: this._notebookPanel,
+                            cell,
+                            messageAggregator: this._messageAggregator
+                        });
 
                     this._recordButton.enabled.connect(editorEvent.enable, editorEvent);
                     this._recordButton.disabled.connect(editorEvent.disable, editorEvent);
+                    this._playButton.disabled.connect(editorEvent.disable, editorEvent);
+                    this._saveButton.pressed.connect(editorEvent.disable, editorEvent);
                     //  EditorEvent
 
 
                     //  ExecutionEvent
                     let executionEvent = new ExecutionEvent(
-                        { app: this._app, notebookPanel: this._notebookPanel, cell });
+                        {
+                            app: this._app,
+                            notebookPanel: this._notebookPanel,
+                            cell, messageAggregator: this._messageAggregator
+                        });
 
                     this._recordButton.enabled.connect(executionEvent.enable, executionEvent);
                     this._recordButton.disabled.connect(executionEvent.disable, executionEvent);
+                    this._playButton.disabled.connect(executionEvent.disable, executionEvent);
+                    this._saveButton.pressed.connect(executionEvent.disable, executionEvent);
                     //  ExecutionEvent
 
                 }
