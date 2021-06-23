@@ -13,7 +13,7 @@ import {
 } from "./events"
 
 import { Signal } from "@lumino/signaling";
-import { MessageAggregator, RecordButton, PlayButton, StatusIndicator, SaveButton } from "./authoring";
+import { MessageAggregator, RecordButton, PlayButton, StatusIndicator, SaveButton, StopButton, MessagePlayer } from "./authoring";
 import { IStatusBar } from "@jupyterlab/statusbar";
 import { CommandRegistry } from "@lumino/commands";
 
@@ -50,21 +50,36 @@ const extension: JupyterFrontEndPlugin<void> = {
       rank: -100
     });
 
-    let messageAggregator = new MessageAggregator({ app, notebookTracker });
-
-    let saveButton = new SaveButton({ notebookTracker, messageAggregator });
-    let playButton = new PlayButton({ notebookTracker, messageAggregator, statusIndicator });
-    let recordButton = new RecordButton({ notebookTracker, messageAggregator, statusIndicator });
-    recordButton.enabled.connect(playButton.off, playButton);
-    playButton.enabled.connect(recordButton.off, recordButton);
-    playButton.enabled.connect(messageAggregator.play, messageAggregator);
-    saveButton.pressed.connect(recordButton.off, recordButton);
-    saveButton.pressed.connect(playButton.off, playButton);
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
 
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
+
+      let messageAggregator = new MessageAggregator({ app });
+
+      let recordButton = new RecordButton({ notebookPanel, messageAggregator, statusIndicator });
+      let saveButton = new SaveButton({ notebookPanel, messageAggregator });
+      let playButton = new PlayButton({ notebookPanel, messageAggregator, statusIndicator });
+      let stopButton = new StopButton({ notebookPanel, messageAggregator, statusIndicator });
+
+      recordButton.enabled.connect(playButton.off, playButton);
+      playButton.enabled.connect(recordButton.off, recordButton);
+      saveButton.pressed.connect(recordButton.off, recordButton);
+      saveButton.pressed.connect(playButton.off, playButton);
+      stopButton.pressed.connect(recordButton.off, recordButton);
+      stopButton.pressed.connect(playButton.off, playButton);
+    
+      notebookPanel.toolbar.insertItem(10, "etc_jupyterlab_authoring:record", recordButton);
+      notebookPanel.toolbar.insertAfter("etc_jupyterlab_authoring:record", "etc_jupyterlab_authoring:play", playButton);
+      notebookPanel.toolbar.insertAfter("etc_jupyterlab_authoring:play", "etc_jupyterlab_authoring:stop", stopButton);
+      notebookPanel.toolbar.insertAfter("etc_jupyterlab_authoring:stop", "etc_jupyterlab_authoring:save", saveButton);
+
+      if (notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")) {
+        console.log('has("etc_jupyterlab_authoring")');
+        let messagePlayer = new MessagePlayer({ notebookPanel });
+        playButton.enabled.connect(messagePlayer.play, messagePlayer);
+      }
 
       let cellsEvent = new CellsEvent({ app, notebookPanel, messageAggregator, recordButton, playButton, saveButton });
 

@@ -7,11 +7,11 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   height="640"
+   width="512"
    version="1.1"
-   width="456"
-   height="456"
    id="svg4"
-   sodipodi:docname="record_off.svg"
+   sodipodi:docname="pause.svg"
    inkscape:version="1.0.2 (e86c870879, 2021-01-15)">
   <metadata
      id="metadata10">
@@ -21,7 +21,6 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -36,22 +35,35 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1338"
-     inkscape:window-height="721"
+     inkscape:window-width="716"
+     inkscape:window-height="480"
      id="namedview6"
      showgrid="false"
-     inkscape:zoom="1.1978261"
-     inkscape:cx="228"
-     inkscape:cy="265.84634"
+     inkscape:zoom="0.53808594"
+     inkscape:cx="256"
+     inkscape:cy="320"
      inkscape:window-x="0"
      inkscape:window-y="0"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="svg4" />
-  <circle
-     cx="228"
-     cy="228"
-     r="228"
-     fill="#a30000"
-     id="circle2"
-     style="fill:#060000;fill-opacity:1" />
+     inkscape:window-maximized="0"
+     inkscape:current-layer="svg4">
+    <sodipodi:guide
+       position="0,832"
+       orientation="0,512"
+       id="guide835" />
+    <sodipodi:guide
+       position="512,832"
+       orientation="1024,0"
+       id="guide837" />
+    <sodipodi:guide
+       position="512,-192"
+       orientation="0,-512"
+       id="guide839" />
+    <sodipodi:guide
+       position="0,-192"
+       orientation="-1024,0"
+       id="guide841" />
+  </sodipodi:namedview>
+  <path
+     d="M 0,640 H 192 V 0 H 0 Z M 320,0 V 640 H 512 V 0 Z"
+     id="path2" />
 </svg>

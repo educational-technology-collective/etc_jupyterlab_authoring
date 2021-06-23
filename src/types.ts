@@ -3,7 +3,7 @@ export interface EventMessage {
     notebook_id: string;
     cell_id?: string;
     cell_index?: number,
-    line?: number;
+    line_index?: number;
     input?: string;
     output?: string;
     timestamp: number;

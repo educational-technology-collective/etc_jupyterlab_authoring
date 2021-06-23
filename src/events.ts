@@ -150,7 +150,7 @@ export class EditorEvent {
         this._editor.addKeyMap(this._keymap);
         this._editor.on("focus", this.onFocus);
         this._editor.on("blur", this.onBlur);
-        this._notebookPanel.content.node.addEventListener("keydown", this.onCellStart, true);
+        this._notebookPanel.node.addEventListener("keydown", this.onCellStart, true);
     }
 
     public disable(sender: any, args: any) {
@@ -161,7 +161,7 @@ export class EditorEvent {
         this._editor.off("focus", this.onFocus);
         this._editor.off("blur", this.onBlur);
         this._editor.off("cursorActivity", this.onCursorActivity);
-        this._notebookPanel.content.node.removeEventListener("keydown", this.onCellStart, true);
+        this._notebookPanel.node.removeEventListener("keydown", this.onCellStart, true);
     }
 
     private onFocus(instance: Editor, event: Event) {
@@ -206,6 +206,14 @@ export class EditorEvent {
             EditorEvent._cell_id = null;
             this._cell.editorWidget.editor.setCursorPosition({ line: 0, column: 0 });
             this._editor.focus();
+
+            this._messageAggregator.aggregate({
+                event: 'cell_started',
+                notebook_id: this._notebookPanel.content.id,
+                cell_id: this._cell.model.id,
+                cell_index: this._notebookPanel.content.widgets.indexOf(this._cell),
+                timestamp: Date.now()
+            });
         }
     }
 
@@ -251,26 +259,17 @@ export class EditorEvent {
         this._isCapturing = true;
         this._line = this._editor.getCursor().line;
         this._text = this._editor.getLine(this._line);
-        this._messageAggregator.aggregate({
-            event: 'capture_started',
-            notebook_id: this._notebookPanel.content.id,
-            cell_id: this._cell.model.id,
-            cell_index: this._notebookPanel.content.widgets.indexOf(this._cell),
-            line: this._line,
-            input: this._text,
-            timestamp: Date.now()
-        });
     }
 
     private stop() {
         console.log("captureStopped")
         this._isCapturing = false;
         this._messageAggregator.aggregate({
-            event: 'capture_stopped',
+            event: 'line',
             notebook_id: this._notebookPanel.content.id,
             cell_id: this._cell.model.id,
             cell_index: this._notebookPanel.content.widgets.indexOf(this._cell),
-            line: this._line,
+            line_index: this._line,
             input: this._text,
             timestamp: Date.now()
         });
