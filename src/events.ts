@@ -45,26 +45,26 @@ import * as nbformat from '@jupyterlab/nbformat';
 
 export class ExecutionEvent {
 
-    private _app: JupyterFrontEnd;
     private _notebookPanel: NotebookPanel;
     private _cell: Cell<ICellModel>;
-    private _editor: Editor;
     private _messageAggregator: MessageAggregator;
 
     constructor(
-        { app, notebookPanel, cell, messageAggregator }:
+        { notebookPanel, cell, messageAggregator }:
             {
-                app: JupyterFrontEnd,
                 notebookPanel: NotebookPanel,
                 cell: Cell<ICellModel>,
                 messageAggregator: MessageAggregator
             }
     ) {
-        this._app = app;
         this._cell = cell;
         this._notebookPanel = notebookPanel;
-        this._editor = (cell.editorWidget.editor as CodeMirrorEditor).editor;
         this._messageAggregator = messageAggregator;
+
+        this.onCellExecution = this.onCellExecution.bind(this);
+        this.dispose = this.dispose.bind(this);
+        this.enable = this.enable.bind(this);
+        this.disable = this.disable.bind(this);
 
         notebookPanel.disposed.connect(this.dispose, this);
         cell.disposed.connect(this.dispose, this);
@@ -74,27 +74,26 @@ export class ExecutionEvent {
         Signal.disconnectAll(this);
     }
 
-    public enable(sender: any, args: any) {
-        NotebookActions.executed.connect(this.onFinishExecution, this);
+    public enable() {
+        NotebookActions.executed.connect(this.onCellExecution, this);
     }
 
-    public disable(sender: any, args: any) {
-        NotebookActions.executed.disconnect(this.onFinishExecution, this);
+    public disable() {
+        NotebookActions.executed.disconnect(this.onCellExecution, this);
     }
 
-    public onFinishExecution(sender: any, args: {
+    public onCellExecution(sender: any, args: {
         notebook: Notebook;
         cell: Cell<ICellModel>;
     }) {
-        console.log("onFinishExecution", this._cell.id, args.cell.id);
+        console.log("ExecutionEvent#onFinishExecution", this._cell.id, args.cell.id);
+        
         if (args.cell == this._cell) {
 
             let outputs: Array<nbformat.IOutput> = [];
 
             if (args.cell.model.type == "code") {
-                // for (let i = 0; i < (this._cell as CodeCell).model.outputs.length; i = i + 1) {
-                    outputs = (this._cell as CodeCell).model.outputs.toJSON();             
-                // }
+                outputs = (this._cell as CodeCell).model.outputs.toJSON();
             }
 
             this._messageAggregator.aggregate({
@@ -119,28 +118,29 @@ export class EditorEvent {
     private _line: number = -1;
     private _text: string;
     private _isCapturing: boolean = false;
-    private _app: JupyterFrontEnd;
     private _keymap: { Space: (instance: Editor) => void };
     private _messageAggregator: MessageAggregator;
 
     constructor(
-        { app, notebookPanel, cell, messageAggregator }:
+        { notebookPanel, cell, messageAggregator }:
             { app: JupyterFrontEnd, notebookPanel: NotebookPanel, cell: Cell, messageAggregator: MessageAggregator }
     ) {
-        this._app = app;
         this._notebookPanel = notebookPanel;
         this._cell = cell;
         this._editor = (cell.editorWidget.editor as CodeMirrorEditor).editor;
         this._messageAggregator = messageAggregator;
 
-        this.onKeyDown = this.onKeyDown.bind(this);
+        this.dispose = this.dispose.bind(this);
+        this.onAdvance = this.onAdvance.bind(this);
         this.onFocus = this.onFocus.bind(this);
         this.onBlur = this.onBlur.bind(this);
         this.onCursorActivity = this.onCursorActivity.bind(this);
-        this.onCellStart = this.onCellStart.bind(this);
+        this.onStartCell = this.onStartCell.bind(this);
+        this.startCapture = this.startCapture.bind(this);
+        this.stopCapture = this.stopCapture.bind(this);
 
         this._keymap = {
-            Space: this.onKeyDown
+            Space: this.onAdvance
         };
 
         cell.disposed.connect(this.dispose, this);
@@ -151,22 +151,22 @@ export class EditorEvent {
         Signal.disconnectAll(this);
     }
 
-    public enable(sender: any, args: any) {
+    public enable() {
         this._editor.addKeyMap(this._keymap);
         this._editor.on("focus", this.onFocus);
         this._editor.on("blur", this.onBlur);
-        this._notebookPanel.node.addEventListener("keydown", this.onCellStart, true);
+        this._notebookPanel.node.addEventListener("keydown", this.onStartCell, true);
     }
 
-    public disable(sender: any, args: any) {
+    public disable() {
         if (this._isCapturing) {
-            this.stop();
+            this.stopCapture();
         }
         this._editor.removeKeyMap(this._keymap);
         this._editor.off("focus", this.onFocus);
         this._editor.off("blur", this.onBlur);
         this._editor.off("cursorActivity", this.onCursorActivity);
-        this._notebookPanel.node.removeEventListener("keydown", this.onCellStart, true);
+        this._notebookPanel.node.removeEventListener("keydown", this.onStartCell, true);
     }
 
     private onFocus(instance: Editor, event: Event) {
@@ -178,7 +178,7 @@ export class EditorEvent {
             EditorEvent._cell_id = this._cell.model.id;
 
             setTimeout(() => {
-                this.start();
+                this.startCapture();
             }, 0);
             //  The cursor is set after the focus event; hence, start the capture after the cursor is set.
 
@@ -191,13 +191,13 @@ export class EditorEvent {
         console.log("onBlur", this._cell.model.id);
 
         if (this._isCapturing) {
-            this.stop();
+            this.stopCapture();
         }
         this._editor.on("focus", this.onFocus);
         this._editor.off("cursorActivity", this.onCursorActivity);
     }
 
-    private onCellStart(event: KeyboardEvent) {
+    private onStartCell(event: KeyboardEvent) {
 
         if (
             this._cell == this._notebookPanel.content.activeCell &&
@@ -222,7 +222,7 @@ export class EditorEvent {
         }
     }
 
-    private onKeyDown(instance: Editor) {
+    private onAdvance(instance: Editor) {
         console.log("onKeyDown", this._cell.model.id);
 
         let line = instance.getCursor().line;
@@ -239,7 +239,7 @@ export class EditorEvent {
             }
             else {
                 if (this._isCapturing) {
-                    this.stop();
+                    this.stopCapture();
                 }
             }
         }
@@ -253,20 +253,20 @@ export class EditorEvent {
         let line = this._editor.getCursor().line;
         if (this._line != line) {
             if (this._isCapturing) {
-                this.stop();
+                this.stopCapture();
             }
-            this.start();
+            this.startCapture();
         }
     }
 
-    private start() {
+    private startCapture() {
         console.log("captureStarted")
         this._isCapturing = true;
         this._line = this._editor.getCursor().line;
         this._text = this._editor.getLine(this._line);
     }
 
-    private stop() {
+    private stopCapture() {
         console.log("captureStopped")
         this._isCapturing = false;
         this._messageAggregator.aggregate({
@@ -309,15 +309,18 @@ export class CellsEvent {
         this._playButton = playButton;
         this._saveButton = saveButton;
 
+        this.onCellsChange = this.onCellsChange.bind(this);
+        this.dispose = this.dispose.bind(this);
+
         notebookPanel.content.widgets.forEach(
             (value: Cell<ICellModel>) =>
-                this.cellsChange(this, {
+                this.onCellsChange(this, {
                     type: "add",
                     newValues: [value.model]
                 }));
         //  Each new value is given in a list; hence, value.model is in a list.
 
-        notebookPanel.content.model?.cells.changed.connect(this.cellsChange, this);
+        notebookPanel.content.model?.cells.changed.connect(this.onCellsChange, this);
         notebookPanel.disposed.connect(this.dispose, this);
     }
 
@@ -325,7 +328,7 @@ export class CellsEvent {
         Signal.disconnectAll(this);
     }
 
-    private cellsChange(sender: any, args: IObservableList.IChangedArgs<ICellModel> | any) {
+    private onCellsChange(sender: any, args: IObservableList.IChangedArgs<ICellModel> | any) {
 
         if (args.type == "add" || args.type == "set") {
 
@@ -355,7 +358,6 @@ export class CellsEvent {
                     //  ExecutionEvent
                     let executionEvent = new ExecutionEvent(
                         {
-                            app: this._app,
                             notebookPanel: this._notebookPanel,
                             cell, messageAggregator: this._messageAggregator
                         });

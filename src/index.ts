@@ -78,7 +78,7 @@ const extension: JupyterFrontEndPlugin<void> = {
       if (notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")) {
         console.log('has("etc_jupyterlab_authoring")');
         let messagePlayer = new MessagePlayer({ notebookPanel });
-        playButton.enabled.connect(messagePlayer.play, messagePlayer);
+        playButton.enabled.connect(messagePlayer.playMessage, messagePlayer);
       }
 
       let cellsEvent = new CellsEvent({ app, notebookPanel, messageAggregator, recordButton, playButton, saveButton });

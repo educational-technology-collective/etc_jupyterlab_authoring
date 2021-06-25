@@ -1,4 +1,4 @@
-import { INotebookTracker, Notebook, NotebookActions, NotebookPanel, NotebookTracker } from "@jupyterlab/notebook";
+import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { IStatusBar } from "@jupyterlab/statusbar";
 import { Widget } from "@lumino/widgets";
 import { Signal, ISignal } from "@lumino/signaling";
@@ -21,7 +21,6 @@ export class MessageAggregator {
   private _eventMessage: EventMessage;
   public _eventMessages: Array<EventMessage> = [];
   private _app: JupyterFrontEnd;
-  private _notebookTracker: INotebookTracker;
 
   constructor({ app }: { app: JupyterFrontEnd }) {
 
@@ -29,11 +28,8 @@ export class MessageAggregator {
     this.aggregate = this.aggregate.bind(this);
 
     this._app = app;
-    this.init();
-  }
 
-  private dispose() {
-    Signal.disconnectAll(this);
+    this.init();
   }
 
   public init() {
@@ -91,8 +87,6 @@ export class MessagePlayer {
   private _notebook: Notebook;
   private _messageIndex: number;
   private _charIndex: number;
-  private _lineIndex: number;
-  private _timeoutId: number;
   private _intervalId: number;
   private _timeout: number = 0;
   private _cell: Cell<ICellModel>;
@@ -105,7 +99,7 @@ export class MessagePlayer {
     this.createCellsTo = this.createCellsTo.bind(this);
     this.createLinesTo = this.createLinesTo.bind(this);
     this.printChar = this.printChar.bind(this);
-    this.play = this.play.bind(this);
+    this.playMessage = this.playMessage.bind(this);
 
     this._messageIndex = 0;
     this._messages = ((this._notebookPanel.content.model.metadata.get("etc_jupyterlab_authoring") as unknown) as Array<EventMessage>);
@@ -120,7 +114,7 @@ export class MessagePlayer {
     console.log(this._messages);
   }
 
-  public play() {
+  public playMessage() {
     // console.log("MessagePlayer#play");
 
     this._message = this._messages[this._messageIndex];
@@ -170,13 +164,12 @@ export class MessagePlayer {
 
           this._messageIndex = this._messageIndex + 1;
 
-          this._timeoutId = setTimeout(this.play, this._timeout);
+          setTimeout(this.playMessage, 0);
+          //  The line was printed synchronously; hence, call play asynchronously.  This may permit interruption of playback.
         }
         else {
 
           let timeout = this._message.input.length ? this._message.duration / this._message.input.length : 0;
-
-          console.log("setInterval timeout", timeout);
 
           this._intervalId = setInterval(this.printChar, timeout);
         }
@@ -189,7 +182,7 @@ export class MessagePlayer {
 
           this._messageIndex = this._messageIndex + 1;
 
-          this._timeoutId = setTimeout(this.play, this._timeout);
+          this.playMessage();
 
         }, this._message.duration);
       }
@@ -201,7 +194,7 @@ export class MessagePlayer {
 
           this._messageIndex = this._messageIndex + 1;
 
-          this._timeoutId = setTimeout(this.play, this._timeout);
+          this.playMessage();
 
         }, duration);
       }
@@ -217,7 +210,7 @@ export class MessagePlayer {
 
       this._messageIndex = this._messageIndex + 1;
 
-      this._timeoutId = setTimeout(this.play, this._timeout);
+      this.playMessage();
       return;
     }
 
@@ -283,23 +276,26 @@ export class RecordButton extends Widget {
     this._notebookPanel = notebookPanel;
     this._statusIndicator = statusIndicator;
 
+    this.dispose = this.dispose.bind(this);
     this.off = this.off.bind(this);
     this.on = this.on.bind(this);
     this.toggle = this.toggle.bind(this);
-    this.keydown = this.keydown.bind(this);
+    this.onKeydown = this.onKeydown.bind(this);
 
     this.node.innerHTML = recordOffSVG;
     this.addClass("etc-jupyterlab-authoring-button");
 
-    window.addEventListener("keydown", this.keydown, true);
-    this.node.addEventListener("click", this.toggle);
+    this._notebookPanel.disposed.connect(this.dispose, this);
+    window.addEventListener("keydown", this.onKeydown, true);
+    this.node.addEventListener("click", this.toggle, false);
   }
 
   public dispose() {
-    window.removeEventListener("keydown", this.keydown, true);
+    window.removeEventListener("keydown", this.onKeydown, true);
+    this.node.removeEventListener("click", this.toggle, false);
   }
 
-  private keydown(event: KeyboardEvent) {
+  private onKeydown(event: KeyboardEvent) {
     if (event.ctrlKey && event.key == "F9" && this._notebookPanel.isVisible) {
       event.preventDefault();
       this.toggle();
@@ -352,7 +348,6 @@ export class RecordButton extends Widget {
   }
 }
 
-
 export class PlayButton extends Widget {
 
   private _isEnabled: boolean;
@@ -377,24 +372,27 @@ export class PlayButton extends Widget {
     this._notebookPanel = notebookPanel;
     this._statusIndicator = statusIndicator;
 
+    this.dispose = this.dispose.bind(this);
     this.off = this.off.bind(this);
     this.on = this.on.bind(this);
     this.toggle = this.toggle.bind(this);
-    this.keydown = this.keydown.bind(this);
+    this.onKeydown = this.onKeydown.bind(this);
 
     this.node.innerHTML = playSVG;
     this.addClass("etc-jupyterlab-authoring-button");
 
-
-    window.addEventListener("keydown", this.keydown, true);
-    this.node.addEventListener("click", this.toggle);
+    this._notebookPanel.disposed.connect(this.dispose, this);
+    window.addEventListener("keydown", this.onKeydown, true);
+    this.node.addEventListener("click", this.toggle, false);
   }
 
   public dispose() {
-    window.removeEventListener("keydown", this.keydown, true);
+    Signal.disconnectAll(this);
+    window.removeEventListener("keydown", this.onKeydown, true);
+    this.node.removeEventListener("click", this.toggle, false);
   }
 
-  private keydown(event: KeyboardEvent) {
+  private onKeydown(event: KeyboardEvent) {
     if (event.ctrlKey && event.key == "F11" && this._notebookPanel.isVisible) {
       event.preventDefault();
       this.toggle();
@@ -434,9 +432,7 @@ export class PlayButton extends Widget {
 
 export class StopButton extends Widget {
 
-  private _isEnabled: boolean;
   private _pressed: Signal<StopButton, any> = new Signal(this);
-  private _messageAggregator: MessageAggregator;
   private _notebookPanel: NotebookPanel;
   private _statusIndicator: StatusIndicator;
 
@@ -451,26 +447,26 @@ export class StopButton extends Widget {
 
     super({ node: document.createElement("button") })
 
-    this._messageAggregator = messageAggregator;
     this._notebookPanel = notebookPanel;
     this._statusIndicator = statusIndicator;
 
+    this.dispose = this.dispose.bind(this);
     this.stop = this.stop.bind(this);
-    this.keydown = this.keydown.bind(this);
+    this.onKeydown = this.onKeydown.bind(this);
 
     this.node.innerHTML = stopSVG;
     this.addClass("etc-jupyterlab-authoring-button");
 
-
-    window.addEventListener("keydown", this.keydown, true);
+    this._notebookPanel.disposed.connect(this.dispose, this);
+    window.addEventListener("keydown", this.onKeydown, true);
     this.node.addEventListener("click", this.stop);
   }
 
   public dispose() {
-    window.removeEventListener("keydown", this.keydown, true);
+    window.removeEventListener("keydown", this.onKeydown, true);
   }
 
-  private keydown(event: KeyboardEvent) {
+  private onKeydown(event: KeyboardEvent) {
     if (event.ctrlKey && event.key == "F12" && this._notebookPanel.isVisible) {
       event.preventDefault();
       this.stop();
@@ -478,11 +474,9 @@ export class StopButton extends Widget {
   }
 
   public stop() {
-    this._isEnabled = false;
     this._pressed.emit(null);
     this._statusIndicator.stop();
   }
-
 
   get pressed(): ISignal<StopButton, any> {
     return this._pressed;
@@ -508,21 +502,24 @@ export class SaveButton extends Widget {
     this._messageAggregator = messageAggregator;
     this._notebookPanel = notebookPanel;
 
+    this.dispose = this.dispose.bind(this);
     this.save = this.save.bind(this);
-    this.keydown = this.keydown.bind(this);
+    this.onKeydown = this.onKeydown.bind(this);
 
     this.node.innerHTML = ejectSVG;
     this.addClass("etc-jupyterlab-authoring-button");
 
-    window.addEventListener("keydown", this.keydown, true);
+    this._notebookPanel.disposed.connect(this.dispose, this);
+    window.addEventListener("keydown", this.onKeydown, true);
     this.node.addEventListener("click", this.save);
   }
 
   public dispose() {
-    window.removeEventListener("keydown", this.keydown, true);
+    window.removeEventListener("keydown", this.onKeydown, true);
+    this.node.addEventListener("click", this.save, false);
   }
 
-  private keydown(event: KeyboardEvent) {
+  private onKeydown(event: KeyboardEvent) {
     if (event.ctrlKey && event.key == "F11" && this._notebookPanel.isVisible) {
       event.preventDefault();
       this.save();
