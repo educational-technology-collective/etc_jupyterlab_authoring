@@ -39,7 +39,9 @@ import { Message } from "@jupyterlab/services/lib/kernel/messages";
 
 import { EventMessage } from "./types";
 
-import { MessageAggregator, PlayButton, RecordButton, SaveButton } from "./authoring"
+import { MessageAggregator, PlayButton, RecordButton, SaveButton } from "./authoring";
+import * as nbformat from '@jupyterlab/nbformat';
+
 
 export class ExecutionEvent {
 
@@ -87,10 +89,12 @@ export class ExecutionEvent {
         console.log("onFinishExecution", this._cell.id, args.cell.id);
         if (args.cell == this._cell) {
 
-            let output = "";
+            let outputs: Array<nbformat.IOutput> = [];
 
             if (args.cell.model.type == "code") {
-                output = JSON.stringify((this._cell as CodeCell).model.outputs.get(0));
+                // for (let i = 0; i < (this._cell as CodeCell).model.outputs.length; i = i + 1) {
+                    outputs = (this._cell as CodeCell).model.outputs.toJSON();             
+                // }
             }
 
             this._messageAggregator.aggregate({
@@ -98,7 +102,8 @@ export class ExecutionEvent {
                 notebook_id: this._notebookPanel.content.id,
                 cell_id: this._cell.model.id,
                 cell_index: this._notebookPanel.content.widgets.indexOf(this._cell),
-                output: output,
+                cell_type: this._cell.model.type,
+                outputs: outputs,
                 timestamp: Date.now()
             });
         }
@@ -265,10 +270,11 @@ export class EditorEvent {
         console.log("captureStopped")
         this._isCapturing = false;
         this._messageAggregator.aggregate({
-            event: 'line',
+            event: 'line_finished',
             notebook_id: this._notebookPanel.content.id,
             cell_id: this._cell.model.id,
             cell_index: this._notebookPanel.content.widgets.indexOf(this._cell),
+            cell_type: this._cell.model.type,
             line_index: this._line,
             input: this._text,
             timestamp: Date.now()

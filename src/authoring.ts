@@ -13,7 +13,7 @@ import recordStatusSVG from "./icons/record_status.svg";
 import stopStatusSVG from "./icons/stop_status.svg";
 import playStatusSVG from "./icons/play_status.svg";
 import { JupyterFrontEnd } from "@jupyterlab/application";
-import { CellModel, Cell, ICellModel } from '@jupyterlab/cells'
+import { CodeCell, Cell, ICellModel, MarkdownCell, RawCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 
 export class MessageAggregator {
@@ -26,9 +26,9 @@ export class MessageAggregator {
   constructor({ app }: { app: JupyterFrontEnd }) {
 
     this.init = this.init.bind(this);
+    this.aggregate = this.aggregate.bind(this);
 
     this._app = app;
-
     this.init();
   }
 
@@ -48,7 +48,7 @@ export class MessageAggregator {
 
     switch (message.event) {
       case "cell_started":
-      case "capture_stopped":
+      case "line_finished":
       case "execution_finished":
       case "record_off":
         message.start_timestamp = this._eventMessage.timestamp;
@@ -58,7 +58,6 @@ export class MessageAggregator {
     }
 
     this._eventMessage = message;
-
     this._eventMessages.push(message);
     console.log(message.input, message);
   }
@@ -75,7 +74,7 @@ export class MessageAggregator {
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
 
-      notebookPanel.content.model.metadata.set("etc_jupyterlab_authoring", JSON.stringify(this._eventMessages));
+      notebookPanel.content.model.metadata.set("etc_jupyterlab_authoring", this._eventMessages as any);
       await notebookPanel.context.saveAs();
     }
     catch (e) {
@@ -87,20 +86,29 @@ export class MessageAggregator {
 
 export class MessagePlayer {
   private _messages: Array<EventMessage>;
+  private _message: EventMessage;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
   private _messageIndex: number;
+  private _charIndex: number;
+  private _lineIndex: number;
   private _timeoutId: number;
+  private _intervalId: number;
+  private _timeout: number = 0;
+  private _cell: Cell<ICellModel>;
+  private _editor: CodeMirrorEditor;
 
   constructor({ notebookPanel }: { notebookPanel: NotebookPanel }) {
     this._notebookPanel = notebookPanel;
     this._notebook = notebookPanel.content;
 
-    this.createCell = this.createCell.bind(this);
+    this.createCellsTo = this.createCellsTo.bind(this);
+    this.createLinesTo = this.createLinesTo.bind(this);
+    this.printChar = this.printChar.bind(this);
     this.play = this.play.bind(this);
 
     this._messageIndex = 0;
-    this._messages = JSON.parse(this._notebookPanel.content.model.metadata.get("etc_jupyterlab_authoring") as string);
+    this._messages = ((this._notebookPanel.content.model.metadata.get("etc_jupyterlab_authoring") as unknown) as Array<EventMessage>);
     this._notebookPanel.content.model.cells.removeRange(0, this._notebookPanel.content.model.cells.length);
     const cell = this._notebook.model.contentFactory.createCell(
       this._notebook.notebookConfig.defaultCell,
@@ -113,64 +121,141 @@ export class MessagePlayer {
   }
 
   public play() {
-    console.log("MessagePlayer#play");
+    // console.log("MessagePlayer#play");
 
-    let message = this._messages[this._messageIndex];
+    this._message = this._messages[this._messageIndex];
 
-    if (message) {
+    if (this._message) {
 
-      if (message.event == "line") {
+      if (this._message.event == "line_finished") {
 
-        if (message.cell_index > this._notebook.model.cells.length - 1) {
-          this.createCell(message.cell_index);
+        if (this._message.cell_index > this._notebook.model.cells.length - 1) {
+          this.createCellsTo(this._message.cell_index);
           //  The Notebook may not have sufficient cells; hence, create cells to accomodate the cell index.
         }
 
-        let cell = this._notebook.widgets[message.cell_index];
-        let index = 0;
+        this._cell = this._notebook.widgets[this._message.cell_index];
 
-        let intervalId = setInterval(() => {
+        if (this._message.cell_type && this._message.cell_type != this._cell.model.type) {
 
-          if (index > message.input.length - 1) {
+          this._notebook.select(this._notebook.widgets[this._message.cell_index]);
 
-            clearInterval(intervalId);
-
-            (cell.editor as CodeMirrorEditor).doc.replaceRange(
-              "\n",
-              { line: message.line_index, ch: message.input.length }
-            );
-
-            this._messageIndex = this._messageIndex + 1;
-
-            this._timeoutId = setTimeout(this.play, 1000);
-            return;
+          if (this._message.cell_type == "markdown") {
+            NotebookActions.changeCellType(this._notebook, "markdown");
+            this._cell = this._notebook.widgets[this._message.cell_index];
+            (this._cell as MarkdownCell).rendered = true;
           }
+          else if (this._message.cell_type == "raw") {
+            NotebookActions.changeCellType(this._notebook, "raw");
+            this._cell = this._notebook.widgets[this._message.cell_index];
+          }
+        }
 
-          let pos = {
-            line: message.line_index,
-            ch: index
-          };
+        this._editor = (this._cell.editor as CodeMirrorEditor);
 
-          (cell.editor as CodeMirrorEditor).doc.replaceRange(message.input[index], pos);
+        if (this._message.line_index > this._editor.lastLine()) {
+          this.createLinesTo(this._message.line_index);
+        }
 
-          index = index + 1;
+        this._charIndex = 0;
 
-        }, 100);
+        if (this._message.duration < 500) {
+
+          this._editor.doc.replaceRange(this._message.input, {
+            line: this._message.line_index,
+            ch: this._charIndex
+          });
+
+          this._cell.update();
+
+          this._messageIndex = this._messageIndex + 1;
+
+          this._timeoutId = setTimeout(this.play, this._timeout);
+        }
+        else {
+
+          let timeout = this._message.input.length ? this._message.duration / this._message.input.length : 0;
+
+          console.log("setInterval timeout", timeout);
+
+          this._intervalId = setInterval(this.printChar, timeout);
+        }
+      }
+      else if (this._message.event == "execution_finished") {
+
+        setTimeout(() => {
+
+          (this._cell as CodeCell).model.outputs.fromJSON(this._message.outputs);
+
+          this._messageIndex = this._messageIndex + 1;
+
+          this._timeoutId = setTimeout(this.play, this._timeout);
+
+        }, this._message.duration);
       }
       else {
-        this._messageIndex = this._messageIndex + 1;
 
-        this._timeoutId = setTimeout(this.play, 1000);
+        let duration = this._message.duration ? this._message.duration : 0;
+
+        setTimeout(() => {
+
+          this._messageIndex = this._messageIndex + 1;
+
+          this._timeoutId = setTimeout(this.play, this._timeout);
+
+        }, duration);
       }
     }
   }
 
-  private createCell(index: number) {
+  private printChar() {
+    console.log("MessagePlayer#printChar");
+
+    if (this._charIndex > this._message.input.length - 1) {
+
+      clearInterval(this._intervalId);
+
+      this._messageIndex = this._messageIndex + 1;
+
+      this._timeoutId = setTimeout(this.play, this._timeout);
+      return;
+    }
+
+    let pos = {
+      line: this._message.line_index,
+      ch: this._charIndex
+    };
+
+    this._editor.doc.replaceRange(this._message.input[this._charIndex], pos);
+
+    this._cell.update();
+
+    this._charIndex = this._charIndex + 1;
+  }
+
+  private createCellsTo(index: number) {
 
     this._notebook.select(this._notebook.widgets[this._notebook.widgets.length - 1]);
 
     while (this._notebook.model.cells.length <= index) {
       NotebookActions.insertBelow(this._notebook);
+    }
+  }
+
+  private createLinesTo(index: number) {
+    console.log("MessagePlayer#createLinesTo", index);
+
+    let lastLine: number = this._editor.lastLine();
+
+    while (lastLine < index) {
+
+      let lastChar: number = this._editor.getLine(lastLine).length;
+
+      this._editor.doc.replaceRange(
+        "\n",
+        { line: lastLine, ch: lastChar });
+
+      lastLine = this._editor.lastLine();
     }
   }
 }
