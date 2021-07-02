@@ -1,14 +1,8 @@
 # etc_jupyterlab_authoring
 
-![Github Actions Status](git@github.com:educational-technology-collective/etc_jupyterlab_authoring.git/workflows/Build/badge.svg)[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/git@github.com:educational-technology-collective/etc_jupyterlab_authoring.git/main?urlpath=lab)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/educational-technology-collective/etc_jupyterlab_authoring/main?urlpath=lab)
 
-A JupyterLab extension.
-
-
-This extension is composed of a Python package named `etc_jupyterlab_authoring`
-for the server extension and a NPM package named `@educational-technology-collective/etc_jupyterlab_authoring`
-for the frontend extension.
-
+A JupyterLab authoring extension.
 
 ## Requirements
 
@@ -16,12 +10,53 @@ for the frontend extension.
 
 ## Install
 
-To install the extension, execute:
+To install the extension:
+
+Install the Python build package (https://pypi.org/project/build/).
 
 ```bash
-pip install etc_jupyterlab_authoring
+pip install build
 ```
 
+Clone to repository.
+
+```bash
+git clone https://github.com/educational-technology-collective/etc_jupyterlab_authoring.git
+```
+
+or,
+
+```bash
+git clone git@github.com:educational-technology-collective/etc_jupyterlab_authoring.git
+```
+
+Change the directory into the repository.
+
+```bash
+cd etc_jupyterlab_authoring
+```
+
+**The following instructions assume that your current working directory is the base directory of the repository.**
+
+Next build the extension according to the instructions given in the [documentation](https://jupyterlab.readthedocs.io/en/stable/extension/extension_tutorial.html#packaging-your-extension).  The instructions are summarized below:
+
+Create a wheel (.whl) package in the `dist` directory.
+
+```bash
+python -m build
+```
+
+Install the wheel package; this will install the extension.
+
+```bash
+pip install ./dist/etc_jupyterlab_authoring-*-py3-none-any.whl
+```
+
+Start Jupyter Lab.
+
+```bash
+jupyter lab
+```
 ## Uninstall
 
 To remove the extension, execute:
