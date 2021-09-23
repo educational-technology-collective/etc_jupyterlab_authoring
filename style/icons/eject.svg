@@ -7,29 +7,26 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="13.913043"
-   viewBox="0 0 19.999999 13.913043"
-   data-icon="ui-components:circle-empty"
-   data-icon-id="21e3c526-88b2-4356-a1e3-93b843930fb6"
+   viewBox="0 0 15.999997 16"
+   id="svg3037"
    version="1.1"
-   id="svg6"
-   sodipodi:docname="off.svg"
    inkscape:version="1.0.2 (e86c870879, 2021-01-15)"
-   height="13.913043">
+   width="15.999997"
+   height="16"
+   sodipodi:docname="eject.svg">
   <metadata
-     id="metadata12">
+     id="metadata3047">
     <rdf:RDF>
       <cc:Work
          rdf:about="">
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
   <defs
-     id="defs10" />
+     id="defs3045" />
   <sodipodi:namedview
      pagecolor="#ffffff"
      bordercolor="#666666"
@@ -41,34 +38,23 @@
      inkscape:pageshadow="2"
      inkscape:window-width="1338"
      inkscape:window-height="721"
-     id="namedview8"
+     id="namedview3043"
      showgrid="false"
-     inkscape:zoom="5.7395832"
-     inkscape:cx="19.264411"
-     inkscape:cy="-2.0912216"
+     inkscape:zoom="0.056568542"
+     inkscape:cx="1151.5184"
+     inkscape:cy="792.44072"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg6"
+     inkscape:current-layer="svg3037"
      inkscape:document-rotation="0" />
   <g
-     class="jp-icon3"
-     fill="#616161"
-     id="g4"
-     transform="translate(-2,-5.0434782)">
+     id="g3039"
+     transform="matrix(0.01039717,0,0,0.01244168,0.00457475,0)">
     <path
-       d="M 12,2 C 6.47,2 2,6.47 2,12 2,17.53 6.47,22 12,22 17.53,22 22,17.53 22,12 22,6.47 17.53,2 12,2 Z m 0,18 C 7.59,20 4,16.41 4,12 4,7.59 7.59,4 12,4 c 4.41,0 8,3.59 8,8 0,4.41 -3.59,8 -8,8 z"
-       id="path2" />
+       d="m 14,557 710,710 q 19,19 45,19 26,0 45,-19 l 710,-710 q 19,-19 13,-32 -6,-13 -32,-13 H 33 q -26,0 -32,13 -6,13 13,32 z M 1473,0 H 65 Q 39,0 20,19 1,38 1,64 v 256 q 0,26 19,45 19,19 45,19 h 1408 q 26,0 45,-19 19,-19 19,-45 V 64 q 0,-26 -19,-45 -19,-19 -45,-19 z"
+       id="path3041"
+       inkscape:connector-curvature="0"
+       style="fill:currentColor" />
   </g>
-  <text
-     xml:space="preserve"
-     style="font-size:30.6666px;line-height:1.25;font-family:sans-serif;stroke-width:1.4375"
-     x="32.893692"
-     y="-25.324512"
-     id="text843"><tspan
-       sodipodi:role="line"
-       id="tspan841"
-       x="32.893692"
-       y="-25.324512"
-       style="stroke-width:1.4375" /></text>
 </svg>
