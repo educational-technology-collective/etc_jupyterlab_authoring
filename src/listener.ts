@@ -86,21 +86,31 @@ export class Listener {
         if (this._isRecording) {
 
             this._isRecording = false;
+
             this._recordButton.off();
+
+            if (this._cell) {
+                this._cell.editor.blur();
+            }
+
+            if (this._notebookPanel.content.widgets.length) {
+
+                this._cell = null;
+
+                this._editor = null;
+
+                this._cellIndex = null;
+            }
 
             this._messageAggregator.aggregate({
                 event: "stop",
                 notebook_id: this._notebookPanel.content.id,
                 timestamp: Date.now()
             });
-
-            if (this._cell) {
-                this._cell.editor.blur();
-            }
         }
     }
 
-    onPlayPressed() {
+    onPlayPressed(sender: PlayButton, event: Event) {
 
         if (!this._isRecording && this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")) {
 
@@ -121,7 +131,7 @@ export class Listener {
         }
     }
 
-    public async onSavePressed() {
+    public async onSavePressed(sender: SaveButton, event: Event) {
 
         this._recordButton.off();
 
@@ -225,7 +235,6 @@ export class Listener {
             this.advanceCursor();
         }
     }
-
 
     advanceCursor() {
 
