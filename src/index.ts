@@ -8,51 +8,17 @@ import {
 
 import {
   INotebookTracker,
+  NotebookActions,
   NotebookPanel
 } from "@jupyterlab/notebook";
 
 import { Signal } from "@lumino/signaling";
-import { AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton } from "./controls";
+
+import { AudioSelectorWidget, AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton } from "./components";
 
 import { IStatusBar } from "@jupyterlab/statusbar";
+
 import { Listener } from './listener';
-import { MessageAggregator, MessagePlayer } from './authoring';
-import { StackedLayout, PanelLayout, Widget } from "@lumino/widgets";
-import { ILabIconManager } from '@jupyterlab/ui-components';
-
-
-class SelectorWidget extends Widget{
-
-  constructor(){
-    super({node:document.createElement('select')});
-
-    this.id = 'etc_jupyterlab_authoring:plugin:selector_widget';
-
-    this.node.style.width = '100px';
-    this.node.style.height = '100px';
-    this.node.style.backgroundColor = '#000';
-  }
-}
-
-class AuthoringWidget extends Widget {
-
-  layout: PanelLayout;
-
-  constructor() {
-    super();
-
-    this.id = 'etc_jupyterlab_authoring:plugin:authoring_widget';
-
-    this.node.style.width = '100%';
-    this.node.style.height = '100%';
-    this.node.style.backgroundColor = '#fff';
-
-    this.layout = new StackedLayout();
-
-    this.layout.addWidget(new SelectorWidget());
-  }
-}
-
 
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
@@ -73,17 +39,13 @@ const extension: JupyterFrontEndPlugin<void> = {
   ) => {
     console.log("JupyterLab extension etc_jupyterlab_authoring is activated!");
 
-    let authoringWidget = new AuthoringWidget();
+    let authoringSidePanel = new AuthoringSidePanel();
 
-    labShell.add(authoringWidget, 'right');
+    let audioSelectorWidget = new AudioSelectorWidget();
 
-    (async () => {
+    labShell.add(authoringSidePanel, 'right');
 
-      let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      console.log(stream.getTracks());
-      let devices = await navigator.mediaDevices.enumerateDevices();
-      console.log(devices);
-    })();
+    authoringSidePanel.addWidget(audioSelectorWidget);
 
     Signal.setExceptionHandler((error: Error) => {
       console.error(error);
@@ -94,32 +56,30 @@ const extension: JupyterFrontEndPlugin<void> = {
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
 
-      let cellTypeIndex: number = 0;
-
-      each(notebookPanel.toolbar.names(), (name: string, index: number) => {
-
-        if (name == 'cellType') {
-          cellTypeIndex = index;
-        }
-      });
-
-      let recordButton = new RecordButton({ notebookPanel, cellTypeIndex });
-      let stopButton = new StopButton({ notebookPanel, cellTypeIndex });
-      let playButton = new PlayButton({ notebookPanel, cellTypeIndex });
-      let pauseButton = new PauseButton({ notebookPanel, cellTypeIndex });
-      let saveButton = new SaveButton({ notebookPanel, cellTypeIndex });
+      let recordButton = new RecordButton({ notebookPanel});
+      let stopButton = new StopButton({ notebookPanel });
+      let playButton = new PlayButton({ notebookPanel });
+      let pauseButton = new PauseButton({ notebookPanel });
+      let saveButton = new SaveButton({ notebookPanel });
       let advanceButton = new AdvanceButton({ notebookPanel });
 
       let listener = new Listener({
         app,
-        notebookPanel,
-        advanceButton,
-        recordButton,
-        stopButton,
-        playButton,
-        pauseButton,
-        saveButton
+        notebookPanel
       });
+
+      stopButton.pressed.connect(recordButton.off, stopButton);
+      saveButton.pressed.connect(recordButton.off, saveButton);
+      playButton.pressed.connect(recordButton.off, playButton);
+
+      recordButton.pressed.connect(listener.onRecordPressed, recordButton);
+      stopButton.pressed.connect(listener.onStopPressed, stopButton);
+      playButton.pressed.connect(listener.onPlayPressed, playButton);
+      saveButton.pressed.connect(listener.onSavePressed, saveButton);
+      advanceButton.pressed.connect(listener.onAdvancePressed, advanceButton);
+
+      NotebookActions.executionScheduled.connect(listener.onExecutionScheduled, notebookPanel);
+      NotebookActions.executed.connect(listener.onExecuted, notebookPanel);
     });
   }
 }

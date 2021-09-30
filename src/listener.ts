@@ -1,6 +1,6 @@
 import { Notebook, NotebookActions, NotebookPanel } from '@jupyterlab/notebook';
 import { MessageAggregator, MessagePlayer } from './authoring';
-import { AdvanceButton, PauseButton, PlayButton, RecordButton, SaveButton, StopButton } from './controls';
+import { AudioSelectorWidget, AdvanceButton, PauseButton, PlayButton, RecordButton, SaveButton, StopButton } from './components';
 import { CodeCell, Cell, ICellModel, MarkdownCell, RawCell } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
@@ -18,43 +18,19 @@ export class Listener {
     private _isRecording: boolean = false;
     private _editor: Editor;
     private _cell: Cell<ICellModel>;
-
-    private _recordButton: RecordButton;
-
+    
     constructor({
         app,
-        notebookPanel,
-        advanceButton,
-        recordButton,
-        stopButton,
-        playButton,
-        pauseButton,
-        saveButton
+        notebookPanel
     }:
         {
             app: JupyterFrontEnd,
-            notebookPanel: NotebookPanel,
-            advanceButton: AdvanceButton,
-            recordButton: RecordButton,
-            stopButton: StopButton,
-            playButton: PlayButton,
-            pauseButton: PauseButton,
-            saveButton: SaveButton
+            notebookPanel: NotebookPanel
         }) {
 
         this._app = app;
         this._notebookPanel = notebookPanel;
-        this._recordButton = recordButton;
         this._cellIndex = null;
-
-        recordButton.pressed.connect(this.onRecordPressed, this);
-        stopButton.pressed.connect(this.onStopPressed, this);
-        playButton.pressed.connect(this.onPlayPressed, this);
-        saveButton.pressed.connect(this.onSavePressed, this);
-        advanceButton.pressed.connect(this.onAdvancePressed, this);
-
-        NotebookActions.executionScheduled.connect(this.onExecutionScheduled, this);
-        NotebookActions.executed.connect(this.onExecuted, this);
     }
 
     onRecordPressed(sender: RecordButton, event: Event) {
@@ -86,8 +62,6 @@ export class Listener {
         if (this._isRecording) {
 
             this._isRecording = false;
-
-            this._recordButton.off();
 
             if (this._cell) {
                 this._cell.editor.blur();
@@ -132,8 +106,6 @@ export class Listener {
     }
 
     public async onSavePressed(sender: SaveButton, event: Event) {
-
-        this._recordButton.off();
 
         this._isRecording = false;
 

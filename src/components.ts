@@ -1,10 +1,84 @@
-import { Widget } from "@lumino/widgets";
+import { Widget, Panel } from "@lumino/widgets";
 
 import { Signal, ISignal } from "@lumino/signaling";
 
 import { NotebookPanel } from "@jupyterlab/notebook";
 
-import { recordOffButton, recordOnButton, stopButton, playButton, ejectButton, pauseButton, playDisabledButton, recordOffDisabledButton, ejectDisabledButton} from './icons'
+import { recordOffButton, recordOnButton, stopButton, playButton, ejectButton, pauseButton, playDisabledButton, recordOffDisabledButton, ejectDisabledButton } from './icons'
+
+
+
+export class AudioSelectorWidget extends Widget {
+
+    private _deviceSelected: Signal<AudioSelectorWidget, string>;
+    private _deviceId: string;
+
+    constructor() {
+
+        super({ node: document.createElement('select') });
+
+        this.addClass('jp-AudioSelectorWidget');
+
+        this.onChange = this.onChange.bind(this);
+
+        this.node.style.width = '100%';
+
+        this.node.addEventListener('change', this.onChange);
+
+        this._deviceId = 'default';
+
+        (async () => {
+
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            let devices = await navigator.mediaDevices.enumerateDevices();
+
+            devices.forEach((device: MediaDeviceInfo) => {
+
+                if (device.kind == 'audioinput') {
+
+                    let option = document.createElement('option');
+
+                    option.setAttribute('value', device.deviceId);
+
+                    option.setAttribute('label', device.label);
+
+                    if (device.deviceId == 'default') {
+
+                        option.setAttribute('selected', '');
+                    }
+
+                    this.node.appendChild(option);
+                }
+            });
+        })();
+    }
+
+    onChange(event: Event) {
+        this._deviceId = (event.target as HTMLSelectElement).value;
+        this._deviceSelected.emit(this._deviceId);
+    }
+
+    getDeviceId() {
+        return this._deviceId;
+    }
+
+    get deviceSelected(): ISignal<AudioSelectorWidget, string> {
+        return this._deviceSelected;
+    }
+}
+
+export class AuthoringSidePanel extends Panel {
+
+    constructor() {
+
+        super();
+
+        this.id = 'etc_jupyterlab_authoring:plugin:authoring_widget';
+
+        this.addClass('jp-AuthoringSidePanel');
+    }
+}
 
 export class RecordButton extends Widget {
 
@@ -12,12 +86,7 @@ export class RecordButton extends Widget {
     private _notebookPanel: NotebookPanel;
 
     constructor(
-        { notebookPanel, cellTypeIndex }:
-            {
-                notebookPanel: NotebookPanel,
-                cellTypeIndex: number
-            }
-    ) {
+        { notebookPanel }: { notebookPanel: NotebookPanel }) {
         super();
 
         this._notebookPanel = notebookPanel;
@@ -31,7 +100,7 @@ export class RecordButton extends Widget {
         if (!this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")) {
 
             window.addEventListener("keydown", this.onKeydown, true);
-    
+
             this.node.addEventListener('click', this.onPressed);
 
             this.off();
@@ -49,8 +118,6 @@ export class RecordButton extends Widget {
         this._notebookPanel.disposed.connect(this.dispose, this);
 
         this.addClass("etc-jupyterlab-authoring-button");
-
-        notebookPanel.toolbar.insertItem(cellTypeIndex + 1, "etc_jupyterlab_authoring:record", this);
     }
 
     public dispose() {
@@ -103,12 +170,7 @@ export class StopButton extends Widget {
     private _notebookPanel: NotebookPanel;
 
     constructor(
-        { notebookPanel, cellTypeIndex }:
-            {
-                notebookPanel: NotebookPanel,
-                cellTypeIndex: number
-            }
-    ) {
+        { notebookPanel }: { notebookPanel: NotebookPanel }) {
         super();
 
         this._notebookPanel = notebookPanel;
@@ -123,8 +185,6 @@ export class StopButton extends Widget {
             alignSelf: 'normal',
             height: '24px'
         });
-
-        notebookPanel.toolbar.insertItem(cellTypeIndex + 2, "etc_jupyterlab_authoring:stop", this);
 
         this.addClass("etc-jupyterlab-authoring-button");
 
@@ -165,12 +225,7 @@ export class PlayButton extends Widget {
     private _notebookPanel: NotebookPanel;
 
     constructor(
-        { notebookPanel, cellTypeIndex }:
-            {
-                notebookPanel: NotebookPanel,
-                cellTypeIndex: number
-            }
-    ) {
+        { notebookPanel }: { notebookPanel: NotebookPanel }) {
         super();
 
         this._notebookPanel = notebookPanel;
@@ -201,8 +256,6 @@ export class PlayButton extends Widget {
                 height: '24px'
             });
         }
-
-        notebookPanel.toolbar.insertAfter('etc_jupyterlab_authoring:stop', 'etc_jupyterlab_authoring:play', this);
 
         this.addClass("etc-jupyterlab-authoring-button");
 
@@ -238,12 +291,7 @@ export class PauseButton extends Widget {
     private _notebookPanel: NotebookPanel;
 
     constructor(
-        { notebookPanel, cellTypeIndex }:
-            {
-                notebookPanel: NotebookPanel,
-                cellTypeIndex: number
-            }
-    ) {
+        { notebookPanel }: { notebookPanel: NotebookPanel }) {
         super();
 
         this._notebookPanel = notebookPanel;
@@ -258,8 +306,6 @@ export class PauseButton extends Widget {
             alignSelf: 'normal',
             height: '24px'
         });
-
-        notebookPanel.toolbar.insertAfter('etc_jupyterlab_authoring:play', 'etc_jupyterlab_authoring:pause', this);
 
         this.addClass("etc-jupyterlab-authoring-button");
 
@@ -300,12 +346,7 @@ export class SaveButton extends Widget {
     private _notebookPanel: NotebookPanel;
 
     constructor(
-        { notebookPanel, cellTypeIndex }:
-            {
-                notebookPanel: NotebookPanel,
-                cellTypeIndex: number
-            }
-    ) {
+        { notebookPanel }: { notebookPanel: NotebookPanel }) {
         super();
 
         this._notebookPanel = notebookPanel;
@@ -335,8 +376,6 @@ export class SaveButton extends Widget {
                 height: '24px'
             });
         }
-
-        notebookPanel.toolbar.insertAfter('etc_jupyterlab_authoring:pause', 'etc_jupyterlab_authoring:save', this);
 
         this.addClass("etc-jupyterlab-authoring-button");
 
