@@ -63,7 +63,8 @@
     "@lumino/commands": "^1.12.0",
     "@lumino/signaling": "^1.4.3",
     "@lumino/algorithm": "^1.7.0",
-    "@types/codemirror": "0.0.87"
+    "@types/codemirror": "0.0.87",
+    "@types/dom-mediacapture-record": "^1.0.10"
   },
   "devDependencies": {
     "@jupyterlab/builder": "^3.0.0",

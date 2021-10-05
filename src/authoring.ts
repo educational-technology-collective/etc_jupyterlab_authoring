@@ -22,8 +22,7 @@ export class MessageAggregator {
       case "cell_started":
       case "line_finished":
       case "execution_finished":
-      case "record_off":
-      case "record_on":
+      case "record_stopped":
 
         message.start_timestamp = this._lastMessageTimeStamp === null ? message.timestamp : this._lastMessageTimeStamp;
         this._lastMessageTimeStamp = message.stop_timestamp = message.timestamp;
@@ -65,14 +64,29 @@ export class MessagePlayer {
     this._messageIndex = 0;
   }
 
-  public playMessage() {
+  public async playMessage() {
     // console.log("MessagePlayer#play");
 
     this._message = this._messages[this._messageIndex];
 
     if (this._message) {
 
-      if (this._message.event == "line_finished") {
+      console.log(`Playing message ${this._messageIndex}. event: ${this._message.event}`);
+
+      if (this._message.recordingDataURL) {
+
+        let result = await fetch(this._message.recordingDataURL);
+
+        let blob = await result.blob();
+  
+        let objectURL = URL.createObjectURL(blob);
+  
+        let audio = new Audio(objectURL);
+  
+        await audio.play();
+      }
+
+      if (this._message.event == "line_finished" || this._message.event == "record_stopped") {
 
         if (this._message.cell_index > this._notebook.model.cells.length - 1) {
           this.createCellsTo(this._message.cell_index);
@@ -105,7 +119,7 @@ export class MessagePlayer {
         this._charIndex = 0;
 
         if (this._message.duration < 500) {
-
+          console.log('this._message.duration < 500');
           this._editor.doc.replaceRange(this._message.input, {
             line: this._message.line_index,
             ch: this._charIndex
