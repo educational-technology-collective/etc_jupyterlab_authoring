@@ -112,5 +112,5 @@ dmypy.json
 .DS_Store
 
 .vscode
-_deprecated
-Untitled*
+_archive
+*.ipynb

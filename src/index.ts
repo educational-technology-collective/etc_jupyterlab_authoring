@@ -18,7 +18,8 @@ import { AudioSelectorWidget, AuthoringSidePanel, AdvanceButton, RecordButton, S
 
 import { IStatusBar } from "@jupyterlab/statusbar";
 
-import { AuthoringRecorder, Listener } from './listener';
+import { MessageRecorder } from './message_recorder';
+import { MessagePlayer } from './message_player';
 
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
@@ -49,7 +50,7 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     let statusIndicator = new StatusIndicator();
 
-    statusBar.registerStatusItem("etc_jupyterlab_authoring:plugin:statusIndicator", {
+    statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:statusIndicator', {
       item: statusIndicator,
       align: "left",
       rank: -100
@@ -73,35 +74,26 @@ const extension: JupyterFrontEndPlugin<void> = {
       let saveButton = new SaveButton({ notebookPanel });
       let advanceButton = new AdvanceButton({ notebookPanel });
 
-      let authoringRecorder = new AuthoringRecorder({ notebookPanel, audioSelectorWidget });
+      let messageRecorder = new MessageRecorder({ app, notebookPanel, audioSelectorWidget });
 
-      let listener = new Listener({ app, notebookPanel, authoringRecorder });
+      let messagePlayer = new MessagePlayer({ notebookPanel });
 
-      audioSelectorWidget.deviceSelected.connect(authoringRecorder.onDeviceSelected, authoringRecorder);
+      audioSelectorWidget.deviceSelected.connect(messageRecorder.onDeviceSelected);
 
       recordButton.pressed.connect(statusIndicator.record, statusIndicator);
       playButton.pressed.connect(statusIndicator.play, statusIndicator);
       stopButton.pressed.connect(statusIndicator.stop, statusIndicator);
 
-      recordButton.pressed.connect(listener.onRecordPressed, listener);
-      stopButton.pressed.connect(listener.onStopPressed, listener);
-      playButton.pressed.connect(listener.onPlayPressed, listener);
-      saveButton.pressed.connect(listener.onSavePressed, listener);
-      advanceButton.pressed.connect(listener.onAdvancePressed, listener);
+      playButton.pressed.connect(messagePlayer.onPlayPressed, messagePlayer);
 
-      stopButton.pressed.connect(recordButton.off, recordButton);
-      saveButton.pressed.connect(recordButton.off, recordButton);
-      playButton.pressed.connect(recordButton.off, recordButton);
 
-      recordButton.pressed.connect(listener.onRecordPressed, listener);
-      stopButton.pressed.connect(listener.onStopPressed, listener);
-      playButton.pressed.connect(listener.onPlayPressed, listener);
-      saveButton.pressed.connect(listener.onSavePressed, listener);
-      advanceButton.pressed.connect(listener.onAdvancePressed, listener);
+      recordButton.pressed.connect(messageRecorder.onRecordPressed, messageRecorder);
+      stopButton.pressed.connect(messageRecorder.onStopPressed, messageRecorder);
+      saveButton.pressed.connect(messageRecorder.onSavePressed, messageRecorder);
+      advanceButton.pressed.connect(messageRecorder.onAdvancePressed, messageRecorder);
 
-      NotebookActions.executionScheduled.connect(listener.onExecutionScheduled, listener);
-      NotebookActions.executed.connect(listener.onExecuted, listener);
-
+      NotebookActions.executionScheduled.connect(messageRecorder.onExecutionScheduled, messageRecorder);
+      NotebookActions.executed.connect(messageRecorder.onExecuted, messageRecorder);
     });
   }
 }

@@ -3,39 +3,8 @@ import { EventMessage } from "./types";
 import { JupyterFrontEnd } from "@jupyterlab/application";
 import { CodeCell, Cell, ICellModel, MarkdownCell, RawCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
+import { PlayButton } from "./components";
 
-export class MessageAggregator {
-
-  public _eventMessages: Array<EventMessage> = [];
-  private _lastMessageTimeStamp: number | null;
-
-  constructor() {
-
-    this.aggregate = this.aggregate.bind(this);
-
-    this._lastMessageTimeStamp = null;
-  }
-
-  public aggregate(message: EventMessage) {
-
-    switch (message.event) {
-      case "cell_started":
-      case "line_finished":
-      case "execution_finished":
-      case "record_stopped":
-
-        message.start_timestamp = this._lastMessageTimeStamp === null ? message.timestamp : this._lastMessageTimeStamp;
-        this._lastMessageTimeStamp = message.stop_timestamp = message.timestamp;
-        message.duration = message.stop_timestamp - message.start_timestamp;
-        //  The message must have a duration; hence, calculate a duration based on the timestamp of the previous message.
-      default: ;
-    }
-
-    this._eventMessages.push(message);
-
-    console.log(message.input, message);
-  }
-}
 
 export class MessagePlayer {
 
@@ -49,8 +18,9 @@ export class MessagePlayer {
   private _timeout: number = 0;
   private _cell: Cell<ICellModel>;
   private _editor: CodeMirrorEditor;
+  private _isRecording: boolean;
 
-  constructor({ notebookPanel, messages }: { notebookPanel: NotebookPanel, messages: Array<EventMessage>}) {
+  constructor({ notebookPanel }: { notebookPanel: NotebookPanel }) {
 
     this.createCellsTo = this.createCellsTo.bind(this);
     this.createLinesTo = this.createLinesTo.bind(this);
@@ -58,10 +28,42 @@ export class MessagePlayer {
     this.playMessage = this.playMessage.bind(this);
 
     this._notebookPanel = notebookPanel;
-    this._messages = messages;
 
     this._notebook = notebookPanel.content;
     this._messageIndex = 0;
+    this._isRecording = false;
+
+  }
+
+  public onRecordPressed() {
+    this._isRecording = true;
+  }
+
+  public onStopPressed() {
+    this._isRecording = false;
+  }
+
+  public onPlayPressed(sender: PlayButton, event: Event) {
+
+    if (
+      !this._isRecording &&
+      this._notebookPanel.isVisible &&
+      this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")
+    ) {
+
+      this._messages = ((this._notebookPanel.content.model.metadata.get("etc_jupyterlab_authoring") as unknown) as Array<EventMessage>);
+
+      this._notebookPanel.content.model.cells.removeRange(0, this._notebookPanel.content.model.cells.length);
+
+      const cell = this._notebookPanel.content.model.contentFactory.createCell(
+        this._notebookPanel.content.notebookConfig.defaultCell,
+        {}
+      );
+
+      this._notebookPanel.content.model.cells.insert(0, cell);
+
+      this.playMessage();
+    }
   }
 
   public async playMessage() {
@@ -75,15 +77,21 @@ export class MessagePlayer {
 
       if (this._message.recordingDataURL) {
 
-        let result = await fetch(this._message.recordingDataURL);
+        try {
 
-        let blob = await result.blob();
-  
-        let objectURL = URL.createObjectURL(blob);
-  
-        let audio = new Audio(objectURL);
-  
-        await audio.play();
+          let result = await fetch(this._message.recordingDataURL);
+
+          let blob = await result.blob();
+
+          let objectURL = URL.createObjectURL(blob);
+
+          let audio = new Audio(objectURL);
+
+          await audio.play();
+        }
+        catch (e) {
+          console.error(e);
+        }
       }
 
       if (this._message.event == "line_finished" || this._message.event == "record_stopped") {

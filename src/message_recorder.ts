@@ -1,7 +1,7 @@
 /// <reference types="@types/dom-mediacapture-record" />
 
 import { Notebook, NotebookActions, NotebookPanel } from '@jupyterlab/notebook';
-import { MessageAggregator, MessagePlayer } from './authoring';
+import { MessageAggregator, MessagePlayer } from './message_player';
 import { AudioSelectorWidget, AdvanceButton, PauseButton, PlayButton, RecordButton, SaveButton, StopButton } from './components';
 import { CodeCell, Cell, ICellModel, MarkdownCell, RawCell } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
@@ -11,25 +11,51 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 import { EventMessage } from './types';
 import { Signal } from '@lumino/signaling';
 
-export class AuthoringRecorder {
+export class MessageRecorder {
 
+    private _app: JupyterFrontEnd;
+    private _messageAggregator: MessageAggregator;
+    private _notebookPanel: NotebookPanel;
+    private _cellIndex: number | null;
+    private _lineIndex: number;
+    private _isRecording: boolean = false;
+    private _editor: Editor;
+    private _cell: Cell<ICellModel>;
     private _recording: Promise<Blob>;
     private _mediaStream: Promise<MediaStream>;
     private _mediaRecorder: MediaRecorder;
+    public _eventMessages: Array<EventMessage> = [];
+    private _lastMessageTimeStamp: number | null;
 
-    constructor({ notebookPanel, audioSelectorWidget }: { notebookPanel: NotebookPanel, audioSelectorWidget: AudioSelectorWidget }) {
+    constructor({
+        app,
+        notebookPanel
+    }:
+        {
+            app: JupyterFrontEnd,
+            notebookPanel: NotebookPanel,
+        }) {
 
-        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioSelectorWidget.deviceId } });
+        this._app = app;
+        this._notebookPanel = notebookPanel;
+        this._cellIndex = null;
+
+        this._notebookPanel.disposed.connect(this.dispose, this);
+        this._lastMessageTimeStamp = null;
+    }
+
+    dispose() {
+
+        Signal.disconnectAll(this);
     }
 
     public async onDeviceSelected(sender: AudioSelectorWidget, deviceId: string) {
 
         this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
-
     }
 
-    public async start() {
-        console.log('public async start() {');
+    public async startAudioCapture() {
+
         try {
 
             this._mediaRecorder = new MediaRecorder(await this._mediaStream);
@@ -57,61 +83,17 @@ export class AuthoringRecorder {
         }
     }
 
-    public stop() {
+    public stopAudioCapture() {
         this._mediaRecorder.stop();
     }
 
-    get recording(): Promise<Blob> {
-        return this._recording;
-    }
-}
-
-export class Listener {
-
-    private _app: JupyterFrontEnd;
-    private _messageAggregator: MessageAggregator;
-    private _notebookPanel: NotebookPanel;
-    private _cellIndex: number | null;
-    private _lineIndex: number;
-    private _isRecording: boolean = false;
-    private _editor: Editor;
-    private _cell: Cell<ICellModel>;
-    private _deviceId: string;
-    private _authoringRecorder: AuthoringRecorder;
-
-    constructor({
-        app,
-        notebookPanel,
-        authoringRecorder
-    }:
-        {
-            app: JupyterFrontEnd,
-            notebookPanel: NotebookPanel,
-            authoringRecorder: AuthoringRecorder
-        }) {
-
-        this._app = app;
-        this._notebookPanel = notebookPanel;
-        this._cellIndex = null;
-
-        this._authoringRecorder = authoringRecorder;
-
-        this._notebookPanel.disposed.connect(this.dispose, this);
-    }
-
-    dispose() {
-
-        Signal.disconnectAll(this);
-    }
-
-
-    async onRecordPressed(sender: RecordButton, event: Event) {
+    public async onRecordPressed(sender: RecordButton, event: Event) {
 
         if (
-            !this._isRecording && 
-            this._notebookPanel.isVisible && 
+            !this._isRecording &&
+            this._notebookPanel.isVisible &&
             !this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")
-            ) {
+        ) {
 
             if (!this._messageAggregator) {
                 this._messageAggregator = new MessageAggregator();
@@ -131,18 +113,18 @@ export class Listener {
                 this._editor.focus();
             }
 
-            await this._authoringRecorder.start();
+            await this.startAudioCapture();
         }
     }
 
-    async onStopPressed(sender: StopButton, event: Event) {
+    public async onStopPressed(sender: StopButton, event: Event) {
 
         if (this._isRecording && this._notebookPanel.isVisible) {
 
             event.stopImmediatePropagation();
             event.preventDefault();
 
-            this._authoringRecorder.stop();
+            this.stopAudioCapture();
 
             let line = this._editor.getLine(this._lineIndex);
 
@@ -155,14 +137,14 @@ export class Listener {
                 line_index: this._lineIndex,
                 input: line,
                 timestamp: Date.now(),
-                recording: this._authoringRecorder.recording
+                recording: this._recording
             });
 
             this._isRecording = false;
         }
     }
-    
-    async onAdvancePressed(sender: AdvanceButton, event: Event) {
+
+    public async onAdvancePressed(sender: AdvanceButton, event: Event) {
 
         if (this._isRecording && this._notebookPanel.isVisible) {
 
@@ -206,89 +188,7 @@ export class Listener {
         }
     }
 
-    onPlayPressed(sender: PlayButton, event: Event) {
-
-        if (
-            !this._isRecording && 
-            this._notebookPanel.isVisible && 
-            this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")
-            ) {
-
-            let messages = ((this._notebookPanel.content.model.metadata.get("etc_jupyterlab_authoring") as unknown) as Array<EventMessage>);
-
-            this._notebookPanel.content.model.cells.removeRange(0, this._notebookPanel.content.model.cells.length);
-
-            const cell = this._notebookPanel.content.model.contentFactory.createCell(
-                this._notebookPanel.content.notebookConfig.defaultCell,
-                {}
-            );
-
-            this._notebookPanel.content.model.cells.insert(0, cell);
-
-            let messagePlayer = new MessagePlayer({ notebookPanel: this._notebookPanel, messages });
-
-            messagePlayer.playMessage();
-        }
-    }
-
-    public async onSavePressed(sender: SaveButton, event: Event) {
-
-        this._isRecording = false;
-
-        if (this._messageAggregator && this._notebookPanel.isVisible) {
-
-            try {
-
-                this._notebookPanel = await this._app.commands.execute("notebook:create-new", {
-                    kernelName: "python3", cwd: ""
-                });
-
-                await this._notebookPanel.revealed;
-
-                await this._notebookPanel.sessionContext.ready;
-
-                this._messageAggregator._eventMessages.forEach(async (message: EventMessage) => {
-
-                    if (message.recording) {
-
-                        let recording = await message.recording;
-
-                        let fileReader = new FileReader();
-            
-                        let prEvent = await new Promise<ProgressEvent<FileReader>>((r, j) => {
-            
-                            try {
-            
-                                fileReader.addEventListener('load', r);
-            
-                                fileReader.readAsDataURL(recording as Blob);
-                            }
-                            catch (e) {
-            
-                                console.error(e);
-                            }
-                        });
-    
-                        message.recordingDataURL = (prEvent.target.result as string);
-    
-                        delete message.recording;
-                    }
-                });
-
-                this._notebookPanel.content.model.metadata.set(
-                    "etc_jupyterlab_authoring", 
-                    this._messageAggregator._eventMessages as any
-                    );
-
-                await this._notebookPanel.context.saveAs();
-            }
-            catch (e) {
-                console.error(e);
-            }
-        }
-    }
-
-    async onExecutionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
+    public async onExecutionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
         if (this._isRecording && this._notebookPanel.content == args.notebook) {
 
@@ -312,7 +212,7 @@ export class Listener {
         }
     }
 
-    async onExecuted(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
+    public async onExecuted(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
         if (this._isRecording && this._notebookPanel.content == args.notebook) {
 
@@ -341,7 +241,7 @@ export class Listener {
         }
     }
 
-    advanceCursor() {
+    private advanceCursor() {
 
         if (this._cellIndex === null) {
 
@@ -388,5 +288,83 @@ export class Listener {
 
             this._cellIndex = null;
         }
+    }
+
+    public async onSavePressed(sender: SaveButton, event: Event) {
+
+        this._isRecording = false;
+
+        if (this._messageAggregator && this._notebookPanel.isVisible) {
+
+            try {
+
+                this._notebookPanel = await this._app.commands.execute("notebook:create-new", {
+                    kernelName: "python3", cwd: ""
+                });
+
+                await this._notebookPanel.revealed;
+
+                await this._notebookPanel.sessionContext.ready;
+
+                this._messageAggregator._eventMessages.forEach(async (message: EventMessage) => {
+
+                    if (message.recording) {
+
+                        let recording = await message.recording;
+
+                        let fileReader = new FileReader();
+
+                        let prEvent = await new Promise<ProgressEvent<FileReader>>((r, j) => {
+
+                            try {
+
+                                fileReader.addEventListener('load', r);
+
+                                fileReader.readAsDataURL(recording as Blob);
+                            }
+                            catch (e) {
+
+                                console.error(e);
+                            }
+                        });
+
+                        message.recordingDataURL = (prEvent.target.result as string);
+
+                        delete message.recording;
+                    }
+                });
+
+                this._notebookPanel.content.model.metadata.set(
+                    "etc_jupyterlab_authoring",
+                    this._eventMessages as any
+                );
+
+                await this._notebookPanel.context.saveAs();
+            }
+            catch (e) {
+                console.error(e);
+            }
+        }
+    }
+
+    public aggregateMessage(message: EventMessage) {
+
+        switch (message.event) {
+            case 'cell_started':
+            case 'line_finished':
+            case 'execution_finished':
+            case 'record_stopped':
+
+                message.start_timestamp = this._lastMessageTimeStamp === null ? message.timestamp : this._lastMessageTimeStamp;
+                this._lastMessageTimeStamp = message.stop_timestamp = message.timestamp;
+                message.duration = message.stop_timestamp - message.start_timestamp;
+            //  The message must have a duration; hence, calculate a duration based on the timestamp of the previous message.
+            case 'record_started':
+            default: ;
+        }
+
+        this._eventMessages.push(message);
+
+        console.log(message.input, message);
     }
 }

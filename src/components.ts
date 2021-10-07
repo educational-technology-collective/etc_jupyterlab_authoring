@@ -65,16 +65,14 @@ export class AudioSelectorWidget extends Widget {
                     this.node.appendChild(option);
                 }
             });
+
+            this._deviceSelected.emit(this._deviceId);
         })();
     }
 
-    onChange(event: Event) {
+    private onChange(event: Event) {
         this._deviceId = (event.target as HTMLSelectElement).value;
         this._deviceSelected.emit(this._deviceId);
-    }
-
-    get deviceId() {
-        return this._deviceId;
     }
 
     get deviceSelected(): ISignal<AudioSelectorWidget, string> {
