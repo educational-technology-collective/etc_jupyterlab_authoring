@@ -14,7 +14,7 @@ import {
 
 import { Signal } from "@lumino/signaling";
 
-import { AudioSelectorWidget, AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton, StatusIndicator } from "./components";
+import { AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton, StatusIndicator, AudioInputSelectorWidget } from "./components";
 
 import { IStatusBar } from "@jupyterlab/statusbar";
 
@@ -42,11 +42,11 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     let authoringSidePanel = new AuthoringSidePanel();
 
-    let audioSelectorWidget = new AudioSelectorWidget();
+    let audioInputSelectorWidget = new AudioInputSelectorWidget();
 
     labShell.add(authoringSidePanel, 'right');
 
-    authoringSidePanel.addWidget(audioSelectorWidget);
+    authoringSidePanel.addWidget(audioInputSelectorWidget);
 
     let statusIndicator = new StatusIndicator();
 
@@ -58,7 +58,7 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     Signal.setExceptionHandler((error: Error) => {
       console.error(error);
-    })
+    });
 
     notebookTracker.currentChanged.connect(statusIndicator.onCurrentChanged, statusIndicator);
 
@@ -74,18 +74,17 @@ const extension: JupyterFrontEndPlugin<void> = {
       let saveButton = new SaveButton({ notebookPanel });
       let advanceButton = new AdvanceButton({ notebookPanel });
 
-      let messageRecorder = new MessageRecorder({ app, notebookPanel, audioSelectorWidget });
+      let messageRecorder = new MessageRecorder({ app, notebookPanel, audioInputSelectorWidget });
 
       let messagePlayer = new MessagePlayer({ notebookPanel });
 
-      audioSelectorWidget.deviceSelected.connect(messageRecorder.onDeviceSelected);
+      audioInputSelectorWidget.deviceSelected.connect(messageRecorder.onDeviceSelected, messageRecorder);
 
       recordButton.pressed.connect(statusIndicator.record, statusIndicator);
       playButton.pressed.connect(statusIndicator.play, statusIndicator);
       stopButton.pressed.connect(statusIndicator.stop, statusIndicator);
 
       playButton.pressed.connect(messagePlayer.onPlayPressed, messagePlayer);
-
 
       recordButton.pressed.connect(messageRecorder.onRecordPressed, messageRecorder);
       stopButton.pressed.connect(messageRecorder.onStopPressed, messageRecorder);

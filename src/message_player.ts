@@ -4,6 +4,7 @@ import { JupyterFrontEnd } from "@jupyterlab/application";
 import { CodeCell, Cell, ICellModel, MarkdownCell, RawCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { PlayButton } from "./components";
+import { Signal } from "@lumino/signaling";
 
 
 export class MessagePlayer {
@@ -15,10 +16,12 @@ export class MessagePlayer {
   private _messageIndex: number;
   private _charIndex: number;
   private _intervalId: number;
-  private _timeout: number = 0;
   private _cell: Cell<ICellModel>;
   private _editor: CodeMirrorEditor;
   private _isRecording: boolean;
+  private _isMessageFinished: boolean;
+  private _isAudioFinished: boolean;
+  private _audio: HTMLAudioElement;
 
   constructor({ notebookPanel }: { notebookPanel: NotebookPanel }) {
 
@@ -26,13 +29,24 @@ export class MessagePlayer {
     this.createLinesTo = this.createLinesTo.bind(this);
     this.printChar = this.printChar.bind(this);
     this.playMessage = this.playMessage.bind(this);
+    this.onPlayPressed = this.onPlayPressed.bind(this);
+    this.onRecordPressed = this.onRecordPressed.bind(this);
+    this.onStopPressed = this.onStopPressed.bind(this);
+    this.onDisposed = this.onDisposed.bind(this);
 
     this._notebookPanel = notebookPanel;
 
     this._notebook = notebookPanel.content;
-    this._messageIndex = 0;
+
     this._isRecording = false;
 
+    notebookPanel.disposed.connect(this.onDisposed, this);
+  }
+
+  public onDisposed(sender: NotebookPanel | MessagePlayer, args: any) {
+
+    clearInterval(this._intervalId);
+    Signal.disconnectAll(this);
   }
 
   public onRecordPressed() {
@@ -51,6 +65,24 @@ export class MessagePlayer {
       this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")
     ) {
 
+      this._messageIndex = 0;
+
+      this._audio = new Audio();
+
+      this._audio.addEventListener('ended', () => {
+
+        this._isAudioFinished = true;
+
+        console.log('AUDIO FINISHED')
+
+        if (this._isMessageFinished) {
+
+          this._messageIndex = this._messageIndex + 1;
+
+          setTimeout(this.playMessage, 0);
+        }
+      });
+
       this._messages = ((this._notebookPanel.content.model.metadata.get("etc_jupyterlab_authoring") as unknown) as Array<EventMessage>);
 
       this._notebookPanel.content.model.cells.removeRange(0, this._notebookPanel.content.model.cells.length);
@@ -67,7 +99,9 @@ export class MessagePlayer {
   }
 
   public async playMessage() {
-    // console.log("MessagePlayer#play");
+
+    this._isMessageFinished = false;
+    this._isAudioFinished = false;
 
     this._message = this._messages[this._messageIndex];
 
@@ -85,18 +119,26 @@ export class MessagePlayer {
 
           let objectURL = URL.createObjectURL(blob);
 
-          let audio = new Audio(objectURL);
+          this._audio.src = objectURL;
 
-          await audio.play();
+          this._audio.load();
+
+          await this._audio.play();
         }
         catch (e) {
+
           console.error(e);
         }
+      }
+      else {
+
+        this._isAudioFinished = true;
       }
 
       if (this._message.event == "line_finished" || this._message.event == "record_stopped") {
 
         if (this._message.cell_index > this._notebook.model.cells.length - 1) {
+
           this.createCellsTo(this._message.cell_index);
           //  The Notebook may not have sufficient cells; hence, create cells to accomodate the cell index.
         }
@@ -108,12 +150,17 @@ export class MessagePlayer {
           this._notebook.select(this._notebook.widgets[this._message.cell_index]);
 
           if (this._message.cell_type == "markdown") {
+
             NotebookActions.changeCellType(this._notebook, "markdown");
+
             this._cell = this._notebook.widgets[this._message.cell_index];
+
             (this._cell as MarkdownCell).rendered = true;
           }
           else if (this._message.cell_type == "raw") {
+
             NotebookActions.changeCellType(this._notebook, "raw");
+
             this._cell = this._notebook.widgets[this._message.cell_index];
           }
         }
@@ -121,69 +168,62 @@ export class MessagePlayer {
         this._editor = (this._cell.editor as CodeMirrorEditor);
 
         if (this._message.line_index > this._editor.lastLine()) {
+
           this.createLinesTo(this._message.line_index);
         }
 
         this._charIndex = 0;
 
-        if (this._message.duration < 500) {
-          console.log('this._message.duration < 500');
-          this._editor.doc.replaceRange(this._message.input, {
-            line: this._message.line_index,
-            ch: this._charIndex
-          });
+        let timeout = this._message.input.length ? this._message.duration / this._message.input.length : 0;
 
-          this._cell.update();
-
-          this._messageIndex = this._messageIndex + 1;
-
-          setTimeout(this.playMessage, 0);
-          //  The line was printed synchronously; hence, call play asynchronously.  This may permit interruption of playback.
-        }
-        else {
-
-          let timeout = this._message.input.length ? this._message.duration / this._message.input.length : 0;
-
-          this._intervalId = setInterval(this.printChar, timeout);
-        }
+        this._intervalId = setInterval(this.printChar, timeout);
       }
       else if (this._message.event == "execution_finished") {
 
-        setTimeout(() => {
+        this._isMessageFinished = true;
 
-          (this._cell as CodeCell).model.outputs.fromJSON(this._message.outputs);
+        (this._cell as CodeCell).model.outputs.fromJSON(this._message.outputs);
+
+        if (this._isAudioFinished) {
 
           this._messageIndex = this._messageIndex + 1;
 
-          this.playMessage();
-
-        }, this._message.duration);
+          setTimeout(this.playMessage, this._message.duration);
+        }
       }
       else {
 
         let duration = this._message.duration ? this._message.duration : 0;
 
-        setTimeout(() => {
+        this._isMessageFinished = true;
+
+        if (this._isAudioFinished) {
 
           this._messageIndex = this._messageIndex + 1;
 
-          this.playMessage();
-
-        }, duration);
+          setTimeout(this.playMessage, duration);
+        }
       }
     }
   }
 
   private printChar() {
-    console.log("MessagePlayer#printChar");
 
     if (this._charIndex > this._message.input.length - 1) {
 
       clearInterval(this._intervalId);
 
-      this._messageIndex = this._messageIndex + 1;
+      this._isMessageFinished = true;
 
-      this.playMessage();
+      if (this._isAudioFinished) {
+
+        this._messageIndex = this._messageIndex + 1;
+
+        console.log('MESSAGE FINISHED')
+
+        setTimeout(this.playMessage, 500);
+      }
+
       return;
     }
 
@@ -204,6 +244,7 @@ export class MessagePlayer {
     this._notebook.select(this._notebook.widgets[this._notebook.widgets.length - 1]);
 
     while (this._notebook.model.cells.length <= index) {
+
       NotebookActions.insertBelow(this._notebook);
     }
   }

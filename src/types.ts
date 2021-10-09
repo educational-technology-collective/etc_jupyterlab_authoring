@@ -9,7 +9,6 @@ export interface EventMessage {
     line_index?: number;
     input?: string;
     outputs?: Array<nbformat.IOutput>;
-    timestamp: number;
     start_timestamp?: number;
     stop_timestamp?: number;
     duration?: number;

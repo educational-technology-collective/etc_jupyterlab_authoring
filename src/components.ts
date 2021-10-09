@@ -11,7 +11,7 @@ export class NotebookPanelWidget extends Widget {
     protected _notebookPanel: NotebookPanel;
 
     constructor({ notebookPanel, options }: { notebookPanel: NotebookPanel, options: Widget.IOptions }) {
-        super({node:document.createElement('div')});
+        super({ node: document.createElement('div') });
         this._notebookPanel = notebookPanel;
     }
 
@@ -20,36 +20,62 @@ export class NotebookPanelWidget extends Widget {
     }
 }
 
-export class AudioSelectorWidget extends Widget {
+export class AudioInputSelectorWidget extends Widget {
 
-    private _deviceSelected: Signal<AudioSelectorWidget, string> = new Signal<AudioSelectorWidget, string>(this);
-    private _deviceId: string;
+    private _deviceSelected: Signal<AudioInputSelectorWidget, string> = new Signal<AudioInputSelectorWidget, string>(this);
+    public deviceId: string;
+    public node: HTMLSelectElement;
 
     constructor() {
 
         super({ node: document.createElement('select') });
 
+        this.onDeviceChanged = this.onDeviceChanged.bind(this);
+        this.onChange = this.onChange.bind(this);
+
         this.id = 'etc_jupyterlab_authoring:plugin:authoring_selector_widget';
 
         this.addClass('jp-AudioSelectorWidget');
-
-        this.onChange = this.onChange.bind(this);
 
         this.node.style.width = '100%';
 
         this.node.addEventListener('change', this.onChange);
 
-        this._deviceId = 'default';
+        this.deviceId = null;
+
+        navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChanged);
 
         (async () => {
 
             await navigator.mediaDevices.getUserMedia({ audio: true });
 
+            navigator.mediaDevices.dispatchEvent(new Event('devicechange'));
+        })();
+    }
+
+    private async onDeviceChanged(event: Event) {
+
+        try {
+
             let devices = await navigator.mediaDevices.enumerateDevices();
+
+            let deviceIds = devices.map((value: MediaDeviceInfo) => value.deviceId);
+
+            let optionDeviceIds = ([...this.node.children] as Array<HTMLOptionElement>).map(
+                (value: HTMLOptionElement) => value.value
+            );
+
+            optionDeviceIds.forEach((value: string, index: number) => {
+
+                if (!deviceIds.includes(value)) {
+
+                    this.node.remove(index);
+                }
+            });
 
             devices.forEach((device: MediaDeviceInfo) => {
 
-                if (device.kind == 'audioinput') {
+                if (device.kind == 'audioinput' && !optionDeviceIds.includes(device.deviceId)) {
 
                     let option = document.createElement('option');
 
@@ -57,25 +83,29 @@ export class AudioSelectorWidget extends Widget {
 
                     option.setAttribute('label', device.label);
 
-                    if (device.deviceId == 'default') {
-
-                        option.setAttribute('selected', '');
-                    }
-
                     this.node.appendChild(option);
                 }
             });
 
-            this._deviceSelected.emit(this._deviceId);
-        })();
+            this.deviceId = this.node.value;
+
+            this._deviceSelected.emit(this.node.value);
+        }
+        catch (e) {
+
+            console.error(e);
+        }
     }
 
     private onChange(event: Event) {
-        this._deviceId = (event.target as HTMLSelectElement).value;
-        this._deviceSelected.emit(this._deviceId);
+        console.log('private onChange(event: Event) {');
+        this.deviceId = (event.target as HTMLSelectElement).value;
+
+        this._deviceSelected.emit(this.deviceId);
     }
 
-    get deviceSelected(): ISignal<AudioSelectorWidget, string> {
+    get deviceSelected(): ISignal<AudioInputSelectorWidget, string> {
+
         return this._deviceSelected;
     }
 }
@@ -487,21 +517,23 @@ export class StatusIndicator extends Widget {
 
     public onCurrentChanged(sender: INotebookTracker, notebookPanel: NotebookPanel) {
 
-        if (!this._map.has(notebookPanel)) {
+        if (notebookPanel) {
+            if (!this._map.has(notebookPanel)) {
 
-            this._map.set(notebookPanel, 'stop');
+                this._map.set(notebookPanel, 'stop');
+            }
+    
+            this._currentNotebookPanel = notebookPanel;
+    
+            this.updateStatus();
         }
-
-        this._currentNotebookPanel = notebookPanel;
-
-        this.updateStatus();
     }
 
     public updateStatus() {
 
         if (this._currentNotebookPanel.isVisible) {
 
-            switch(this._map.get(this._currentNotebookPanel)) {
+            switch (this._map.get(this._currentNotebookPanel)) {
                 case 'stop':
                     stopStatus.element({
                         container: this.node,
