@@ -44,10 +44,10 @@ export class MessageRecorder {
         this._notebookPanel = notebookPanel;
         this._cellIndex = null;
         this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelectorWidget.deviceId } });
-        this._notebookPanel.disposed.connect(this.onDispose, this);
+        this._notebookPanel.disposed.connect(this.onDisposed, this);
     }
 
-    public onDispose(sender: NotebookPanel | MessageRecorder, args: any) {
+    public onDisposed(sender: NotebookPanel | MessageRecorder, args: any) {
 
         Signal.disconnectAll(this);
     }

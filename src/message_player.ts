@@ -49,6 +49,7 @@ export class MessagePlayer {
   public onDisposed(sender: NotebookPanel | MessagePlayer, args: any) {
 
     clearInterval(this._intervalId);
+    
     Signal.disconnectAll(this);
   }
 

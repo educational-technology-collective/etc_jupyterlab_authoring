@@ -104,10 +104,10 @@ const extension: JupyterFrontEndPlugin<void> = {
       messagePlayer.playerStopped.connect(messageRecorder.onPlayerStopped, messageRecorder);
 
       messageRecorder.recorderStarted.connect(statusIndicator.onRecorderStarted, statusIndicator);
-      messageRecorder.recorderStopped.connect(statusIndicator.onStopped, statusIndicator);
+      messageRecorder.recorderStopped.connect(statusIndicator.onRecorderStopped, statusIndicator);
 
       messagePlayer.playerStarted.connect(statusIndicator.onPlayerStarted, statusIndicator);
-      messagePlayer.playerStopped.connect(statusIndicator.onStopped, statusIndicator);
+      messagePlayer.playerStopped.connect(statusIndicator.onPlayerStopped, statusIndicator);
 
       NotebookActions.executionScheduled.connect(messageRecorder.onExecutionScheduled, messageRecorder);
       NotebookActions.executed.connect(messageRecorder.onExecuted, messageRecorder);

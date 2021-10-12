@@ -22,6 +22,9 @@ import {
     rightPanelIcon
 } from './icons'
 
+import {caretDownEmptyIcon} from '@jupyterlab/ui-components';
+
+
 export class NotebookPanelWidget extends Widget {
 
     protected _notebookPanel: NotebookPanel;
@@ -63,7 +66,13 @@ export class AudioInputSelectorWidget extends Widget {
 
         this._select.classList.add('jp-mod-styled');
 
-        this.node.appendChild(div).appendChild(this._select);
+        let span = document.createElement('span');
+
+        span.classList.add('f1st5hdn');
+
+        span.innerHTML = caretDownEmptyIcon.svgstr;
+
+        this.node.appendChild(div).append(this._select, span);
 
         this._select.addEventListener('change', this.onChange);
 
@@ -521,6 +530,14 @@ export class StatusIndicator extends Widget {
         this.addClass("jp-StatusIndicator");
 
         this._map = new WeakMap<NotebookPanel, string>();
+    }
+
+    public get onPlayerStopped() {
+        return this.onStopped;
+    }
+
+    public get onRecorderStopped() {
+        return this.onStopped;
     }
 
     public onStopped(sender: any, notebookPanel: NotebookPanel) {
