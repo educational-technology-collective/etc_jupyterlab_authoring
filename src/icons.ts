@@ -12,7 +12,12 @@ import ejectDisabledButtonSVG from "../icons/eject_disabled.svg";
 import recordStatusSVG from "../icons/record_status.svg";
 import stopStatusSVG from "../icons/stop_status.svg";
 import playStatusSVG from "../icons/play_status.svg";
- 
+import rightPanelIconSVG from '../icons/GS-pen.svg';
+
+export const rightPanelIcon = new LabIcon({
+    name: 'etc_jupyterlab_authoring:right_panel_icon',
+    svgstr: rightPanelIconSVG
+});
 
 export const recordOnButton = new LabIcon({
     name: 'etc_jupyterlab_authoring:record_on',

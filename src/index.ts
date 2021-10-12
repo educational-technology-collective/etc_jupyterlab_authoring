@@ -8,9 +8,13 @@ import {
 
 import {
   INotebookTracker,
+  Notebook,
   NotebookActions,
-  NotebookPanel
+  NotebookPanel,
+  NotebookTools
 } from "@jupyterlab/notebook";
+
+import { Widget, Panel, GridLayout, PanelLayout } from "@lumino/widgets";
 
 import { Signal } from "@lumino/signaling";
 
@@ -21,6 +25,8 @@ import { IStatusBar } from "@jupyterlab/statusbar";
 import { MessageRecorder } from './message_recorder';
 import { MessagePlayer } from './message_player';
 
+import { ITranslator, nullTranslator } from '@jupyterlab/translation';
+
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
  */
@@ -30,23 +36,31 @@ const extension: JupyterFrontEndPlugin<void> = {
   requires: [
     INotebookTracker,
     ILabShell,
-    IStatusBar
+    IStatusBar,
+    INotebookTracker,
+    ITranslator
   ],
   activate: (
     app: JupyterFrontEnd,
     notebookTracker: INotebookTracker,
     labShell: ILabShell,
     statusBar: IStatusBar,
+    tracker: INotebookTracker,
+    translator: ITranslator
   ) => {
     console.log("JupyterLab extension etc_jupyterlab_authoring is activated!");
+
+    Signal.setExceptionHandler((error: Error) => {
+      console.error(error);
+    });
 
     let authoringSidePanel = new AuthoringSidePanel();
 
     let audioInputSelectorWidget = new AudioInputSelectorWidget();
 
-    labShell.add(authoringSidePanel, 'right');
-
     authoringSidePanel.addWidget(audioInputSelectorWidget);
+
+    labShell.add(authoringSidePanel, 'right');
 
     let statusIndicator = new StatusIndicator();
 
@@ -54,10 +68,6 @@ const extension: JupyterFrontEndPlugin<void> = {
       item: statusIndicator,
       align: "left",
       rank: -100
-    });
-
-    Signal.setExceptionHandler((error: Error) => {
-      console.error(error);
     });
 
     notebookTracker.currentChanged.connect(statusIndicator.onCurrentChanged, statusIndicator);
@@ -80,16 +90,24 @@ const extension: JupyterFrontEndPlugin<void> = {
 
       audioInputSelectorWidget.deviceSelected.connect(messageRecorder.onDeviceSelected, messageRecorder);
 
-      recordButton.pressed.connect(statusIndicator.record, statusIndicator);
-      playButton.pressed.connect(statusIndicator.play, statusIndicator);
-      stopButton.pressed.connect(statusIndicator.stop, statusIndicator);
-
       playButton.pressed.connect(messagePlayer.onPlayPressed, messagePlayer);
+      stopButton.pressed.connect(messagePlayer.onStopPressed, messagePlayer);
 
       recordButton.pressed.connect(messageRecorder.onRecordPressed, messageRecorder);
       stopButton.pressed.connect(messageRecorder.onStopPressed, messageRecorder);
       saveButton.pressed.connect(messageRecorder.onSavePressed, messageRecorder);
       advanceButton.pressed.connect(messageRecorder.onAdvancePressed, messageRecorder);
+
+      messageRecorder.recorderStarted.connect(messagePlayer.onRecorderStarted, messagePlayer);
+      messageRecorder.recorderStopped.connect(messagePlayer.onRecorderStopped, messagePlayer);
+      messagePlayer.playerStarted.connect(messageRecorder.onPlayerStarted, messageRecorder);
+      messagePlayer.playerStopped.connect(messageRecorder.onPlayerStopped, messageRecorder);
+
+      messageRecorder.recorderStarted.connect(statusIndicator.onRecorderStarted, statusIndicator);
+      messageRecorder.recorderStopped.connect(statusIndicator.onStopped, statusIndicator);
+
+      messagePlayer.playerStarted.connect(statusIndicator.onPlayerStarted, statusIndicator);
+      messagePlayer.playerStopped.connect(statusIndicator.onStopped, statusIndicator);
 
       NotebookActions.executionScheduled.connect(messageRecorder.onExecutionScheduled, messageRecorder);
       NotebookActions.executed.connect(messageRecorder.onExecuted, messageRecorder);

@@ -1,10 +1,26 @@
-import { Widget, Panel, GridLayout, PanelLayout } from "@lumino/widgets";
+import { Widget, Panel, GridLayout, PanelLayout} from "@lumino/widgets";
 
 import { Signal, ISignal } from "@lumino/signaling";
 
 import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
 
-import { stopStatus, playStatus, recordStatus, recordOffButton, recordOnButton, stopButton, playButton, ejectButton, pauseButton, playDisabledButton, recordOffDisabledButton, ejectDisabledButton } from './icons'
+import { UUID } from '@lumino/coreutils';
+
+import { 
+    stopStatus, 
+    playStatus, 
+    recordStatus, 
+    recordOffButton, 
+    recordOnButton, 
+    stopButton, 
+    playButton, 
+    ejectButton, 
+    pauseButton, 
+    playDisabledButton, 
+    recordOffDisabledButton, 
+    ejectDisabledButton,
+    rightPanelIcon
+} from './icons'
 
 export class NotebookPanelWidget extends Widget {
 
@@ -24,11 +40,11 @@ export class AudioInputSelectorWidget extends Widget {
 
     private _deviceSelected: Signal<AudioInputSelectorWidget, string> = new Signal<AudioInputSelectorWidget, string>(this);
     public deviceId: string;
-    public node: HTMLSelectElement;
+    private _select: HTMLSelectElement;
 
     constructor() {
 
-        super({ node: document.createElement('select') });
+        super({ node: document.createElement('label') });
 
         this.onDeviceChanged = this.onDeviceChanged.bind(this);
         this.onChange = this.onChange.bind(this);
@@ -37,9 +53,19 @@ export class AudioInputSelectorWidget extends Widget {
 
         this.addClass('jp-AudioSelectorWidget');
 
-        this.node.style.width = '100%';
+        this.node.innerHTML = 'Audio Input';
 
-        this.node.addEventListener('change', this.onChange);
+        let div = document.createElement('div');
+
+        div.classList.add('jp-select-wrapper');
+
+        this._select = document.createElement('select');
+
+        this._select.classList.add('jp-mod-styled');
+
+        this.node.appendChild(div).appendChild(this._select);
+
+        this._select.addEventListener('change', this.onChange);
 
         this.deviceId = null;
 
@@ -61,7 +87,7 @@ export class AudioInputSelectorWidget extends Widget {
 
             let deviceIds = devices.map((value: MediaDeviceInfo) => value.deviceId);
 
-            let optionDeviceIds = ([...this.node.children] as Array<HTMLOptionElement>).map(
+            let optionDeviceIds = ([...this._select.children] as Array<HTMLOptionElement>).map(
                 (value: HTMLOptionElement) => value.value
             );
 
@@ -69,7 +95,7 @@ export class AudioInputSelectorWidget extends Widget {
 
                 if (!deviceIds.includes(value)) {
 
-                    this.node.remove(index);
+                    this._select.remove(index);
                 }
             });
 
@@ -83,13 +109,13 @@ export class AudioInputSelectorWidget extends Widget {
 
                     option.setAttribute('label', device.label);
 
-                    this.node.appendChild(option);
+                    this._select.appendChild(option);
                 }
             });
 
-            this.deviceId = this.node.value;
+            this.deviceId = this._select.value;
 
-            this._deviceSelected.emit(this.node.value);
+            this._deviceSelected.emit(this.deviceId);
         }
         catch (e) {
 
@@ -98,7 +124,7 @@ export class AudioInputSelectorWidget extends Widget {
     }
 
     private onChange(event: Event) {
-        console.log('private onChange(event: Event) {');
+
         this.deviceId = (event.target as HTMLSelectElement).value;
 
         this._deviceSelected.emit(this.deviceId);
@@ -112,14 +138,17 @@ export class AudioInputSelectorWidget extends Widget {
 
 export class AuthoringSidePanel extends Panel {
 
-    layout: PanelLayout;
-
     constructor() {
         super();
 
-        this.id = 'etc_jupyterlab_authoring:plugin:authoring_side_panel';
+        this.id = this.id = `jp-authoring-side-panel-${UUID.uuid4()}`;
 
         this.addClass('jp-AuthoringSidePanel');
+
+        this.node.style.backgroundColor = '#fff';
+        this.node.style.padding = '10px';
+
+        this.title.icon = rightPanelIcon;
     }
 }
 
@@ -485,32 +514,32 @@ export class StatusIndicator extends Widget {
     constructor() {
         super();
 
-        this.stop = this.stop.bind(this);
-        this.record = this.record.bind(this);
-        this.play = this.play.bind(this);
+        this.onStopped = this.onStopped.bind(this);
+        this.onRecorderStarted = this.onRecorderStarted.bind(this);
+        this.onPlayerStarted = this.onPlayerStarted.bind(this);
 
         this.addClass("jp-StatusIndicator");
 
         this._map = new WeakMap<NotebookPanel, string>();
     }
 
-    public stop(sender: NotebookPanelWidget, args: any) {
-
-        this._map.set(sender.notebookPanel, 'stop');
-
-        this.updateStatus();
-    }
-
-    public play(sender: NotebookPanelWidget, args: any) {
-
-        this._map.set(sender.notebookPanel, 'play');
+    public onStopped(sender: any, notebookPanel: NotebookPanel) {
+        
+        this._map.set(notebookPanel, 'stop');
 
         this.updateStatus();
     }
 
-    public record(sender: NotebookPanelWidget, args: any) {
+    public onPlayerStarted(sender: any, notebookPanel: NotebookPanel) {
 
-        this._map.set(sender.notebookPanel, 'record');
+        this._map.set(notebookPanel, 'play');
+
+        this.updateStatus();
+    }
+
+    public onRecorderStarted(sender: any, notebookPanel: NotebookPanel) {
+
+        this._map.set(notebookPanel, 'record');
 
         this.updateStatus();
     }
