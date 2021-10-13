@@ -83,6 +83,8 @@ export class MessageRecorder {
             !this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")
         ) {
 
+            this._eventMessages = [];
+
             this.aggregateMessage({
                 event: "record_started",
                 notebook_id: this._notebookPanel.content.id
@@ -91,6 +93,7 @@ export class MessageRecorder {
             this._notebookPanel.content.node.focus();
 
             if (this._editor) {
+                
                 this._editor.focus();
             }
 
@@ -107,9 +110,6 @@ export class MessageRecorder {
         if (this._notebookPanel.isVisible) {
 
             if (this._isRecording) {
-
-                event.stopImmediatePropagation();
-                event.preventDefault();
 
                 if (this._editor) {
 
@@ -281,19 +281,17 @@ export class MessageRecorder {
             this.onStopPressed(null, null);
         }
 
-        this._isRecording = false;
-
         if (this._eventMessages.length && this._notebookPanel.isVisible) {
 
             try {
 
-                this._notebookPanel = await this._app.commands.execute("notebook:create-new", {
+                let notebookPanel = await this._app.commands.execute("notebook:create-new", {
                     kernelName: "python3", cwd: ""
                 });
 
-                await this._notebookPanel.revealed;
+                await notebookPanel.revealed;
 
-                await this._notebookPanel.sessionContext.ready;
+                await notebookPanel.sessionContext.ready;
 
                 for (let message of this._eventMessages) {
 
@@ -325,12 +323,12 @@ export class MessageRecorder {
                     }
                 }
 
-                this._notebookPanel.content.model.metadata.set(
+                notebookPanel.content.model.metadata.set(
                     "etc_jupyterlab_authoring",
                     this._eventMessages as any
                 );
 
-                await this._notebookPanel.context.saveAs();
+                await notebookPanel.context.saveAs();
             }
             catch (e) {
                 console.error(e);
