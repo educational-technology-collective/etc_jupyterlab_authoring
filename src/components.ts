@@ -1,47 +1,81 @@
-import { Widget, Panel, GridLayout, PanelLayout} from "@lumino/widgets";
+import { Widget, Panel, GridLayout, PanelLayout } from "@lumino/widgets";
 
 import { Signal, ISignal } from "@lumino/signaling";
 
-import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
-
 import { UUID } from '@lumino/coreutils';
 
-import { 
-    stopStatus, 
-    playStatus, 
-    recordStatus, 
-    recordOffButton, 
-    recordOnButton, 
-    stopButton, 
-    playButton, 
-    ejectButton, 
-    pauseButton, 
-    playDisabledButton, 
-    recordOffDisabledButton, 
+import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
+
+import {
+    stopStatus,
+    playStatus,
+    recordStatus,
+    recordOffButton,
+    recordOnButton,
+    stopButton,
+    playButton,
+    ejectButton,
+    pauseButton,
+    playDisabledButton,
+    recordOffDisabledButton,
     ejectDisabledButton,
     rightPanelIcon
 } from './icons'
 
-import {caretDownEmptyIcon} from '@jupyterlab/ui-components';
+import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
 
+export class ExecutionCheckbox extends Widget {
 
-export class NotebookPanelWidget extends Widget {
+    private _changed: Signal<ExecutionCheckbox, boolean> = new Signal<ExecutionCheckbox, boolean>(this);
+    private _input: HTMLInputElement;
 
-    protected _notebookPanel: NotebookPanel;
+    constructor() {
 
-    constructor({ notebookPanel, options }: { notebookPanel: NotebookPanel, options: Widget.IOptions }) {
-        super({ node: document.createElement('div') });
-        this._notebookPanel = notebookPanel;
+        super();
+
+        this.onChange = this.onChange.bind(this);
+
+        this.addClass('jp-ExecutionCheckBox');
+
+        this.node.innerHTML = '<p>Execute Cells during Playback</p>';
+
+        let input = document.createElement('input');
+
+        input.setAttribute('type', 'checkbox');
+
+        input.setAttribute('name', 'execution');
+
+        input.classList.add('jp-mod-styled');
+
+        input.addEventListener('change', this.onChange);
+
+        let label = document.createElement('label');
+
+        label.setAttribute('for', 'execution');
+
+        label.innerHTML = 'Enable';
+
+        this.node.appendChild(input);
+
+        this.node.appendChild(label);
+
+        this._input = input;
     }
 
-    get notebookPanel() {
-        return this._notebookPanel;
+    private onChange(event: Event) {
+
+        this._changed.emit(this._input.checked);
+    }
+
+    get changed(): ISignal<ExecutionCheckbox, boolean> {
+
+        return this._changed;
     }
 }
 
-export class AudioInputSelectorWidget extends Widget {
+export class AudioInputSelector extends Widget {
 
-    private _deviceSelected: Signal<AudioInputSelectorWidget, string> = new Signal<AudioInputSelectorWidget, string>(this);
+    private _deviceSelected: Signal<AudioInputSelector, string> = new Signal<AudioInputSelector, string>(this);
     public deviceId: string;
     private _select: HTMLSelectElement;
 
@@ -139,7 +173,7 @@ export class AudioInputSelectorWidget extends Widget {
         this._deviceSelected.emit(this.deviceId);
     }
 
-    get deviceSelected(): ISignal<AudioInputSelectorWidget, string> {
+    get deviceSelected(): ISignal<AudioInputSelector, string> {
 
         return this._deviceSelected;
     }
@@ -161,20 +195,22 @@ export class AuthoringSidePanel extends Panel {
     }
 }
 
-export class RecordButton extends NotebookPanelWidget {
+export class RecordButton extends Widget {
 
     private _pressed: Signal<RecordButton, Event> = new Signal(this);
+    private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super({ notebookPanel, options: null });
-
+        super();
 
         this.dispose = this.dispose.bind(this);
         this.off = this.off.bind(this);
         this.on = this.on.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
+
+        this._notebookPanel = notebookPanel;
 
         if (!this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")) {
 
@@ -245,15 +281,20 @@ export class RecordButton extends NotebookPanelWidget {
     get pressed(): ISignal<RecordButton, Event> {
         return this._pressed;
     }
+
+    get notebookPanel() {
+        return this._notebookPanel;
+    }
 }
 
-export class StopButton extends NotebookPanelWidget {
+export class StopButton extends Widget {
 
     private _pressed: Signal<StopButton, Event> = new Signal(this);
+    private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super({ notebookPanel, options: null });
+        super();
 
         this._notebookPanel = notebookPanel;
 
@@ -299,15 +340,20 @@ export class StopButton extends NotebookPanelWidget {
     get pressed(): ISignal<StopButton, Event> {
         return this._pressed;
     }
+
+    get notebookPanel() {
+        return this._notebookPanel;
+    }
 }
 
-export class PlayButton extends NotebookPanelWidget {
+export class PlayButton extends Widget {
 
     private _pressed: Signal<PlayButton, Event> = new Signal(this);
+    private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super({ notebookPanel, options: null });
+        super();
 
         this._notebookPanel = notebookPanel;
 
@@ -364,14 +410,20 @@ export class PlayButton extends NotebookPanelWidget {
     get pressed(): ISignal<PlayButton, Event> {
         return this._pressed;
     }
+
+    get notebookPanel() {
+        return this._notebookPanel;
+    }
 }
 
-export class PauseButton extends NotebookPanelWidget {
+export class PauseButton extends Widget {
 
     private _pressed: Signal<PauseButton, Event> = new Signal(this);
+    private _notebookPanel: NotebookPanel;
+
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super({ notebookPanel, options: null });
+        super();
 
         this._notebookPanel = notebookPanel;
 
@@ -417,15 +469,20 @@ export class PauseButton extends NotebookPanelWidget {
     get pressed(): ISignal<PauseButton, Event> {
         return this._pressed;
     }
+
+    get notebookPanel() {
+        return this._notebookPanel;
+    }
 }
 
-export class SaveButton extends NotebookPanelWidget {
+export class SaveButton extends Widget {
 
     private _pressed: Signal<SaveButton, Event> = new Signal(this);
+    private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super({ notebookPanel, options: null });
+        super();
 
         this._notebookPanel = notebookPanel;
 
@@ -482,6 +539,10 @@ export class SaveButton extends NotebookPanelWidget {
     get pressed(): ISignal<SaveButton, Event> {
         return this._pressed;
     }
+
+    get notebookPanel() {
+        return this._notebookPanel;
+    }
 }
 
 export class AdvanceButton {
@@ -512,12 +573,15 @@ export class AdvanceButton {
     get pressed(): ISignal<AdvanceButton, KeyboardEvent> {
         return this._pressed;
     }
+
+    get notebookPanel() {
+        return this._notebookPanel;
+    }
 }
 
 export class StatusIndicator extends Widget {
 
     private _map: WeakMap<NotebookPanel, string>;
-
     private _currentNotebookPanel: NotebookPanel;
 
     constructor() {
@@ -541,7 +605,7 @@ export class StatusIndicator extends Widget {
     }
 
     public onStopped(sender: any, notebookPanel: NotebookPanel) {
-        
+
         this._map.set(notebookPanel, 'stop');
 
         this.updateStatus();
@@ -568,9 +632,9 @@ export class StatusIndicator extends Widget {
 
                 this._map.set(notebookPanel, 'stop');
             }
-    
+
             this._currentNotebookPanel = notebookPanel;
-    
+
             this.updateStatus();
         }
     }

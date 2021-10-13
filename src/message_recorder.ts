@@ -1,7 +1,7 @@
 /// <reference types="@types/dom-mediacapture-record" />
 
 import { Notebook, NotebookActions, NotebookPanel } from '@jupyterlab/notebook';
-import { AudioInputSelectorWidget, AdvanceButton, PauseButton, RecordButton, SaveButton, StopButton, PlayButton } from './components';
+import { AudioInputSelector, AdvanceButton, PauseButton, RecordButton, SaveButton, StopButton, PlayButton } from './components';
 import { CodeCell, Cell, ICellModel, MarkdownCell, RawCell } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
@@ -32,18 +32,18 @@ export class MessageRecorder {
     constructor({
         app,
         notebookPanel,
-        audioInputSelectorWidget
+        audioInputSelector
     }:
         {
             app: JupyterFrontEnd,
             notebookPanel: NotebookPanel,
-            audioInputSelectorWidget: AudioInputSelectorWidget
+            audioInputSelector: AudioInputSelector
         }) {
 
         this._app = app;
         this._notebookPanel = notebookPanel;
         this._cellIndex = null;
-        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelectorWidget.deviceId } });
+        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
         this._notebookPanel.disposed.connect(this.onDisposed, this);
     }
 
@@ -62,7 +62,7 @@ export class MessageRecorder {
         this._isPlaying = false;
     }
 
-    public onDeviceSelected(sender: AudioInputSelectorWidget, deviceId: string) {
+    public onDeviceSelected(sender: AudioInputSelector, deviceId: string) {
 
         this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
     }

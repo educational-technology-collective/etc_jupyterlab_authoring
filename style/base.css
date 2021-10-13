@@ -1,0 +1,8 @@
+.jp-ExecutionCheckBox, .jp-AudioSelectorWidget {
+    font-size: var(--jp-ui-font-size1) !important;
+    margin: 16px 0px !important;
+  }
+
+  .jp-AudioSelectorWidget select {
+    font-size: var(--jp-ui-font-size1) !important;
+  }

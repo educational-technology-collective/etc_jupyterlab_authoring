@@ -18,7 +18,7 @@ import { Widget, Panel, GridLayout, PanelLayout } from "@lumino/widgets";
 
 import { Signal } from "@lumino/signaling";
 
-import { AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton, StatusIndicator, AudioInputSelectorWidget } from "./components";
+import { AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton, StatusIndicator, AudioInputSelector, ExecutionCheckbox } from "./components";
 
 import { IStatusBar } from "@jupyterlab/statusbar";
 
@@ -56,9 +56,13 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     let authoringSidePanel = new AuthoringSidePanel();
 
-    let audioInputSelectorWidget = new AudioInputSelectorWidget();
+    let audioInputSelector = new AudioInputSelector();
 
-    authoringSidePanel.addWidget(audioInputSelectorWidget);
+    let executionCheckbox = new ExecutionCheckbox()
+
+    authoringSidePanel.addWidget(audioInputSelector);
+
+    authoringSidePanel.addWidget(executionCheckbox);
 
     labShell.add(authoringSidePanel, 'right');
 
@@ -71,6 +75,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     });
 
     notebookTracker.currentChanged.connect(statusIndicator.onCurrentChanged, statusIndicator);
+    //  There is one status indicator for all Notebooks; hence update the status indicator whenever the user changes Notebooks.
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
 
@@ -84,33 +89,38 @@ const extension: JupyterFrontEndPlugin<void> = {
       let saveButton = new SaveButton({ notebookPanel });
       let advanceButton = new AdvanceButton({ notebookPanel });
 
-      let messageRecorder = new MessageRecorder({ app, notebookPanel, audioInputSelectorWidget });
+      let messageRecorder = new MessageRecorder({ app, notebookPanel, audioInputSelector });
 
       let messagePlayer = new MessagePlayer({ notebookPanel });
 
-      audioInputSelectorWidget.deviceSelected.connect(messageRecorder.onDeviceSelected, messageRecorder);
+      audioInputSelector.deviceSelected.connect(messageRecorder.onDeviceSelected, messageRecorder);
+
+      executionCheckbox.changed.connect(messagePlayer.onExecutionCheckboxChanged, messagePlayer);
 
       playButton.pressed.connect(messagePlayer.onPlayPressed, messagePlayer);
       stopButton.pressed.connect(messagePlayer.onStopPressed, messagePlayer);
+      //  Connect the player to its controls.
 
       recordButton.pressed.connect(messageRecorder.onRecordPressed, messageRecorder);
       stopButton.pressed.connect(messageRecorder.onStopPressed, messageRecorder);
       saveButton.pressed.connect(messageRecorder.onSavePressed, messageRecorder);
       advanceButton.pressed.connect(messageRecorder.onAdvancePressed, messageRecorder);
+      NotebookActions.executionScheduled.connect(messageRecorder.onExecutionScheduled, messageRecorder);
+      NotebookActions.executed.connect(messageRecorder.onExecuted, messageRecorder);
+      //  Connect the recorder to it's controls and Signals.
 
       messageRecorder.recorderStarted.connect(messagePlayer.onRecorderStarted, messagePlayer);
       messageRecorder.recorderStopped.connect(messagePlayer.onRecorderStopped, messagePlayer);
       messagePlayer.playerStarted.connect(messageRecorder.onPlayerStarted, messageRecorder);
       messagePlayer.playerStopped.connect(messageRecorder.onPlayerStopped, messageRecorder);
+      //  The Recorder and the Player need to be informed of eachother's states;
+      //  hence connect Signals in order to provide notification of state.
 
       messageRecorder.recorderStarted.connect(statusIndicator.onRecorderStarted, statusIndicator);
       messageRecorder.recorderStopped.connect(statusIndicator.onRecorderStopped, statusIndicator);
-
       messagePlayer.playerStarted.connect(statusIndicator.onPlayerStarted, statusIndicator);
       messagePlayer.playerStopped.connect(statusIndicator.onPlayerStopped, statusIndicator);
-
-      NotebookActions.executionScheduled.connect(messageRecorder.onExecutionScheduled, messageRecorder);
-      NotebookActions.executed.connect(messageRecorder.onExecuted, messageRecorder);
+      //  Connect the player and the recorder to the status indicator.
     });
   }
 }
