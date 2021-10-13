@@ -117,7 +117,7 @@ export class MessagePlayer {
         }
 
         this._playerStopped.emit(this._notebookPanel);
-        
+
         this._isPlaying = false;
       }
     }
@@ -133,6 +133,10 @@ export class MessagePlayer {
       let audioEnded: Promise<any>;
       let printEnded: Promise<any>;
 
+      let url = new URL(this._message?.recordingDataURL);
+
+      console.log(url);
+      
       if (this._message?.recordingDataURL) {
 
         try {
@@ -158,7 +162,7 @@ export class MessagePlayer {
         }
         catch (e) {
 
-          console.error(e);
+          audioEnded = Promise.resolve();
         }
       }
       else {
@@ -254,7 +258,7 @@ export class MessagePlayer {
         }
       }
 
-      await Promise.all([audioEnded, printEnded]);
+      return Promise.all([audioEnded, printEnded]);
     }
     catch (e) {
 

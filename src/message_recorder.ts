@@ -23,7 +23,7 @@ export class MessageRecorder {
     private _isPlaying: boolean = false;
     private _editor: Editor;
     private _cell: Cell<ICellModel>;
-    private _recording: Promise<Blob>;
+    private _recording: Promise<Array<Blob>>;
     private _mediaStream: Promise<MediaStream>;
     private _mediaRecorder: MediaRecorder;
     public _eventMessages: Array<EventMessage> = [];
@@ -283,7 +283,7 @@ export class MessageRecorder {
 
                 await this._notebookPanel.sessionContext.ready;
 
-                this._eventMessages.forEach(async (message: EventMessage) => {
+                for (let message of this._eventMessages) {
 
                     if (message.recording) {
 
@@ -291,13 +291,13 @@ export class MessageRecorder {
 
                         let fileReader = new FileReader();
 
-                        let prEvent = await new Promise<ProgressEvent<FileReader>>((r, j) => {
+                        let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
 
                             try {
 
                                 fileReader.addEventListener('load', r);
 
-                                fileReader.readAsDataURL(recording as Blob);
+                                fileReader.readAsDataURL(new Blob(recording,  { 'type': 'audio/ogg; codecs=opus' }) as Blob);
                             }
                             catch (e) {
 
@@ -305,11 +305,11 @@ export class MessageRecorder {
                             }
                         });
 
-                        message.recordingDataURL = (prEvent.target.result as string);
+                        message.recordingDataURL = (event.target.result as string);
 
                         delete message.recording;
                     }
-                });
+                }
 
                 this._notebookPanel.content.model.metadata.set(
                     "etc_jupyterlab_authoring",
@@ -362,7 +362,7 @@ export class MessageRecorder {
 
             this._mediaRecorder = new MediaRecorder(await this._mediaStream);
 
-            this._recording = new Promise<Blob>((r, j) => {
+            this._recording = new Promise<Array<Blob>>((r, j) => {
 
                 let recordings: Array<Blob> = [];
 
@@ -373,7 +373,8 @@ export class MessageRecorder {
 
                 this._mediaRecorder.addEventListener('stop', () => {
 
-                    r(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
+                    r(recordings);
+                    //r(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
                 });
 
                 this._mediaRecorder.addEventListener('error', j);
