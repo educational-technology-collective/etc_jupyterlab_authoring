@@ -1,5 +1,3 @@
-import { each } from '@lumino/algorithm';
-
 import {
   ILabShell,
   JupyterFrontEnd,
@@ -8,13 +6,9 @@ import {
 
 import {
   INotebookTracker,
-  Notebook,
   NotebookActions,
-  NotebookPanel,
-  NotebookTools
+  NotebookPanel
 } from "@jupyterlab/notebook";
-
-import { Widget, Panel, GridLayout, PanelLayout } from "@lumino/widgets";
 
 import { Signal } from "@lumino/signaling";
 
@@ -23,9 +17,8 @@ import { AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton
 import { IStatusBar } from "@jupyterlab/statusbar";
 
 import { MessageRecorder } from './message_recorder';
-import { MessagePlayer } from './message_player';
 
-import { ITranslator, nullTranslator } from '@jupyterlab/translation';
+import { MessagePlayer } from './message_player';
 
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
@@ -36,17 +29,13 @@ const extension: JupyterFrontEndPlugin<void> = {
   requires: [
     INotebookTracker,
     ILabShell,
-    IStatusBar,
-    INotebookTracker,
-    ITranslator
+    IStatusBar
   ],
   activate: (
     app: JupyterFrontEnd,
     notebookTracker: INotebookTracker,
     labShell: ILabShell,
-    statusBar: IStatusBar,
-    tracker: INotebookTracker,
-    translator: ITranslator
+    statusBar: IStatusBar
   ) => {
     console.log("JupyterLab extension etc_jupyterlab_authoring is activated!");
 
@@ -78,7 +67,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     //  There is one status indicator for all Notebooks; hence update the status indicator whenever the user changes Notebooks.
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
-
+      
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
 

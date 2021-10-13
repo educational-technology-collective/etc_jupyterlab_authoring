@@ -1,6 +1,6 @@
 import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { EventMessage } from "./types";
-import { CodeCell, Cell, ICellModel, MarkdownCell, RawCell } from '@jupyterlab/cells'
+import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { ExecutionCheckbox, PlayButton } from "./components";
 import { ISignal, Signal } from "@lumino/signaling";
@@ -133,11 +133,7 @@ export class MessagePlayer {
       let audioEnded: Promise<any>;
       let printEnded: Promise<any>;
 
-      let url = new URL(this._message?.recordingDataURL);
-
-      console.log(url);
-      
-      if (this._message?.recordingDataURL) {
+      if (this._message?.recordingDataURL && this._message?.recordingDataURL.includes('base64')) {
 
         try {
 

@@ -1,4 +1,4 @@
-import { Widget, Panel, GridLayout, PanelLayout } from "@lumino/widgets";
+import { Widget, Panel } from "@lumino/widgets";
 
 import { Signal, ISignal } from "@lumino/signaling";
 
@@ -10,15 +10,6 @@ import {
     stopStatus,
     playStatus,
     recordStatus,
-    recordOffButton,
-    recordOnButton,
-    stopButton,
-    playButton,
-    ejectButton,
-    pauseButton,
-    playDisabledButton,
-    recordOffDisabledButton,
-    ejectDisabledButton,
     rightPanelIcon
 } from './icons'
 
@@ -204,42 +195,24 @@ export class RecordButton extends Widget {
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
         super();
 
-        this.dispose = this.dispose.bind(this);
-        this.off = this.off.bind(this);
-        this.on = this.on.bind(this);
+        this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
 
         this._notebookPanel = notebookPanel;
 
-        if (!this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")) {
+        window.addEventListener("keydown", this.onKeydown, true);
 
-            window.addEventListener("keydown", this.onKeydown, true);
+        this.node.addEventListener('click', this.onPressed);
 
-            this.node.addEventListener('click', this.onPressed);
-
-            this.off();
-        }
-        else {
-
-            recordOffDisabledButton.element({
-                container: this.node,
-                stylesheet: 'toolbarButton',
-                alignSelf: 'normal',
-                height: '24px'
-            });
-        }
-
-        this._notebookPanel.disposed.connect(this.dispose, this);
+        this._notebookPanel.disposed.connect(this.onDisposed, this);
 
         this.addClass("etc-jupyterlab-authoring-button");
     }
 
-    public dispose() {
+    public onDisposed() {
 
         window.removeEventListener("keydown", this.onKeydown, true);
-
-        this.node.removeEventListener("click", this.onPressed, false);
     }
 
     private onKeydown(event: KeyboardEvent) {
@@ -256,26 +229,6 @@ export class RecordButton extends Widget {
         event.stopImmediatePropagation();
 
         this._pressed.emit(event);
-    }
-
-    public off() {
-
-        recordOffButton.element({
-            container: this.node,
-            stylesheet: 'toolbarButton',
-            alignSelf: 'normal',
-            height: '24px'
-        });
-    }
-
-    public on() {
-
-        recordOnButton.element({
-            container: this.node,
-            stylesheet: 'toolbarButton',
-            alignSelf: 'normal',
-            height: '24px'
-        });
     }
 
     get pressed(): ISignal<RecordButton, Event> {
@@ -298,29 +251,20 @@ export class StopButton extends Widget {
 
         this._notebookPanel = notebookPanel;
 
-        this.dispose = this.dispose.bind(this);
+        this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
 
-        stopButton.element({
-            container: this.node,
-            stylesheet: 'toolbarButton',
-            alignSelf: 'normal',
-            height: '24px'
-        });
-
         this.addClass("etc-jupyterlab-authoring-button");
 
-        this._notebookPanel.disposed.connect(this.dispose, this);
+        this._notebookPanel.disposed.connect(this.onDisposed, this);
 
         window.addEventListener("keydown", this.onKeydown, true);
-
-        this.node.addEventListener('click', this.onPressed, true);
     }
 
-    public dispose() {
+    public onDisposed() {
+
         window.removeEventListener("keydown", this.onKeydown, true);
-        this.node.removeEventListener("click", this.onPressed, true);
     }
 
     private onKeydown(event: KeyboardEvent) {
@@ -332,8 +276,10 @@ export class StopButton extends Widget {
     }
 
     private onPressed(event: Event) {
+
         event.preventDefault();
         event.stopImmediatePropagation();
+
         this._pressed.emit(event);
     }
 
@@ -357,44 +303,24 @@ export class PlayButton extends Widget {
 
         this._notebookPanel = notebookPanel;
 
-        this.dispose = this.dispose.bind(this);
+        this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
 
-        if (this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")) {
-
-            playButton.element({
-                container: this.node,
-                stylesheet: 'toolbarButton',
-                alignSelf: 'normal',
-                height: '24px'
-            });
-
-            window.addEventListener("keydown", this.onKeydown, true);
-
-            this.node.addEventListener('click', this.onPressed, true);
-        }
-        else {
-
-            playDisabledButton.element({
-                container: this.node,
-                stylesheet: 'toolbarButton',
-                alignSelf: 'normal',
-                height: '24px'
-            });
-        }
+        window.addEventListener("keydown", this.onKeydown, true);
 
         this.addClass("etc-jupyterlab-authoring-button");
 
-        this._notebookPanel.disposed.connect(this.dispose, this);
+        this._notebookPanel.disposed.connect(this.onDisposed, this);
     }
 
-    public dispose() {
+    public onDisposed() {
+
         window.removeEventListener("keydown", this.onKeydown, true);
-        this.node.removeEventListener("click", this.onPressed, true);
     }
 
     private onKeydown(event: KeyboardEvent) {
+
         if (event.ctrlKey && event.key == "F10" && this._notebookPanel.isVisible) {
 
             this.onPressed(event);
@@ -402,8 +328,10 @@ export class PlayButton extends Widget {
     }
 
     private onPressed(event: Event) {
+
         event.preventDefault();
         event.stopImmediatePropagation();
+
         this._pressed.emit(event);
     }
 
@@ -427,30 +355,20 @@ export class PauseButton extends Widget {
 
         this._notebookPanel = notebookPanel;
 
-        this.dispose = this.dispose.bind(this);
+        this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
 
-        pauseButton.element({
-            container: this.node,
-            stylesheet: 'toolbarButton',
-            alignSelf: 'normal',
-            height: '24px'
-        });
-
         this.addClass("etc-jupyterlab-authoring-button");
 
-        this._notebookPanel.disposed.connect(this.dispose, this);
+        this._notebookPanel.disposed.connect(this.onDisposed, this);
 
         window.addEventListener("keydown", this.onKeydown, true);
-
-        this.node.addEventListener('click', this.onPressed, true);
     }
 
-    public dispose() {
+    public onDisposed() {
 
         window.removeEventListener("keydown", this.onKeydown, true);
-        this.node.removeEventListener("click", this.onPressed, true);
     }
 
     private onKeydown(event: KeyboardEvent) {
@@ -486,43 +404,24 @@ export class SaveButton extends Widget {
 
         this._notebookPanel = notebookPanel;
 
-        this.dispose = this.dispose.bind(this);
+        this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
 
-        if (!this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")) {
-
-            ejectButton.element({
-                container: this.node,
-                stylesheet: 'toolbarButton',
-                alignSelf: 'normal',
-                height: '24px'
-            });
-
-            window.addEventListener("keydown", this.onKeydown, true);
-
-            this.node.addEventListener('click', this.onPressed, true);
-        }
-        else {
-            ejectDisabledButton.element({
-                container: this.node,
-                stylesheet: 'toolbarButton',
-                alignSelf: 'normal',
-                height: '24px'
-            });
-        }
-
         this.addClass("etc-jupyterlab-authoring-button");
 
-        this._notebookPanel.disposed.connect(this.dispose, this);
+        window.addEventListener("keydown", this.onKeydown, true);
+
+        this._notebookPanel.disposed.connect(this.onDisposed, this);
     }
 
-    public dispose() {
+    public onDisposed() {
+
         window.removeEventListener("keydown", this.onKeydown, true);
-        this.node.removeEventListener("click", this.onPressed, true);
     }
 
     private onKeydown(event: KeyboardEvent) {
+
         if (event.ctrlKey && event.key == "F12" && this._notebookPanel.isVisible) {
 
             this.onPressed(event);
@@ -533,6 +432,7 @@ export class SaveButton extends Widget {
 
         event.preventDefault();
         event.stopImmediatePropagation();
+
         this._pressed.emit(event);
     }
 

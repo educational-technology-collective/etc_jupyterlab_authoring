@@ -1,8 +1,8 @@
 /// <reference types="@types/dom-mediacapture-record" />
 
-import { Notebook, NotebookActions, NotebookPanel } from '@jupyterlab/notebook';
-import { AudioInputSelector, AdvanceButton, PauseButton, RecordButton, SaveButton, StopButton, PlayButton } from './components';
-import { CodeCell, Cell, ICellModel, MarkdownCell, RawCell } from '@jupyterlab/cells';
+import { Notebook, NotebookPanel } from '@jupyterlab/notebook';
+import { AudioInputSelector, AdvanceButton, RecordButton, SaveButton, StopButton } from './components';
+import { CodeCell, Cell, ICellModel } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import * as nbformat from '@jupyterlab/nbformat';
@@ -24,7 +24,7 @@ export class MessageRecorder {
     private _editor: Editor;
     private _cell: Cell<ICellModel>;
     private _recording: Promise<Array<Blob>>;
-    private _mediaStream: Promise<MediaStream>;
+    private _mediaStream: MediaStream | null = null;
     private _mediaRecorder: MediaRecorder;
     public _eventMessages: Array<EventMessage> = [];
     private _timestamp: number;
@@ -43,8 +43,12 @@ export class MessageRecorder {
         this._app = app;
         this._notebookPanel = notebookPanel;
         this._cellIndex = null;
-        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
         this._notebookPanel.disposed.connect(this.onDisposed, this);
+
+        (async ()=>{
+
+            this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
+        })();
     }
 
     public onDisposed(sender: NotebookPanel | MessageRecorder, args: any) {
@@ -62,14 +66,17 @@ export class MessageRecorder {
         this._isPlaying = false;
     }
 
-    public onDeviceSelected(sender: AudioInputSelector, deviceId: string) {
+    public async onDeviceSelected(sender: AudioInputSelector, deviceId: string) {
 
-        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
+        this._mediaStream = null;
+
+        this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
     }
 
-    public async onRecordPressed(sender: RecordButton, event: Event) {
+    public onRecordPressed(sender: RecordButton, event: Event) {
 
         if (
+            this._mediaStream &&
             !this._isPlaying &&
             !this._isRecording &&
             this._notebookPanel.isVisible &&
@@ -87,7 +94,7 @@ export class MessageRecorder {
                 this._editor.focus();
             }
 
-            await this.startAudioCapture();
+            this.startAudioCapture();
 
             this._isRecording = true;
 
@@ -95,7 +102,7 @@ export class MessageRecorder {
         }
     }
 
-    public async onStopPressed(sender: StopButton, event: Event) {
+    public onStopPressed(sender: StopButton | null, event: Event | null) {
 
         if (this._notebookPanel.isVisible) {
 
@@ -137,7 +144,7 @@ export class MessageRecorder {
         }
     }
 
-    public async onAdvancePressed(sender: AdvanceButton, event: Event) {
+    public onAdvancePressed(sender: AdvanceButton, event: Event) {
 
         if (this._isRecording && this._notebookPanel.isVisible) {
 
@@ -169,11 +176,11 @@ export class MessageRecorder {
 
             this.advanceCursor();
 
-            await this.startAudioCapture();
+            this.startAudioCapture();
         }
     }
 
-    public async onExecutionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
+    public onExecutionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
         if (this._isRecording && args.notebook.isVisible) {
 
@@ -189,11 +196,11 @@ export class MessageRecorder {
                 input: line
             });
 
-            await this.startAudioCapture();
+            this.startAudioCapture();
         }
     }
 
-    public async onExecuted(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
+    public onExecuted(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
         if (this._isRecording && this._notebookPanel.content == args.notebook) {
 
@@ -214,7 +221,7 @@ export class MessageRecorder {
 
             this.advanceCursor();
 
-            await this.startAudioCapture();
+            this.startAudioCapture();
         }
     }
 
@@ -269,6 +276,11 @@ export class MessageRecorder {
 
     public async onSavePressed(sender: SaveButton, event: Event) {
 
+        if (this._isRecording) {
+
+            this.onStopPressed(null, null);
+        }
+
         this._isRecording = false;
 
         if (this._eventMessages.length && this._notebookPanel.isVisible) {
@@ -296,6 +308,8 @@ export class MessageRecorder {
                             try {
 
                                 fileReader.addEventListener('load', r);
+
+                                fileReader.addEventListener('error', j);
 
                                 fileReader.readAsDataURL(new Blob(recording,  { 'type': 'audio/ogg; codecs=opus' }) as Blob);
                             }
@@ -356,11 +370,11 @@ export class MessageRecorder {
         console.log(message.input, message);
     }
 
-    public async startAudioCapture() {
+    public startAudioCapture() {
 
         try {
 
-            this._mediaRecorder = new MediaRecorder(await this._mediaStream);
+            this._mediaRecorder = new MediaRecorder(this._mediaStream);
 
             this._recording = new Promise<Array<Blob>>((r, j) => {
 
@@ -374,7 +388,6 @@ export class MessageRecorder {
                 this._mediaRecorder.addEventListener('stop', () => {
 
                     r(recordings);
-                    //r(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
                 });
 
                 this._mediaRecorder.addEventListener('error', j);
