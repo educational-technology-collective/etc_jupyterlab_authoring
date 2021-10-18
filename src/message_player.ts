@@ -11,10 +11,8 @@ export class MessagePlayer {
   private _playerStopped: Signal<MessagePlayer, NotebookPanel> = new Signal<MessagePlayer, NotebookPanel>(this);
 
   private _messages: Array<EventMessage>;
-  private _message: EventMessage;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
-  private _charIndex: number;
   private _intervalId: number;
   private _cell: Cell<ICellModel>;
   private _editor: CodeMirrorEditor;
@@ -28,7 +26,6 @@ export class MessagePlayer {
 
     this.createCellsTo = this.createCellsTo.bind(this);
     this.createLinesTo = this.createLinesTo.bind(this);
-    this.printChar = this.printChar.bind(this);
     this.playMessage = this.playMessage.bind(this);
     this.onPlayPressed = this.onPlayPressed.bind(this);
     this.onRecorderStarted = this.onRecorderStarted.bind(this);
@@ -111,9 +108,9 @@ export class MessagePlayer {
 
         for (let index = 0; this._isPlaying && index < this._messages.length; index++) {
 
-          this._message = this._messages[index];
+          let message = this._messages[index];
 
-          await (this._player = this.playMessage());
+          await (this._player = this.playMessage(message));
         }
 
         this._playerStopped.emit(this._notebookPanel);
@@ -126,18 +123,18 @@ export class MessagePlayer {
     }
   }
 
-  public async playMessage() {
+  public async playMessage(message: EventMessage) {
 
     try {
 
       let audioEnded: Promise<any>;
       let printEnded: Promise<any>;
 
-      if (this._message?.recordingDataURL && this._message?.recordingDataURL.includes('base64')) {
+      if (message?.recordingDataURL && message?.recordingDataURL.includes('base64')) {
 
         try {
 
-          let result = await fetch(this._message.recordingDataURL);
+          let result = await fetch(message.recordingDataURL);
 
           let blob = await result.blob();
 
@@ -166,53 +163,62 @@ export class MessagePlayer {
         audioEnded = Promise.resolve();
       }
 
-      if (this._message.event == "line_finished" || this._message.event == "record_stopped") {
+      if (message.event == "line_finished" || message.event == "record_stopped") {
 
-        if (this._message.cell_index > this._notebook.model.cells.length - 1) {
+        if (message.cell_index > this._notebook.model.cells.length - 1) {
 
-          this.createCellsTo(this._message.cell_index);
+          this.createCellsTo(message.cell_index);
           //  The Notebook may not have sufficient cells; hence, create cells to accomodate the cell index.
         }
 
-        this._cell = this._notebook.widgets[this._message.cell_index];
+        this._cell = this._notebook.widgets[message.cell_index];
 
-        if (this._message.cell_type && this._message.cell_type != this._cell.model.type) {
+        if (message.cell_type && message.cell_type != this._cell.model.type) {
 
-          this._notebook.select(this._notebook.widgets[this._message.cell_index]);
+          this._notebook.select(this._notebook.widgets[message.cell_index]);
 
-          if (this._message.cell_type == "markdown") {
+          if (message.cell_type == "markdown") {
 
             NotebookActions.changeCellType(this._notebook, "markdown");
 
-            this._cell = this._notebook.widgets[this._message.cell_index];
+            this._cell = this._notebook.widgets[message.cell_index];
 
             (this._cell as MarkdownCell).rendered = true;
           }
-          else if (this._message.cell_type == "raw") {
+          else if (message.cell_type == "raw") {
 
             NotebookActions.changeCellType(this._notebook, "raw");
 
-            this._cell = this._notebook.widgets[this._message.cell_index];
+            this._cell = this._notebook.widgets[message.cell_index];
           }
         }
 
         this._editor = (this._cell.editor as CodeMirrorEditor);
 
-        if (this._message.line_index > this._editor.lastLine()) {
+        if (message.line_index > this._editor.lastLine()) {
 
-          this.createLinesTo(this._message.line_index);
+          this.createLinesTo(message.line_index);
         }
 
-        this._charIndex = 0;
+        let timeout = message.input.length ? message.duration / message.input.length : 0;
 
-        let timeout = this._message.input.length ? this._message.duration / this._message.input.length : 0;
+        for (let charIndex=0; this._isPlaying && charIndex < message.input.length; charIndex++) {
 
-        printEnded = new Promise((r, j) => {
+          let pos = {
+            line: message.line_index,
+            ch: charIndex
+          };
 
-          this._intervalId = setInterval(this.printChar, timeout, r, j);
-        });
+          this._editor.doc.replaceRange(message.input[charIndex], pos);
+
+          this._cell.update();
+
+          await new Promise<void>((r, j) => setTimeout(() => r(), timeout));
+        }
+
+        printEnded = Promise.resolve();
       }
-      else if (this._message.event == "execution_finished") {
+      else if (message.event == "execution_finished") {
 
         if (!this._isPlaying) {
 
@@ -230,16 +236,16 @@ export class MessagePlayer {
 
             printEnded = new Promise((r, j) => {
 
-              (this._cell as CodeCell).model.outputs.fromJSON(this._message.outputs);
+              (this._cell as CodeCell).model.outputs.fromJSON(message.outputs);
 
-              setTimeout(r, this._message.duration);
+              setTimeout(r, message.duration);
             });
           }
         }
       }
       else {
 
-        let duration = this._message.duration ? this._message.duration : 0;
+        let duration = message.duration ? message.duration : 0;
 
         if (!this._isPlaying) {
 
@@ -259,29 +265,6 @@ export class MessagePlayer {
     catch (e) {
 
       console.error(e);
-    }
-  }
-
-  private printChar(r: (value: unknown) => void, j: (reason?: any) => void) {
-
-    if (!this._isPlaying || this._charIndex > this._message.input.length - 1) {
-
-      clearInterval(this._intervalId);
-
-      r(null);
-    }
-    else {
-
-      let pos = {
-        line: this._message.line_index,
-        ch: this._charIndex
-      };
-
-      this._editor.doc.replaceRange(this._message.input[this._charIndex], pos);
-
-      this._cell.update();
-
-      this._charIndex = this._charIndex + 1;
     }
   }
 
