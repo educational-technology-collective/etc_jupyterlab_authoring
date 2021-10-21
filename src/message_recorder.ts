@@ -170,6 +170,54 @@ export class MessageRecorder {
         }
     }
 
+    public async onSavePressed(sender: SaveButton, event: Event) {
+
+        if (this._isRecording) {
+
+            this.onStopPressed(null, null);
+        }
+
+        if (this._eventMessages.length && this._notebookPanel.isVisible) {
+
+            try {
+
+                let fileReader = new FileReader();
+
+                fileReader.readAsDataURL(new Blob(await this._recordings, { 'type': 'audio/ogg; codecs=opus' }));
+
+                let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
+
+                    try {
+
+                        fileReader.addEventListener('load', r);
+
+                        fileReader.addEventListener('error', j);
+                    }
+                    catch (e) {
+
+                        console.error(e);
+                    }
+                });
+
+                let value = {
+                    eventMessages: this._eventMessages,
+                    audio: event.target.result
+                }
+
+                this._notebookPanel.content.model.metadata.set(
+                    'etc_jupyterlab_authoring',
+                    JSON.stringify(value)
+                );
+
+                await this._notebookPanel.context.saveAs();
+            }
+            catch (e) {
+
+                console.error(e);
+            }
+        }
+    }
+
     public onAdvancePressed(sender: AdvanceButton, event: Event) {
 
         if (this._isRecording && this._notebookPanel.isVisible) {
@@ -291,54 +339,6 @@ export class MessageRecorder {
             this._notebookPanel.content.node.focus();
 
             this._cellIndex = null;
-        }
-    }
-
-    public async onSavePressed(sender: SaveButton, event: Event) {
-
-        if (this._isRecording) {
-
-            this.onStopPressed(null, null);
-        }
-
-        if (this._eventMessages.length && this._notebookPanel.isVisible) {
-
-            try {
-
-                let fileReader = new FileReader();
-
-                fileReader.readAsDataURL(new Blob(await this._recordings, { 'type': 'audio/ogg; codecs=opus' }));
-
-                let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
-
-                    try {
-
-                        fileReader.addEventListener('load', r);
-
-                        fileReader.addEventListener('error', j);
-                    }
-                    catch (e) {
-
-                        console.error(e);
-                    }
-                });
-
-                let value = {
-                    eventMessages: this._eventMessages,
-                    recording: event.target.result
-                }
-
-                this._notebookPanel.content.model.metadata.set(
-                    'etc_jupyterlab_authoring',
-                    JSON.stringify(value)
-                );
-
-                await this._notebookPanel.context.saveAs();
-            }
-            catch (e) {
-
-                console.error(e);
-            }
         }
     }
 

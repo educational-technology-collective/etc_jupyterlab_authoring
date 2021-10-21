@@ -59,7 +59,7 @@ export class MessagePlayer {
 
       this._recording = (async () => {
 
-        let result = await fetch(data.recording);
+        let result = await fetch(data.audio);
 
         return result.blob();
       })();
@@ -156,7 +156,7 @@ export class MessagePlayer {
 
         this._audio.src = URL.createObjectURL(await this._recording);
 
-        this._audio.play();
+        await this._audio.play();
 
         for (let index = 0; this._isPlaying && index < this._eventMessages.length; index++) {
 
