@@ -117,7 +117,7 @@ const extension: JupyterFrontEndPlugin<void> = {
       }
       catch (e) {
 
-        console.log(e);
+        console.error(e);
       }
     });
   }

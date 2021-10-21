@@ -77,48 +77,48 @@ export class MessageRecorder {
                 !this._isPlaying &&
                 !this._isRecording
             ) {
-    
+
                 this._mediaRecorder = new MediaRecorder(await this._mediaStream);
-    
+
                 this._recordings = new Promise((r, j) => {
-    
+
                     let recordings: Array<Blob> = [];
-    
+
                     this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
-    
+
                         recordings.push(event.data);
                     });
-    
+
                     this._mediaRecorder.addEventListener('stop', () => {
-    
+
                         r(recordings);
                     });
-    
+
                     this._mediaRecorder.addEventListener('error', j);
                 });
-    
+
                 this._mediaRecorder.start();
-    
+
                 this._eventMessages = [];
-    
+
                 this.aggregateMessage({
                     event: "record_started",
                     notebook_id: this._notebookPanel.content.id
                 });
-    
+
                 this._notebookPanel.content.node.focus();
-    
+
                 if (this._editor) {
-    
+
                     this._editor.focus();
                 }
-    
+
                 this._isRecording = true;
-    
+
                 this._recorderStarted.emit(this._notebookPanel);
             }
         }
-        catch(e) {
+        catch (e) {
 
             console.error(e);
         }
@@ -168,14 +168,13 @@ export class MessageRecorder {
 
     public async onSavePressed(sender: SaveButton, event: Event) {
 
-        if (this._isRecording) {
+        try {
+            if (this._isRecording) {
 
-            this.onStopPressed(null, null);
-        }
+                this.onStopPressed(null, null);
+            }
 
-        if (this._eventMessages.length && this._notebookPanel.isVisible) {
-
-            try {
+            if (this._eventMessages.length && this._notebookPanel.isVisible) {
 
                 let fileReader = new FileReader();
 
@@ -200,10 +199,10 @@ export class MessageRecorder {
 
                 await this._notebookPanel.context.saveAs();
             }
-            catch (e) {
+        }
+        catch (e) {
 
-                console.error(e);
-            }
+            console.error(e);
         }
     }
 
