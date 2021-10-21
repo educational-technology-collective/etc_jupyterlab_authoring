@@ -12,4 +12,5 @@ export interface EventMessage {
     start_timestamp?: number;
     stop_timestamp?: number;
     duration?: number;
+    offset?: number;
 }

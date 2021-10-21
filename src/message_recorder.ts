@@ -80,31 +80,24 @@ export class MessageRecorder {
             !this._isRecording
         ) {
 
-            try {
+            this._mediaRecorder = new MediaRecorder(this._mediaStream);
 
-                this._mediaRecorder = new MediaRecorder(this._mediaStream);
+            this._recordings = new Promise((r, j) => {
 
-                this._recordings = new Promise((r, j) => {
+                let recordings: Array<Blob> = [];
 
-                    let recordings: Array<Blob> = [];
+                this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
 
-                    this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
-
-                        recordings.push(event.data);
-                    });
-
-                    this._mediaRecorder.addEventListener('stop', () => {
-
-                        console.log('Recording Stopped.');
-
-                        r(recordings);
-                    });
+                    recordings.push(event.data);
                 });
-            }
-            catch (e) {
 
-                console.error(e);
-            }
+                this._mediaRecorder.addEventListener('stop', () => {
+
+                    r(recordings);
+                });
+
+                this._mediaRecorder.addEventListener('error', j);
+            });
 
             this._mediaRecorder.start();
 
@@ -187,16 +180,9 @@ export class MessageRecorder {
 
                 let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
 
-                    try {
+                    fileReader.addEventListener('load', r);
 
-                        fileReader.addEventListener('load', r);
-
-                        fileReader.addEventListener('error', j);
-                    }
-                    catch (e) {
-
-                        console.error(e);
-                    }
+                    fileReader.addEventListener('error', j);
                 });
 
                 let value = {
