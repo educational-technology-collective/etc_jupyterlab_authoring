@@ -124,7 +124,7 @@ export class MessageRecorder {
         }
     }
 
-    public async onStopPressed(sender: StopButton | null, event: Event | null) {
+    public onStopPressed(sender: StopButton | null, event: Event | null) {
 
         if (this._notebookPanel.isVisible && this._isRecording) {
 
@@ -331,7 +331,7 @@ export class MessageRecorder {
         }
     }
 
-    public aggregateMessage(message: EventMessage) {
+    private aggregateMessage(message: EventMessage) {
 
         let now = Date.now();
 
