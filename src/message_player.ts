@@ -1,26 +1,36 @@
+import {
+  JSONExt,
+  JSONObject,
+  PartialJSONObject,
+  PartialJSONValue,
+  ReadonlyPartialJSONObject
+} from '@lumino/coreutils';
 import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { EventMessage } from "./types";
 import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { ExecutionCheckbox, PlayButton } from "./components";
 import { ISignal, Signal } from "@lumino/signaling";
+import { IObservableUndoableList } from '@jupyterlab/observables';
+import { MessageRecorder } from "./message_recorder";
 
 export class MessagePlayer {
 
   private _playerStarted: Signal<MessagePlayer, NotebookPanel> = new Signal<MessagePlayer, NotebookPanel>(this);
   private _playerStopped: Signal<MessagePlayer, NotebookPanel> = new Signal<MessagePlayer, NotebookPanel>(this);
 
-  private _messages: Array<EventMessage>;
+  private _eventMessages: Array<EventMessage>;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
   private _intervalId: number;
-  private _cell: Cell<ICellModel>;
   private _editor: CodeMirrorEditor;
   private _isRecording: boolean = false;
   private _isPlaying: boolean = false;
   private _audio: HTMLAudioElement;
   private _player: Promise<any>;
+  private _recording: Promise<Blob>;
   private _executeCell: boolean;
+  private _contentModel: PartialJSONValue;
 
   constructor({ notebookPanel }: { notebookPanel: NotebookPanel }) {
 
@@ -37,9 +47,23 @@ export class MessagePlayer {
 
     this._notebook = notebookPanel.content;
 
-    this._isRecording = false;
+    this._contentModel = notebookPanel.content.model.toJSON();
 
     notebookPanel.disposed.connect(this.onDisposed, this);
+
+    if (this._notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
+
+      let data = JSON.parse(this._notebookPanel.content.model.metadata.get('etc_jupyterlab_authoring') as string);
+
+      this._eventMessages = data.eventMessages;
+
+      this._recording = (async () => {
+
+        let result = await fetch(data.recording);
+
+        return result.blob();
+      })();
+    }
   }
 
   public onDisposed(sender: NotebookPanel | MessagePlayer, args: any) {
@@ -54,19 +78,44 @@ export class MessagePlayer {
     this._executeCell = state;
   }
 
+  public async onResetPressed(sender: any, args: any) {
+
+    if (
+      this._notebookPanel.isVisible &&
+      !this._isRecording
+    ) {
+
+      await this.onStopPressed();
+
+      this._notebookPanel.content.model.fromJSON(this._contentModel);
+
+      this._notebookPanel.content.model.initialize();
+
+      await this._notebookPanel.context.save();
+    }
+  }
+
   public onRecorderStarted() {
 
     this._isRecording = true;
+
+    this._eventMessages = [];
   }
 
-  public onRecorderStopped() {
+  public async onRecorderStopped(sender: MessageRecorder, args: NotebookPanel) {
+
+    this._eventMessages = sender.eventMessages;
+
+    let recordings = await sender.recordings;
+
+    this._recording = Promise.resolve(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
 
     this._isRecording = false;
   }
 
   public async onStopPressed() {
 
-    if (this._isPlaying && this._notebookPanel.isVisible) {
+    if (this._notebookPanel.isVisible && this._isPlaying) {
 
       this._isPlaying = false;
 
@@ -85,13 +134,10 @@ export class MessagePlayer {
       if (
         !this._isPlaying &&
         !this._isRecording &&
-        this._notebookPanel.isVisible &&
-        this._notebookPanel.content.model.metadata.has("etc_jupyterlab_authoring")
+        this._notebookPanel.isVisible
       ) {
 
-        this._audio = new Audio();
-
-        this._messages = ((this._notebookPanel.content.model.metadata.get("etc_jupyterlab_authoring") as unknown) as Array<EventMessage>);
+        this._contentModel = this._notebookPanel.content.model.toJSON();
 
         const cell = this._notebookPanel.content.model.contentFactory.createCell(
           this._notebookPanel.content.notebookConfig.defaultCell,
@@ -106,9 +152,15 @@ export class MessagePlayer {
 
         this._isPlaying = true;
 
-        for (let index = 0; this._isPlaying && index < this._messages.length; index++) {
+        this._audio = new Audio();
 
-          let message = this._messages[index];
+        this._audio.src = URL.createObjectURL(await this._recording);
+
+        this._audio.play();
+
+        for (let index = 0; this._isPlaying && index < this._eventMessages.length; index++) {
+
+          let message = this._eventMessages[index];
 
           await (this._player = this.playMessage(message));
         }
@@ -119,61 +171,26 @@ export class MessagePlayer {
       }
     }
     catch (e) {
+
       console.error(e);
     }
   }
 
   public async playMessage(message: EventMessage) {
 
+    if (message.cell_index > this._notebook.model.cells.length - 1) {
+
+      this.createCellsTo(message.cell_index);
+      //  The Notebook may not have sufficient cells; hence, create cells to accomodate the cell index.
+    }
+
+    let cell: Cell<ICellModel> = this._notebook.widgets[message.cell_index];
+
     try {
-
-      let audioEnded: Promise<any>;
-      let printEnded: Promise<any>;
-
-      if (message?.recordingDataURL && message?.recordingDataURL.includes('base64')) {
-
-        try {
-
-          let result = await fetch(message.recordingDataURL);
-
-          let blob = await result.blob();
-
-          let objectURL = URL.createObjectURL(blob);
-
-          this._audio.src = objectURL;
-
-          audioEnded = new Promise((r, j) => {
-
-            this._audio.onended = r;
-
-            this._audio.onpause = r;
-          })
-
-          this._audio.load();
-
-          await this._audio.play();
-        }
-        catch (e) {
-
-          audioEnded = Promise.resolve();
-        }
-      }
-      else {
-
-        audioEnded = Promise.resolve();
-      }
 
       if (message.event == "line_finished" || message.event == "record_stopped") {
 
-        if (message.cell_index > this._notebook.model.cells.length - 1) {
-
-          this.createCellsTo(message.cell_index);
-          //  The Notebook may not have sufficient cells; hence, create cells to accomodate the cell index.
-        }
-
-        this._cell = this._notebook.widgets[message.cell_index];
-
-        if (message.cell_type && message.cell_type != this._cell.model.type) {
+        if (message.cell_type && message.cell_type != cell.model.type) {
 
           this._notebook.select(this._notebook.widgets[message.cell_index]);
 
@@ -181,19 +198,19 @@ export class MessagePlayer {
 
             NotebookActions.changeCellType(this._notebook, "markdown");
 
-            this._cell = this._notebook.widgets[message.cell_index];
+            cell = this._notebook.widgets[message.cell_index];
 
-            (this._cell as MarkdownCell).rendered = true;
+            (cell as MarkdownCell).rendered = true;
           }
           else if (message.cell_type == "raw") {
 
             NotebookActions.changeCellType(this._notebook, "raw");
 
-            this._cell = this._notebook.widgets[message.cell_index];
+            cell = this._notebook.widgets[message.cell_index];
           }
         }
 
-        this._editor = (this._cell.editor as CodeMirrorEditor);
+        this._editor = (cell.editor as CodeMirrorEditor);
 
         if (message.line_index > this._editor.lastLine()) {
 
@@ -202,7 +219,7 @@ export class MessagePlayer {
 
         let timeout = message.input.length ? message.duration / message.input.length : 0;
 
-        for (let charIndex=0; this._isPlaying && charIndex < message.input.length; charIndex++) {
+        for (let charIndex = 0; this._isPlaying && charIndex < message.input.length; charIndex++) {
 
           let pos = {
             line: message.line_index,
@@ -211,56 +228,36 @@ export class MessagePlayer {
 
           this._editor.doc.replaceRange(message.input[charIndex], pos);
 
-          this._cell.update();
+          cell.update();
 
           await new Promise<void>((r, j) => setTimeout(() => r(), timeout));
         }
-
-        printEnded = Promise.resolve();
       }
       else if (message.event == "execution_finished") {
 
-        if (!this._isPlaying) {
+        if (this._executeCell) {
 
-          printEnded = Promise.resolve();
+          await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
         }
         else {
 
-          if (this._executeCell) {
+          await new Promise((r, j) => {
 
-            await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
+            (cell as CodeCell).model.outputs.fromJSON(message.outputs);
 
-            printEnded = Promise.resolve();
-          }
-          else {
-
-            printEnded = new Promise((r, j) => {
-
-              (this._cell as CodeCell).model.outputs.fromJSON(message.outputs);
-
-              setTimeout(r, message.duration);
-            });
-          }
+            setTimeout(r, message.duration);
+          });
         }
       }
       else {
 
         let duration = message.duration ? message.duration : 0;
 
-        if (!this._isPlaying) {
+        await new Promise((r, j) => {
 
-          printEnded = Promise.resolve();
-        }
-        else {
-
-          printEnded = new Promise((r, j) => {
-
-            setTimeout(r, duration);
-          });
-        }
+          setTimeout(r, duration);
+        });
       }
-
-      return Promise.all([audioEnded, printEnded]);
     }
     catch (e) {
 

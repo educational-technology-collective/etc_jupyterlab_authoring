@@ -186,6 +186,60 @@ export class AuthoringSidePanel extends Panel {
     }
 }
 
+export class ResetButton extends Widget {
+
+    private _pressed: Signal<ResetButton, Event> = new Signal(this);
+    private _notebookPanel: NotebookPanel;
+
+    constructor(
+        { notebookPanel }: { notebookPanel: NotebookPanel }) {
+        super();
+
+        this.onDisposed = this.onDisposed.bind(this);
+        this.onKeydown = this.onKeydown.bind(this);
+        this.onPressed = this.onPressed.bind(this);
+
+        this._notebookPanel = notebookPanel;
+
+        window.addEventListener("keydown", this.onKeydown, true);
+
+        this.node.addEventListener('click', this.onPressed);
+
+        this._notebookPanel.disposed.connect(this.onDisposed, this);
+
+        this.addClass("etc-jupyterlab-authoring-button");
+    }
+
+    public onDisposed() {
+
+        window.removeEventListener("keydown", this.onKeydown, true);
+    }
+
+    private onKeydown(event: KeyboardEvent) {
+
+        if (event.ctrlKey && event.key == "F6" && this._notebookPanel.isVisible) {
+
+            this.onPressed(event);
+        }
+    }
+
+    private onPressed(event: Event) {
+
+        event.preventDefault();
+        event.stopImmediatePropagation();
+
+        this._pressed.emit(event);
+    }
+
+    get pressed(): ISignal<ResetButton, Event> {
+        return this._pressed;
+    }
+
+    get notebookPanel() {
+        return this._notebookPanel;
+    }
+}
+
 export class RecordButton extends Widget {
 
     private _pressed: Signal<RecordButton, Event> = new Signal(this);

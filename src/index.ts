@@ -12,7 +12,7 @@ import {
 
 import { Signal } from "@lumino/signaling";
 
-import { AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton, StatusIndicator, AudioInputSelector, ExecutionCheckbox } from "./components";
+import { AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton, StatusIndicator, AudioInputSelector, ExecutionCheckbox, ResetButton } from "./components";
 
 import { IStatusBar } from "@jupyterlab/statusbar";
 
@@ -67,7 +67,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     //  There is one status indicator for all Notebooks; hence update the status indicator whenever the user changes Notebooks.
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
-      
+
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
 
@@ -75,6 +75,7 @@ const extension: JupyterFrontEndPlugin<void> = {
       let stopButton = new StopButton({ notebookPanel });
       let playButton = new PlayButton({ notebookPanel });
       let pauseButton = new PauseButton({ notebookPanel });
+      let resetButton = new ResetButton({ notebookPanel });
       let saveButton = new SaveButton({ notebookPanel });
       let advanceButton = new AdvanceButton({ notebookPanel });
 
@@ -88,6 +89,7 @@ const extension: JupyterFrontEndPlugin<void> = {
 
       playButton.pressed.connect(messagePlayer.onPlayPressed, messagePlayer);
       stopButton.pressed.connect(messagePlayer.onStopPressed, messagePlayer);
+      resetButton.pressed.connect(messagePlayer.onResetPressed, messagePlayer);
       //  Connect the player to its controls.
 
       recordButton.pressed.connect(messageRecorder.onRecordPressed, messageRecorder);

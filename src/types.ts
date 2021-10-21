@@ -12,6 +12,4 @@ export interface EventMessage {
     start_timestamp?: number;
     stop_timestamp?: number;
     duration?: number;
-    recording?: Promise<Array<Blob>>;
-    recordingDataURL?: string;
 }
