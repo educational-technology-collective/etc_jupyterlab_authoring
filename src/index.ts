@@ -68,50 +68,57 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
 
-      await notebookPanel.revealed;
-      await notebookPanel.sessionContext.ready;
+      try {
 
-      let recordButton = new RecordButton({ notebookPanel });
-      let stopButton = new StopButton({ notebookPanel });
-      let playButton = new PlayButton({ notebookPanel });
-      let pauseButton = new PauseButton({ notebookPanel });
-      let resetButton = new ResetButton({ notebookPanel });
-      let saveButton = new SaveButton({ notebookPanel });
-      let advanceButton = new AdvanceButton({ notebookPanel });
+        await notebookPanel.revealed;
+        await notebookPanel.sessionContext.ready;
 
-      let messageRecorder = new MessageRecorder({ app, notebookPanel, audioInputSelector });
+        let recordButton = new RecordButton({ notebookPanel });
+        let stopButton = new StopButton({ notebookPanel });
+        let playButton = new PlayButton({ notebookPanel });
+        let pauseButton = new PauseButton({ notebookPanel });
+        let resetButton = new ResetButton({ notebookPanel });
+        let saveButton = new SaveButton({ notebookPanel });
+        let advanceButton = new AdvanceButton({ notebookPanel });
 
-      let messagePlayer = new MessagePlayer({ notebookPanel });
+        let messageRecorder = new MessageRecorder({ app, notebookPanel, audioInputSelector });
 
-      audioInputSelector.deviceSelected.connect(messageRecorder.onDeviceSelected, messageRecorder);
+        let messagePlayer = new MessagePlayer({ notebookPanel });
 
-      executionCheckbox.changed.connect(messagePlayer.onExecutionCheckboxChanged, messagePlayer);
+        audioInputSelector.deviceSelected.connect(messageRecorder.onDeviceSelected, messageRecorder);
 
-      playButton.pressed.connect(messagePlayer.onPlayPressed, messagePlayer);
-      stopButton.pressed.connect(messagePlayer.onStopPressed, messagePlayer);
-      resetButton.pressed.connect(messagePlayer.onResetPressed, messagePlayer);
-      //  Connect the player to its controls.
+        executionCheckbox.changed.connect(messagePlayer.onExecutionCheckboxChanged, messagePlayer);
 
-      recordButton.pressed.connect(messageRecorder.onRecordPressed, messageRecorder);
-      stopButton.pressed.connect(messageRecorder.onStopPressed, messageRecorder);
-      saveButton.pressed.connect(messageRecorder.onSavePressed, messageRecorder);
-      advanceButton.pressed.connect(messageRecorder.onAdvancePressed, messageRecorder);
-      NotebookActions.executionScheduled.connect(messageRecorder.onExecutionScheduled, messageRecorder);
-      NotebookActions.executed.connect(messageRecorder.onExecuted, messageRecorder);
-      //  Connect the recorder to it's controls and Signals.
+        playButton.pressed.connect(messagePlayer.onPlayPressed, messagePlayer);
+        stopButton.pressed.connect(messagePlayer.onStopPressed, messagePlayer);
+        resetButton.pressed.connect(messagePlayer.onResetPressed, messagePlayer);
+        //  Connect the player to its controls.
 
-      messageRecorder.recorderStarted.connect(messagePlayer.onRecorderStarted, messagePlayer);
-      messageRecorder.recorderStopped.connect(messagePlayer.onRecorderStopped, messagePlayer);
-      messagePlayer.playerStarted.connect(messageRecorder.onPlayerStarted, messageRecorder);
-      messagePlayer.playerStopped.connect(messageRecorder.onPlayerStopped, messageRecorder);
-      //  The Recorder and the Player need to be informed of eachother's states;
-      //  hence connect Signals in order to provide notification of state.
+        recordButton.pressed.connect(messageRecorder.onRecordPressed, messageRecorder);
+        stopButton.pressed.connect(messageRecorder.onStopPressed, messageRecorder);
+        saveButton.pressed.connect(messageRecorder.onSavePressed, messageRecorder);
+        advanceButton.pressed.connect(messageRecorder.onAdvancePressed, messageRecorder);
+        NotebookActions.executionScheduled.connect(messageRecorder.onExecutionScheduled, messageRecorder);
+        NotebookActions.executed.connect(messageRecorder.onExecuted, messageRecorder);
+        //  Connect the recorder to it's controls and Signals.
 
-      messageRecorder.recorderStarted.connect(statusIndicator.onRecorderStarted, statusIndicator);
-      messageRecorder.recorderStopped.connect(statusIndicator.onRecorderStopped, statusIndicator);
-      messagePlayer.playerStarted.connect(statusIndicator.onPlayerStarted, statusIndicator);
-      messagePlayer.playerStopped.connect(statusIndicator.onPlayerStopped, statusIndicator);
-      //  Connect the player and the recorder to the status indicator.
+        messageRecorder.recorderStarted.connect(messagePlayer.onRecorderStarted, messagePlayer);
+        messageRecorder.recorderStopped.connect(messagePlayer.onRecorderStopped, messagePlayer);
+        messagePlayer.playerStarted.connect(messageRecorder.onPlayerStarted, messageRecorder);
+        messagePlayer.playerStopped.connect(messageRecorder.onPlayerStopped, messageRecorder);
+        //  The Recorder and the Player need to be informed of eachother's states;
+        //  hence connect Signals in order to provide notification of state.
+
+        messageRecorder.recorderStarted.connect(statusIndicator.onRecorderStarted, statusIndicator);
+        messageRecorder.recorderStopped.connect(statusIndicator.onRecorderStopped, statusIndicator);
+        messagePlayer.playerStarted.connect(statusIndicator.onPlayerStarted, statusIndicator);
+        messagePlayer.playerStopped.connect(statusIndicator.onPlayerStopped, statusIndicator);
+        //  Connect the player and the recorder to the status indicator.
+      }
+      catch (e) {
+
+        console.log(e);
+      }
     });
   }
 }

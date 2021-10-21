@@ -59,9 +59,16 @@ export class MessagePlayer {
 
       this._recording = (async () => {
 
-        let result = await fetch(data.audio);
+        try {
 
-        return result.blob();
+          let result = await fetch(data.audio);
+
+          return result.blob();
+        }
+        catch (e) {
+
+          console.error(e);
+        }
       })();
     }
   }
@@ -80,18 +87,24 @@ export class MessagePlayer {
 
   public async onResetPressed(sender: any, args: any) {
 
-    if (
-      this._notebookPanel.isVisible &&
-      !this._isRecording
-    ) {
+    try {
+      if (
+        this._notebookPanel.isVisible &&
+        !this._isRecording
+      ) {
 
-      await this.onStopPressed();
+        await this.onStopPressed();
 
-      this._notebookPanel.content.model.fromJSON(this._contentModel);
+        this._notebookPanel.content.model.fromJSON(this._contentModel);
 
-      this._notebookPanel.content.model.initialize();
+        this._notebookPanel.content.model.initialize();
 
-      await this._notebookPanel.context.save();
+        await this._notebookPanel.context.save();
+      }
+    }
+    catch (e) {
+
+      console.error(e);
     }
   }
 
@@ -104,33 +117,45 @@ export class MessagePlayer {
 
   public async onRecorderStopped(sender: MessageRecorder, args: NotebookPanel) {
 
-    this._eventMessages = sender.eventMessages;
+    try {
 
-    let recordings = await sender.recordings;
+      this._isRecording = false;
 
-    this._recording = Promise.resolve(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
+      this._eventMessages = sender.eventMessages;
 
-    this._isRecording = false;
+      let recordings = await sender.recordings;
+
+      this._recording = Promise.resolve(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
+    }
+    catch (e) {
+
+      console.error(e);
+    }
   }
 
   public async onStopPressed() {
 
-    if (this._notebookPanel.isVisible && this._isPlaying) {
+    try {
+      if (this._notebookPanel.isVisible && this._isPlaying) {
 
-      this._isPlaying = false;
+        this._isPlaying = false;
 
-      this._audio.pause();
+        this._audio.pause();
 
-      await this._player;
+        await this._player;
 
-      this._playerStopped.emit(this._notebookPanel);
+        this._playerStopped.emit(this._notebookPanel);
+      }
+    }
+    catch (e) {
+
+      console.error(e);
     }
   }
 
   public async onPlayPressed(sender: PlayButton, event: Event) {
 
     try {
-
       if (
         !this._isPlaying &&
         !this._isRecording &&
@@ -164,15 +189,17 @@ export class MessagePlayer {
 
           await (this._player = this.playMessage(message));
         }
-
-        this._playerStopped.emit(this._notebookPanel);
-
-        this._isPlaying = false;
       }
     }
     catch (e) {
 
       console.error(e);
+    }
+    finally {
+
+      this._playerStopped.emit(this._notebookPanel);
+
+      this._isPlaying = false;
     }
   }
 
@@ -186,82 +213,75 @@ export class MessagePlayer {
 
     let cell: Cell<ICellModel> = this._notebook.widgets[message.cell_index];
 
-    try {
+    if (message.event == "line_finished" || message.event == "record_stopped") {
 
-      if (message.event == "line_finished" || message.event == "record_stopped") {
+      if (message.cell_type && message.cell_type != cell.model.type) {
 
-        if (message.cell_type && message.cell_type != cell.model.type) {
+        this._notebook.select(this._notebook.widgets[message.cell_index]);
 
-          this._notebook.select(this._notebook.widgets[message.cell_index]);
+        if (message.cell_type == "markdown") {
 
-          if (message.cell_type == "markdown") {
+          NotebookActions.changeCellType(this._notebook, "markdown");
 
-            NotebookActions.changeCellType(this._notebook, "markdown");
+          cell = this._notebook.widgets[message.cell_index];
 
-            cell = this._notebook.widgets[message.cell_index];
-
-            (cell as MarkdownCell).rendered = true;
-          }
-          else if (message.cell_type == "raw") {
-
-            NotebookActions.changeCellType(this._notebook, "raw");
-
-            cell = this._notebook.widgets[message.cell_index];
-          }
+          (cell as MarkdownCell).rendered = true;
         }
+        else if (message.cell_type == "raw") {
 
-        this._editor = (cell.editor as CodeMirrorEditor);
+          NotebookActions.changeCellType(this._notebook, "raw");
 
-        if (message.line_index > this._editor.lastLine()) {
-
-          this.createLinesTo(message.line_index);
-        }
-
-        let timeout = message.input.length ? message.duration / message.input.length : 0;
-
-        for (let charIndex = 0; this._isPlaying && charIndex < message.input.length; charIndex++) {
-
-          let pos = {
-            line: message.line_index,
-            ch: charIndex
-          };
-
-          this._editor.doc.replaceRange(message.input[charIndex], pos);
-
-          cell.update();
-
-          await new Promise<void>((r, j) => setTimeout(() => r(), timeout));
+          cell = this._notebook.widgets[message.cell_index];
         }
       }
-      else if (message.event == "execution_finished") {
 
-        if (this._executeCell) {
+      this._editor = (cell.editor as CodeMirrorEditor);
 
-          await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
-        }
-        else {
+      if (message.line_index > this._editor.lastLine()) {
 
-          await new Promise((r, j) => {
+        this.createLinesTo(message.line_index);
+      }
 
-            (cell as CodeCell).model.outputs.fromJSON(message.outputs);
+      let timeout = message.input.length ? message.duration / message.input.length : 0;
 
-            setTimeout(r, message.duration);
-          });
-        }
+      for (let charIndex = 0; this._isPlaying && charIndex < message.input.length; charIndex++) {
+
+        let pos = {
+          line: message.line_index,
+          ch: charIndex
+        };
+
+        this._editor.doc.replaceRange(message.input[charIndex], pos);
+
+        cell.update();
+
+        await new Promise<void>((r, j) => setTimeout(() => r(), timeout));
+      }
+    }
+    else if (message.event == "execution_finished") {
+
+      if (this._executeCell) {
+
+        await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
       }
       else {
 
-        let duration = message.duration ? message.duration : 0;
-
         await new Promise((r, j) => {
 
-          setTimeout(r, duration);
+          (cell as CodeCell).model.outputs.fromJSON(message.outputs);
+
+          setTimeout(r, message.duration);
         });
       }
     }
-    catch (e) {
+    else {
 
-      console.error(e);
+      let duration = message.duration ? message.duration : 0;
+
+      await new Promise((r, j) => {
+
+        setTimeout(r, duration);
+      });
     }
   }
 

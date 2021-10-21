@@ -106,10 +106,16 @@ export class AudioInputSelector extends Widget {
         navigator.mediaDevices.addEventListener('devicechange', this.onDeviceChanged);
 
         (async () => {
+            try {
 
-            await navigator.mediaDevices.getUserMedia({ audio: true });
+                await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            navigator.mediaDevices.dispatchEvent(new Event('devicechange'));
+                navigator.mediaDevices.dispatchEvent(new Event('devicechange'));
+            }
+            catch(e) {
+                
+                console.error(e);
+            }
         })();
     }
 

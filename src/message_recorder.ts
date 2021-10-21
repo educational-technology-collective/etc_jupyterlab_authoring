@@ -46,8 +46,14 @@ export class MessageRecorder {
         this._notebookPanel.disposed.connect(this.onDisposed, this);
 
         (async () => {
+            try {
 
-            this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
+                this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
+            }
+            catch (e) {
+
+                console.error(e);
+            }
         })();
     }
 
@@ -68,7 +74,14 @@ export class MessageRecorder {
 
     public async onDeviceSelected(sender: AudioInputSelector, deviceId: string) {
 
-        this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
+        try {
+
+            this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
+        }
+        catch (e) {
+            
+            console.error(e);
+        }
     }
 
     public onRecordPressed(sender: RecordButton, event: Event) {
