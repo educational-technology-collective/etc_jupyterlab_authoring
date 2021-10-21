@@ -24,7 +24,7 @@ export class MessageRecorder {
     private _editor: Editor;
     private _cell: Cell<ICellModel>;
     private _recordings: Promise<Array<Blob>>;
-    private _mediaStream: MediaStream | null = null;
+    private _mediaStream: Promise<MediaStream>;
     private _mediaRecorder: MediaRecorder;
     private _eventMessages: Array<EventMessage> = [];
     private _lastTimestamp: number;
@@ -45,16 +45,7 @@ export class MessageRecorder {
         this._cellIndex = null;
         this._notebookPanel.disposed.connect(this.onDisposed, this);
 
-        (async () => {
-            try {
-
-                this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
-            }
-            catch (e) {
-
-                console.error(e);
-            }
-        })();
+        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
     }
 
     public onDisposed(sender: NotebookPanel | MessageRecorder, args: any) {
@@ -74,63 +65,62 @@ export class MessageRecorder {
 
     public async onDeviceSelected(sender: AudioInputSelector, deviceId: string) {
 
-        try {
-
-            this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
-        }
-        catch (e) {
-            
-            console.error(e);
-        }
+        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
     }
 
-    public onRecordPressed(sender: RecordButton, event: Event) {
+    public async onRecordPressed(sender: RecordButton, event: Event) {
 
-        if (
-            this._notebookPanel.isVisible &&
-            this._mediaStream &&
-            !this._isPlaying &&
-            !this._isRecording
-        ) {
-
-            this._mediaRecorder = new MediaRecorder(this._mediaStream);
-
-            this._recordings = new Promise((r, j) => {
-
-                let recordings: Array<Blob> = [];
-
-                this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
-
-                    recordings.push(event.data);
+        try {
+            if (
+                this._notebookPanel.isVisible &&
+                this._mediaStream &&
+                !this._isPlaying &&
+                !this._isRecording
+            ) {
+    
+                this._mediaRecorder = new MediaRecorder(await this._mediaStream);
+    
+                this._recordings = new Promise((r, j) => {
+    
+                    let recordings: Array<Blob> = [];
+    
+                    this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+    
+                        recordings.push(event.data);
+                    });
+    
+                    this._mediaRecorder.addEventListener('stop', () => {
+    
+                        r(recordings);
+                    });
+    
+                    this._mediaRecorder.addEventListener('error', j);
                 });
-
-                this._mediaRecorder.addEventListener('stop', () => {
-
-                    r(recordings);
+    
+                this._mediaRecorder.start();
+    
+                this._eventMessages = [];
+    
+                this.aggregateMessage({
+                    event: "record_started",
+                    notebook_id: this._notebookPanel.content.id
                 });
-
-                this._mediaRecorder.addEventListener('error', j);
-            });
-
-            this._mediaRecorder.start();
-
-            this._eventMessages = [];
-
-            this.aggregateMessage({
-                event: "record_started",
-                notebook_id: this._notebookPanel.content.id
-            });
-
-            this._notebookPanel.content.node.focus();
-
-            if (this._editor) {
-
-                this._editor.focus();
+    
+                this._notebookPanel.content.node.focus();
+    
+                if (this._editor) {
+    
+                    this._editor.focus();
+                }
+    
+                this._isRecording = true;
+    
+                this._recorderStarted.emit(this._notebookPanel);
             }
+        }
+        catch(e) {
 
-            this._isRecording = true;
-
-            this._recorderStarted.emit(this._notebookPanel);
+            console.error(e);
         }
     }
 
