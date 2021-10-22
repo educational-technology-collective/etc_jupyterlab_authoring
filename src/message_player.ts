@@ -9,15 +9,15 @@ import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { EventMessage } from "./types";
 import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
-import { ExecutionCheckbox, PlayButton } from "./components";
+import { ExecutionCheckbox, PlayButton } from "./widget_wrappers";
 import { ISignal, Signal } from "@lumino/signaling";
-import { IObservableUndoableList } from '@jupyterlab/observables';
 import { MessageRecorder } from "./message_recorder";
 
 export class MessagePlayer {
 
   private _playerStarted: Signal<MessagePlayer, NotebookPanel> = new Signal<MessagePlayer, NotebookPanel>(this);
   private _playerStopped: Signal<MessagePlayer, NotebookPanel> = new Signal<MessagePlayer, NotebookPanel>(this);
+  private _eventMessagesChanged: Signal<MessagePlayer, Array<EventMessage>> = new Signal<MessagePlayer, Array<EventMessage>>(this);
 
   private _eventMessages: Array<EventMessage>;
   private _notebookPanel: NotebookPanel;
@@ -57,6 +57,8 @@ export class MessagePlayer {
 
       this._eventMessages = data.eventMessages;
 
+
+
       this._recording = (async () => {
 
         try {
@@ -73,7 +75,7 @@ export class MessagePlayer {
     }
   }
 
-  public onDisposed(sender: NotebookPanel | MessagePlayer, args: any) {
+  private onDisposed(sender: NotebookPanel | MessagePlayer, args: any) {
 
     clearInterval(this._intervalId);
 
@@ -163,7 +165,9 @@ export class MessagePlayer {
       ) {
 
         this._contentModel = this._notebookPanel.content.model.toJSON();
+        //  The Notebook needs to be saved so that it can be reset; hence freeze the Notebook.
 
+        //
         const cell = this._notebookPanel.content.model.contentFactory.createCell(
           this._notebookPanel.content.notebookConfig.defaultCell,
           {}
@@ -172,6 +176,7 @@ export class MessagePlayer {
         this._notebookPanel.content.model.cells.insert(0, cell);
 
         this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
+        //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
 
         this._playerStarted.emit(this._notebookPanel);
 
@@ -317,5 +322,13 @@ export class MessagePlayer {
 
   get playerStopped(): ISignal<MessagePlayer, NotebookPanel> {
     return this._playerStopped;
+  }
+
+  get eventMessagesChanged(): ISignal<MessagePlayer, Array<EventMessage>> {
+    return this._eventMessagesChanged;
+  }
+
+  get eventMessages(): Array<EventMessage> {
+    return this._eventMessages;
   }
 }

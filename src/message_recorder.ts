@@ -1,7 +1,7 @@
 /// <reference types="@types/dom-mediacapture-record" />
 
 import { Notebook, NotebookPanel } from '@jupyterlab/notebook';
-import { AudioInputSelector, AdvanceButton, RecordButton, SaveButton, StopButton } from './components';
+import { AudioInputSelector, AdvanceButton, RecordButton, SaveButton, StopButton } from './widget_wrappers';
 import { CodeCell, Cell, ICellModel } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
@@ -14,6 +14,7 @@ export class MessageRecorder {
 
     private _recorderStarted: Signal<MessageRecorder, NotebookPanel> = new Signal<MessageRecorder, NotebookPanel>(this);
     private _recorderStopped: Signal<MessageRecorder, NotebookPanel> = new Signal<MessageRecorder, NotebookPanel>(this);
+    private _eventMessagesChanged: Signal<MessageRecorder, Array<EventMessage>> = new Signal<MessageRecorder, Array<EventMessage>>(this);
 
     private _app: JupyterFrontEnd;
     private _notebookPanel: NotebookPanel;
@@ -367,11 +368,15 @@ export class MessageRecorder {
         return this._recorderStopped;
     }
 
+    get eventMessagesChanged(): ISignal<MessageRecorder, Array<EventMessage>> {
+        return this._eventMessagesChanged;
+      }  
+
     get eventMessages(): Array<EventMessage> {
         return this._eventMessages;
     }
 
     get recordings(): Promise<Array<Blob>> {
         return this._recordings;
-    }
+    }  
 }

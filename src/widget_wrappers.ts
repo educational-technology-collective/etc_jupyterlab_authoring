@@ -1,61 +1,25 @@
-import { Widget, Panel } from "@lumino/widgets";
+import { Widget } from "@lumino/widgets";
 
 import { Signal, ISignal } from "@lumino/signaling";
 
-import { UUID } from '@lumino/coreutils';
+import { NotebookPanel } from "@jupyterlab/notebook";
 
-import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
-
-import {
-    stopStatus,
-    playStatus,
-    recordStatus,
-    rightPanelIcon
-} from './icons'
-
-import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
-
-export class ExecutionCheckbox extends Widget {
+export class ExecutionCheckbox {
 
     private _changed: Signal<ExecutionCheckbox, boolean> = new Signal<ExecutionCheckbox, boolean>(this);
-    private _input: HTMLInputElement;
 
-    constructor() {
-
-        super();
+    constructor({ widget }: { widget: Widget }) {
 
         this.onChange = this.onChange.bind(this);
 
-        this.addClass('jp-ExecutionCheckBox');
-
-        this.node.innerHTML = '<p>Execute Cells during Playback</p>';
-
-        let input = document.createElement('input');
-
-        input.setAttribute('type', 'checkbox');
-
-        input.setAttribute('name', 'execution');
-
-        input.classList.add('jp-mod-styled');
+        let input = widget.node.querySelector('input');
 
         input.addEventListener('change', this.onChange);
-
-        let label = document.createElement('label');
-
-        label.setAttribute('for', 'execution');
-
-        label.innerHTML = 'Enable';
-
-        this.node.appendChild(input);
-
-        this.node.appendChild(label);
-
-        this._input = input;
     }
 
-    private onChange(event: Event) {
+    public onChange(event: Event) {
 
-        this._changed.emit(this._input.checked);
+        this._changed.emit((event.target as HTMLInputElement).checked);
     }
 
     get changed(): ISignal<ExecutionCheckbox, boolean> {
@@ -64,42 +28,20 @@ export class ExecutionCheckbox extends Widget {
     }
 }
 
-export class AudioInputSelector extends Widget {
+export class AudioInputSelector {
 
     private _deviceSelected: Signal<AudioInputSelector, string> = new Signal<AudioInputSelector, string>(this);
     public deviceId: string;
     private _select: HTMLSelectElement;
 
-    constructor() {
-
-        super({ node: document.createElement('label') });
+    constructor({ widget }: { widget: Widget }) {
 
         this.onDeviceChanged = this.onDeviceChanged.bind(this);
         this.onChange = this.onChange.bind(this);
 
-        this.id = 'etc_jupyterlab_authoring:plugin:authoring_selector_widget';
+        widget.node.addEventListener('change', this.onChange);
 
-        this.addClass('jp-AudioSelectorWidget');
-
-        this.node.innerHTML = 'Audio Input';
-
-        let div = document.createElement('div');
-
-        div.classList.add('jp-select-wrapper');
-
-        this._select = document.createElement('select');
-
-        this._select.classList.add('jp-mod-styled');
-
-        let span = document.createElement('span');
-
-        span.classList.add('f1st5hdn');
-
-        span.innerHTML = caretDownEmptyIcon.svgstr;
-
-        this.node.appendChild(div).append(this._select, span);
-
-        this._select.addEventListener('change', this.onChange);
+        this._select = widget.node.querySelector('select');
 
         this.deviceId = null;
 
@@ -112,8 +54,8 @@ export class AudioInputSelector extends Widget {
 
                 navigator.mediaDevices.dispatchEvent(new Event('devicechange'));
             }
-            catch(e) {
-                
+            catch (e) {
+
                 console.error(e);
             }
         })();
@@ -176,30 +118,13 @@ export class AudioInputSelector extends Widget {
     }
 }
 
-export class AuthoringSidePanel extends Panel {
 
-    constructor() {
-        super();
-
-        this.id = this.id = `jp-authoring-side-panel-${UUID.uuid4()}`;
-
-        this.addClass('jp-AuthoringSidePanel');
-
-        this.node.style.backgroundColor = '#fff';
-        this.node.style.padding = '10px';
-
-        this.title.icon = rightPanelIcon;
-    }
-}
-
-export class ResetButton extends Widget {
+export class ResetButton {
 
     private _pressed: Signal<ResetButton, Event> = new Signal(this);
     private _notebookPanel: NotebookPanel;
 
-    constructor(
-        { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super();
+    constructor({ notebookPanel }: { notebookPanel: NotebookPanel }) {
 
         this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
@@ -209,11 +134,7 @@ export class ResetButton extends Widget {
 
         window.addEventListener("keydown", this.onKeydown, true);
 
-        this.node.addEventListener('click', this.onPressed);
-
         this._notebookPanel.disposed.connect(this.onDisposed, this);
-
-        this.addClass("etc-jupyterlab-authoring-button");
     }
 
     public onDisposed() {
@@ -246,14 +167,13 @@ export class ResetButton extends Widget {
     }
 }
 
-export class RecordButton extends Widget {
+export class RecordButton {
 
     private _pressed: Signal<RecordButton, Event> = new Signal(this);
     private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super();
 
         this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
@@ -263,11 +183,7 @@ export class RecordButton extends Widget {
 
         window.addEventListener("keydown", this.onKeydown, true);
 
-        this.node.addEventListener('click', this.onPressed);
-
         this._notebookPanel.disposed.connect(this.onDisposed, this);
-
-        this.addClass("etc-jupyterlab-authoring-button");
     }
 
     public onDisposed() {
@@ -300,22 +216,19 @@ export class RecordButton extends Widget {
     }
 }
 
-export class StopButton extends Widget {
+export class StopButton {
 
     private _pressed: Signal<StopButton, Event> = new Signal(this);
     private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super();
 
         this._notebookPanel = notebookPanel;
 
         this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
-
-        this.addClass("etc-jupyterlab-authoring-button");
 
         this._notebookPanel.disposed.connect(this.onDisposed, this);
 
@@ -352,14 +265,13 @@ export class StopButton extends Widget {
     }
 }
 
-export class PlayButton extends Widget {
+export class PlayButton {
 
     private _pressed: Signal<PlayButton, Event> = new Signal(this);
     private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super();
 
         this._notebookPanel = notebookPanel;
 
@@ -368,8 +280,6 @@ export class PlayButton extends Widget {
         this.onPressed = this.onPressed.bind(this);
 
         window.addEventListener("keydown", this.onKeydown, true);
-
-        this.addClass("etc-jupyterlab-authoring-button");
 
         this._notebookPanel.disposed.connect(this.onDisposed, this);
     }
@@ -404,22 +314,19 @@ export class PlayButton extends Widget {
     }
 }
 
-export class PauseButton extends Widget {
+export class PauseButton {
 
     private _pressed: Signal<PauseButton, Event> = new Signal(this);
     private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super();
 
         this._notebookPanel = notebookPanel;
 
         this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
-
-        this.addClass("etc-jupyterlab-authoring-button");
 
         this._notebookPanel.disposed.connect(this.onDisposed, this);
 
@@ -453,22 +360,19 @@ export class PauseButton extends Widget {
     }
 }
 
-export class SaveButton extends Widget {
+export class SaveButton {
 
     private _pressed: Signal<SaveButton, Event> = new Signal(this);
     private _notebookPanel: NotebookPanel;
 
     constructor(
         { notebookPanel }: { notebookPanel: NotebookPanel }) {
-        super();
 
         this._notebookPanel = notebookPanel;
 
         this.onDisposed = this.onDisposed.bind(this);
         this.onKeydown = this.onKeydown.bind(this);
         this.onPressed = this.onPressed.bind(this);
-
-        this.addClass("etc-jupyterlab-authoring-button");
 
         window.addEventListener("keydown", this.onKeydown, true);
 
@@ -539,97 +443,5 @@ export class AdvanceButton {
     }
 }
 
-export class StatusIndicator extends Widget {
 
-    private _map: WeakMap<NotebookPanel, string>;
-    private _currentNotebookPanel: NotebookPanel;
 
-    constructor() {
-        super();
-
-        this.onStopped = this.onStopped.bind(this);
-        this.onRecorderStarted = this.onRecorderStarted.bind(this);
-        this.onPlayerStarted = this.onPlayerStarted.bind(this);
-
-        this.addClass("jp-StatusIndicator");
-
-        this._map = new WeakMap<NotebookPanel, string>();
-    }
-
-    public get onPlayerStopped() {
-        return this.onStopped;
-    }
-
-    public get onRecorderStopped() {
-        return this.onStopped;
-    }
-
-    public onStopped(sender: any, notebookPanel: NotebookPanel) {
-
-        this._map.set(notebookPanel, 'stop');
-
-        this.updateStatus();
-    }
-
-    public onPlayerStarted(sender: any, notebookPanel: NotebookPanel) {
-
-        this._map.set(notebookPanel, 'play');
-
-        this.updateStatus();
-    }
-
-    public onRecorderStarted(sender: any, notebookPanel: NotebookPanel) {
-
-        this._map.set(notebookPanel, 'record');
-
-        this.updateStatus();
-    }
-
-    public onCurrentChanged(sender: INotebookTracker, notebookPanel: NotebookPanel) {
-
-        if (notebookPanel) {
-            if (!this._map.has(notebookPanel)) {
-
-                this._map.set(notebookPanel, 'stop');
-            }
-
-            this._currentNotebookPanel = notebookPanel;
-
-            this.updateStatus();
-        }
-    }
-
-    public updateStatus() {
-
-        if (this._currentNotebookPanel.isVisible) {
-
-            switch (this._map.get(this._currentNotebookPanel)) {
-                case 'stop':
-                    stopStatus.element({
-                        container: this.node,
-                        stylesheet: 'toolbarButton',
-                        alignSelf: 'normal',
-                        height: '24px'
-                    });
-                    break;
-                case 'record':
-                    recordStatus.element({
-                        container: this.node,
-                        stylesheet: 'toolbarButton',
-                        alignSelf: 'normal',
-                        height: '24px'
-                    });
-                    break;
-                case 'play':
-                    playStatus.element({
-                        container: this.node,
-                        stylesheet: 'toolbarButton',
-                        alignSelf: 'normal',
-                        height: '24px'
-                    });
-                    break;
-            }
-        }
-    }
-
-}

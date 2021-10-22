@@ -12,13 +12,33 @@ import {
 
 import { Signal } from "@lumino/signaling";
 
-import { AuthoringSidePanel, AdvanceButton, RecordButton, StopButton, PlayButton, PauseButton, SaveButton, StatusIndicator, AudioInputSelector, ExecutionCheckbox, ResetButton } from "./components";
+import {
+  AdvanceButton,
+  RecordButton,
+  StopButton,
+  PlayButton,
+  PauseButton,
+  SaveButton,
+  AudioInputSelector,
+  ExecutionCheckbox,
+  ResetButton
+} from "./widget_wrappers";
+
+import {
+  AudioInputSelectorWidget,
+  StatusIndicatorWidget,
+  AuthoringPanel,
+  ExecutionCheckboxWidget
+} from './widgets';
+
+import {
+  StatusIndicator
+} from './status_indicator';
 
 import { IStatusBar } from "@jupyterlab/statusbar";
-
 import { MessageRecorder } from './message_recorder';
-
 import { MessagePlayer } from './message_player';
+import { MessageEditor } from "./message_editor";
 
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
@@ -43,28 +63,34 @@ const extension: JupyterFrontEndPlugin<void> = {
       console.error(error);
     });
 
-    let authoringSidePanel = new AuthoringSidePanel();
+    let authoringPanel = new AuthoringPanel();
 
-    let audioInputSelector = new AudioInputSelector();
+    let audioInputSelectorWidget = new AudioInputSelectorWidget();
 
-    let executionCheckbox = new ExecutionCheckbox()
+    let executionCheckboxWidget = new ExecutionCheckboxWidget()
 
-    authoringSidePanel.addWidget(audioInputSelector);
+    authoringPanel.addWidget(audioInputSelectorWidget);
 
-    authoringSidePanel.addWidget(executionCheckbox);
+    authoringPanel.addWidget(executionCheckboxWidget);
 
-    labShell.add(authoringSidePanel, 'right');
+    labShell.add(authoringPanel, 'right');
 
-    let statusIndicator = new StatusIndicator();
+    let statusIndicatorWidget = new StatusIndicatorWidget();
 
     statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:statusIndicator', {
-      item: statusIndicator,
+      item: statusIndicatorWidget,
       align: "left",
       rank: -100
     });
 
+    let executionCheckbox = new ExecutionCheckbox({ widget: executionCheckboxWidget });
+
+    let audioInputSelector = new AudioInputSelector({ widget: audioInputSelectorWidget });
+
+    let statusIndicator = new StatusIndicator({ widget: statusIndicatorWidget });
+
     notebookTracker.currentChanged.connect(statusIndicator.onCurrentChanged, statusIndicator);
-    //  There is one status indicator for all Notebooks; hence update the status indicator whenever the user changes Notebooks.
+    //  There is one status indicator for all Notebooks; hence notify the status indicator whenever the user changes Notebooks.
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
 

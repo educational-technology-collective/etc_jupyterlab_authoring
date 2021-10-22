@@ -1,8 +1,12 @@
-.jp-ExecutionCheckBox, .jp-AudioSelectorWidget {
-    font-size: var(--jp-ui-font-size1) !important;
-    margin: 16px 0px !important;
-  }
+.jp-ExecutionCheckBoxWidget, .jp-AudioSelectorWidget {
+  font-size: var(--jp-ui-font-size1) !important;
+  padding: 12px 12px 0 12px;
+}
 
-  .jp-AudioSelectorWidget select {
-    font-size: var(--jp-ui-font-size1) !important;
-  }
+.jp-AudioSelectorWidget select {
+  font-size: var(--jp-ui-font-size1) !important;
+}
+
+.jp-AuthoringPanel {
+  background: var(--jp-layout-color1);
+}
