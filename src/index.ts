@@ -22,7 +22,7 @@ import {
   AudioInputSelector,
   ExecutionCheckbox,
   ResetButton
-} from "./widget_wrappers";
+} from "./controls";
 
 import {
   AudioInputSelectorWidget,

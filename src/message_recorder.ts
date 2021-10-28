@@ -1,7 +1,7 @@
 /// <reference types="@types/dom-mediacapture-record" />
 
 import { Notebook, NotebookPanel } from '@jupyterlab/notebook';
-import { AudioInputSelector, AdvanceButton, RecordButton, SaveButton, StopButton } from './widget_wrappers';
+import { AudioInputSelector, AdvanceButton, RecordButton, SaveButton, StopButton } from './controls';
 import { CodeCell, Cell, ICellModel } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';

@@ -9,7 +9,7 @@ import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { EventMessage } from "./types";
 import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
-import { ExecutionCheckbox, PlayButton } from "./widget_wrappers";
+import { ExecutionCheckbox, PlayButton } from "./controls";
 import { ISignal, Signal } from "@lumino/signaling";
 import { MessageRecorder } from "./message_recorder";
 
