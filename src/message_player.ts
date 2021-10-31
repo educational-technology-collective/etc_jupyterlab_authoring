@@ -87,7 +87,7 @@ export class MessagePlayer {
     this._executeCell = state;
   }
 
-  public async onResetPressed(sender: any, args: any) {
+  public async onNotebookInitializationStarted(sender: any, args: any) {
 
     try {
       if (
@@ -96,12 +96,6 @@ export class MessagePlayer {
       ) {
 
         await this.onStopPressed();
-
-        this._notebookPanel.content.model.fromJSON(this._contentModel);
-
-        this._notebookPanel.content.model.initialize();
-
-        await this._notebookPanel.context.save();
       }
     }
     catch (e) {
@@ -164,8 +158,7 @@ export class MessagePlayer {
         this._notebookPanel.isVisible
       ) {
 
-        this._contentModel = this._notebookPanel.content.model.toJSON();
-        //  The Notebook needs to be saved so that it can be reset; hence freeze the Notebook.
+        this._playerStarted.emit(this._notebookPanel);
 
         //
         const cell = this._notebookPanel.content.model.contentFactory.createCell(
@@ -177,8 +170,6 @@ export class MessagePlayer {
 
         this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
         //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
-
-        this._playerStarted.emit(this._notebookPanel);
 
         this._isPlaying = true;
 

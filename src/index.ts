@@ -39,6 +39,7 @@ import { IStatusBar } from "@jupyterlab/statusbar";
 import { MessageRecorder } from './message_recorder';
 import { MessagePlayer } from './message_player';
 import { MessageEditor } from "./message_editor";
+import { NotebookState } from "./notebook_state";
 
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
@@ -66,8 +67,10 @@ const extension: JupyterFrontEndPlugin<void> = {
     let authoringPanel = new AuthoringPanel();
 
     let audioInputSelectorWidget = new AudioInputSelectorWidget();
+    let audioInputSelector = new AudioInputSelector({ widget: audioInputSelectorWidget });
 
     let executionCheckboxWidget = new ExecutionCheckboxWidget()
+    let executionCheckbox = new ExecutionCheckbox({ widget: executionCheckboxWidget });
 
     authoringPanel.addWidget(audioInputSelectorWidget);
 
@@ -76,18 +79,13 @@ const extension: JupyterFrontEndPlugin<void> = {
     labShell.add(authoringPanel, 'right');
 
     let statusIndicatorWidget = new StatusIndicatorWidget();
+    let statusIndicator = new StatusIndicator({ widget: statusIndicatorWidget });
 
     statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:statusIndicator', {
       item: statusIndicatorWidget,
       align: "left",
       rank: -100
     });
-
-    let executionCheckbox = new ExecutionCheckbox({ widget: executionCheckboxWidget });
-
-    let audioInputSelector = new AudioInputSelector({ widget: audioInputSelectorWidget });
-
-    let statusIndicator = new StatusIndicator({ widget: statusIndicatorWidget });
 
     notebookTracker.currentChanged.connect(statusIndicator.onCurrentChanged, statusIndicator);
     //  There is one status indicator for all Notebooks; hence notify the status indicator whenever the user changes Notebooks.
@@ -111,14 +109,17 @@ const extension: JupyterFrontEndPlugin<void> = {
 
         let messagePlayer = new MessagePlayer({ notebookPanel });
 
+        let notebookState = new NotebookState({ notebookPanel });
+
         audioInputSelector.deviceSelected.connect(messageRecorder.onDeviceSelected, messageRecorder);
 
         executionCheckbox.changed.connect(messagePlayer.onExecutionCheckboxChanged, messagePlayer);
 
+        resetButton.pressed.connect(notebookState.onResetPressed, notebookState);
+
         playButton.pressed.connect(messagePlayer.onPlayPressed, messagePlayer);
         stopButton.pressed.connect(messagePlayer.onStopPressed, messagePlayer);
-        resetButton.pressed.connect(messagePlayer.onResetPressed, messagePlayer);
-        //  Connect the player to its controls.
+        //  Connect the controls to the Message Player.
 
         recordButton.pressed.connect(messageRecorder.onRecordPressed, messageRecorder);
         stopButton.pressed.connect(messageRecorder.onStopPressed, messageRecorder);
@@ -126,7 +127,7 @@ const extension: JupyterFrontEndPlugin<void> = {
         advanceButton.pressed.connect(messageRecorder.onAdvancePressed, messageRecorder);
         NotebookActions.executionScheduled.connect(messageRecorder.onExecutionScheduled, messageRecorder);
         NotebookActions.executed.connect(messageRecorder.onExecuted, messageRecorder);
-        //  Connect the recorder to it's controls and Signals.
+        //  Connect the controls an Signals to the Message Recorder.
 
         messageRecorder.recorderStarted.connect(messagePlayer.onRecorderStarted, messagePlayer);
         messageRecorder.recorderStopped.connect(messagePlayer.onRecorderStopped, messagePlayer);
@@ -134,6 +135,11 @@ const extension: JupyterFrontEndPlugin<void> = {
         messagePlayer.playerStopped.connect(messageRecorder.onPlayerStopped, messageRecorder);
         //  The Recorder and the Player need to be informed of eachother's states;
         //  hence connect Signals in order to provide notification of state.
+
+        messageRecorder.recorderStarted.connect(notebookState.onRecorderStarted, notebookState);
+        messageRecorder.recorderStopped.connect(notebookState.onRecorderStopped, notebookState);
+        messagePlayer.playerStarted.connect(notebookState.onPlayerStarted, notebookState);
+        messagePlayer.playerStopped.connect(notebookState.onPlayerStopped, notebookState);
 
         messageRecorder.recorderStarted.connect(statusIndicator.onRecorderStarted, statusIndicator);
         messageRecorder.recorderStopped.connect(statusIndicator.onRecorderStopped, statusIndicator);
