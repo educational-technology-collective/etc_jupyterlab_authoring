@@ -118,7 +118,6 @@ export class AudioInputSelector {
     }
 }
 
-
 export class ResetButton {
 
     private _pressed: Signal<ResetButton, Event> = new Signal(this);
