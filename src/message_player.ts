@@ -57,8 +57,6 @@ export class MessagePlayer {
 
       this._eventMessages = data.eventMessages;
 
-
-
       this._recording = (async () => {
 
         try {
@@ -177,6 +175,13 @@ export class MessagePlayer {
 
         this._audio.src = URL.createObjectURL(await this._recording);
 
+        let audioEnded = new Promise((r, j) => {
+
+          this._audio.addEventListener('ended', r);
+
+          this._audio.addEventListener('error', j);
+        })
+
         await this._audio.play();
 
         for (let index = 0; this._isPlaying && index < this._eventMessages.length; index++) {
@@ -185,6 +190,8 @@ export class MessagePlayer {
 
           await (this._player = this.playMessage(message));
         }
+
+        await audioEnded;
       }
     }
     catch (e) {
