@@ -47,22 +47,22 @@
   },
   "dependencies": {
     "@jupyterlab/application": "^3.0.0",
-    "@jupyterlab/settingregistry": "^3.0.0",
-    "@jupyterlab/coreutils": "^5.0.0",
-    "@jupyterlab/services": "^6.0.0",
     "@jupyterlab/codeeditor": "^3.0.7",
     "@jupyterlab/codemirror": "^3.0.2",
     "@jupyterlab/completer": "^3.0.5",
     "@jupyterlab/console": "^3.0.6",
+    "@jupyterlab/coreutils": "^5.0.0",
     "@jupyterlab/launcher": "^3.0.5",
     "@jupyterlab/logconsole": "^3.0.8",
     "@jupyterlab/mainmenu": "^3.0.5",
     "@jupyterlab/notebook": "^3.0.7",
     "@jupyterlab/rendermime": "^3.0.8",
+    "@jupyterlab/services": "^6.0.0",
+    "@jupyterlab/settingregistry": "^3.0.0",
     "@jupyterlab/ui-components": "^3.0.6",
+    "@lumino/algorithm": "^1.7.0",
     "@lumino/commands": "^1.12.0",
     "@lumino/signaling": "^1.4.3",
-    "@lumino/algorithm": "^1.7.0",
     "@types/codemirror": "0.0.87",
     "@types/dom-mediacapture-record": "^1.0.10"
   },
@@ -72,8 +72,8 @@
     "@typescript-eslint/parser": "^4.8.1",
     "eslint": "^7.14.0",
     "eslint-config-prettier": "^6.15.0",
-    "eslint-plugin-prettier": "^3.1.4", 
-    "mkdirp": "^1.0.3", 
+    "eslint-plugin-prettier": "^3.1.4",
+    "mkdirp": "^1.0.3",
     "npm-run-all": "^4.1.5",
     "prettier": "^2.1.1",
     "rimraf": "^3.0.2",
@@ -84,17 +84,17 @@
     "style/index.js"
   ],
   "styleModule": "style/index.js",
-  "jupyterlab": { 
+  "jupyterlab": {
     "discovery": {
-        "server": {
-          "managers": [
-            "pip"
-          ],
-          "base": {
-            "name": "etc_jupyterlab_authoring"
-          }
+      "server": {
+        "managers": [
+          "pip"
+        ],
+        "base": {
+          "name": "etc_jupyterlab_authoring"
         }
-    }, 
+      }
+    },
     "extension": true,
     "outputDir": "etc_jupyterlab_authoring/labextension",
     "schemaDir": "schema"

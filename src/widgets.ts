@@ -15,6 +15,35 @@ import {
 
 import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
 
+export class ScrollCheckboxWidget extends Widget {
+
+    constructor() {
+        super();
+
+        this.addClass('jp-ScrollCheckBoxWidget');
+
+        this.node.innerHTML = '<p>Scroll to cell during Playback</p>';
+
+        let input = document.createElement('input');
+
+        input.setAttribute('type', 'checkbox');
+
+        input.setAttribute('name', 'scroll');
+
+        input.classList.add('jp-mod-styled');
+
+        let label = document.createElement('label');
+
+        label.setAttribute('for', 'scroll');
+
+        label.innerHTML = 'Enable';
+
+        this.node.appendChild(input);
+
+        this.node.appendChild(label);
+    }
+}
+
 export class ExecutionCheckboxWidget extends Widget {
 
     constructor() {
@@ -43,7 +72,6 @@ export class ExecutionCheckboxWidget extends Widget {
         this.node.appendChild(label);
     }
 }
-
 
 export class AudioInputSelectorWidget extends Widget {
 

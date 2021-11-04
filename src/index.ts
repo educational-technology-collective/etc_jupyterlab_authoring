@@ -21,14 +21,16 @@ import {
   SaveButton,
   AudioInputSelector,
   ExecutionCheckbox,
-  ResetButton
+  ResetButton,
+  ScrollCheckbox
 } from "./controls";
 
 import {
   AudioInputSelectorWidget,
   StatusIndicatorWidget,
   AuthoringPanel,
-  ExecutionCheckboxWidget
+  ExecutionCheckboxWidget,
+  ScrollCheckboxWidget
 } from './widgets';
 
 import {
@@ -72,9 +74,14 @@ const extension: JupyterFrontEndPlugin<void> = {
     let executionCheckboxWidget = new ExecutionCheckboxWidget()
     let executionCheckbox = new ExecutionCheckbox({ widget: executionCheckboxWidget });
 
+    let scrollCheckboxWidget = new ScrollCheckboxWidget()
+    let scrollCheckbox = new ScrollCheckbox({ widget: scrollCheckboxWidget });
+
     authoringPanel.addWidget(audioInputSelectorWidget);
 
     authoringPanel.addWidget(executionCheckboxWidget);
+
+    authoringPanel.addWidget(scrollCheckboxWidget);
 
     labShell.add(authoringPanel, 'right');
 
@@ -114,6 +121,7 @@ const extension: JupyterFrontEndPlugin<void> = {
         audioInputSelector.deviceSelected.connect(messageRecorder.onDeviceSelected, messageRecorder);
 
         executionCheckbox.changed.connect(messagePlayer.onExecutionCheckboxChanged, messagePlayer);
+        scrollCheckbox.changed.connect(messagePlayer.onScrollCheckboxChanged, messagePlayer);
 
         resetButton.pressed.connect(notebookState.onResetPressed, notebookState);
 

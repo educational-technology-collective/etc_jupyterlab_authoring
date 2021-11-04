@@ -49,7 +49,7 @@ export class MessageRecorder {
         this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
     }
 
-    public onDisposed(sender: NotebookPanel | MessageRecorder, args: any) {
+    public onDisposed(sender: NotebookPanel, args: any) {
 
         Signal.disconnectAll(this);
     }
@@ -131,7 +131,7 @@ export class MessageRecorder {
 
             if (this._editor) {
 
-                let line = this._editor.getLine(this._lineIndex);
+                let input = this._editor.getLine(this._lineIndex);
 
                 this.aggregateMessage({
                     event: 'record_stopped',
@@ -140,7 +140,7 @@ export class MessageRecorder {
                     cell_index: this._cellIndex,
                     cell_type: this._cell.model.type,
                     line_index: this._lineIndex,
-                    input: line
+                    input: input
                 });
             }
             else {
@@ -266,6 +266,7 @@ export class MessageRecorder {
             let outputs: Array<nbformat.IOutput> = [];
 
             if (args.cell.model.type == "code") {
+
                 outputs = (this._cell as CodeCell).model.outputs.toJSON();
             }
 
@@ -328,6 +329,12 @@ export class MessageRecorder {
             this._notebookPanel.content.node.focus();
 
             this._cellIndex = null;
+
+            this._cell = null;
+
+            this._editor = null;
+
+            this._lineIndex = null;
         }
     }
 
@@ -370,7 +377,7 @@ export class MessageRecorder {
 
     get eventMessagesChanged(): ISignal<MessageRecorder, Array<EventMessage>> {
         return this._eventMessagesChanged;
-      }  
+    }
 
     get eventMessages(): Array<EventMessage> {
         return this._eventMessages;
@@ -378,5 +385,5 @@ export class MessageRecorder {
 
     get recordings(): Promise<Array<Blob>> {
         return this._recordings;
-    }  
+    }
 }

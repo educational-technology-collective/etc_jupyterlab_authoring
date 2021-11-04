@@ -4,6 +4,30 @@ import { Signal, ISignal } from "@lumino/signaling";
 
 import { NotebookPanel } from "@jupyterlab/notebook";
 
+export class ScrollCheckbox {
+
+    private _changed: Signal<ScrollCheckbox, boolean> = new Signal<ScrollCheckbox, boolean>(this);
+
+    constructor({ widget }: { widget: Widget }) {
+
+        this.onChange = this.onChange.bind(this);
+
+        let input = widget.node.querySelector('input');
+
+        input.addEventListener('change', this.onChange);
+    }
+
+    public onChange(event: Event) {
+
+        this._changed.emit((event.target as HTMLInputElement).checked);
+    }
+
+    get changed(): ISignal<ScrollCheckbox, boolean> {
+
+        return this._changed;
+    }
+}
+
 export class ExecutionCheckbox {
 
     private _changed: Signal<ExecutionCheckbox, boolean> = new Signal<ExecutionCheckbox, boolean>(this);
