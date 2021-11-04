@@ -265,7 +265,25 @@ export class MessagePlayer {
 
       if (this._executeCell) {
 
-        await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
+        let resolved = null;
+
+        let runAndAdvance = (async () => {
+
+          await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
+
+          resolved = true;
+        })();
+
+        await new Promise((r, j) => { setTimeout(r, message.duration); });
+
+        if (!resolved) {
+
+          this._audio.pause();
+
+          await runAndAdvance;
+
+          this._audio.play();
+        }
       }
       else {
 
