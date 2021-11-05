@@ -1,3 +1,5 @@
+/// <reference types="@types/dom-mediacapture-record" />
+
 import {
   JSONExt,
   JSONObject,
@@ -159,6 +161,32 @@ export class MessagePlayer {
         this._notebookPanel.isVisible
       ) {
 
+        let displayMediaStream = await (navigator.mediaDevices as any).getDisplayMedia({
+          video: true,
+          audio: true
+        });
+
+        let mediaRecorder = new MediaRecorder(await displayMediaStream);
+
+        let recordings = new Promise<Array<Blob>>((r, j) => {
+
+          let recordings: Array<Blob> = [];
+
+          mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+
+            recordings.push(event.data);
+          });
+
+          mediaRecorder.addEventListener('stop', () => {
+
+            r(recordings);
+          });
+
+          mediaRecorder.addEventListener('error', j);
+        });
+
+        mediaRecorder.start();
+
         this._playerStarted.emit(this._notebookPanel);
 
         //
@@ -196,6 +224,20 @@ export class MessagePlayer {
         }
 
         await audioEnded;
+
+        mediaRecorder.stop()
+
+        let recording = new Blob(await recordings);
+
+        console.log(recording);
+
+        let a = document.createElement("a");
+
+        a.href = URL.createObjectURL(recording);
+
+        a.download = "file.webm";
+
+        a.click();
       }
     }
     catch (e) {
@@ -213,7 +255,7 @@ export class MessagePlayer {
   public async playMessage(message: EventMessage) {
 
     if (message.cell_type) {
-      //  Some evnets depend on having a cell; hence, this block will only handle events that have a cell_type.
+      //  Some events depend on having a cell; hence, this block will only handle events that have a cell_type.
 
       if (message.cell_index > this._notebook.model.cells.length - 1) {
 
