@@ -16,38 +16,26 @@ export class StatusIndicator {
 
     constructor({ widget }: { widget: Widget }) {
 
-        this.onStopped = this.onStopped.bind(this);
-        this.onRecorderStarted = this.onRecorderStarted.bind(this);
-        this.onPlayerStarted = this.onPlayerStarted.bind(this);
-
         this._widget = widget;
 
         this._map = new WeakMap<NotebookPanel, string>();
     }
 
-    public get onPlayerStopped() {
-        return this.onStopped;
-    }
-
-    public get onRecorderStopped() {
-        return this.onStopped;
-    }
-
-    public onStopped(sender: any, notebookPanel: NotebookPanel) {
+    public stop(notebookPanel: NotebookPanel) {
 
         this._map.set(notebookPanel, 'stop');
 
         this.updateStatus();
     }
 
-    public onPlayerStarted(sender: any, notebookPanel: NotebookPanel) {
+    public play(notebookPanel: NotebookPanel) {
 
         this._map.set(notebookPanel, 'play');
 
         this.updateStatus();
     }
 
-    public onRecorderStarted(sender: any, notebookPanel: NotebookPanel) {
+    public record(notebookPanel: NotebookPanel) {
 
         this._map.set(notebookPanel, 'record');
 

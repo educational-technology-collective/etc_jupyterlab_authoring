@@ -11,59 +11,82 @@ import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { EventMessage } from "./types";
 import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
-import { ExecutionCheckbox, PlayButton, ScrollCheckbox } from "./controls";
 import { ISignal, Signal } from "@lumino/signaling";
 import { MessageRecorder } from "./message_recorder";
+import { StatusIndicator } from './status_indicator';
 
 export class MessagePlayer {
 
-  private _playerStarted: Signal<MessagePlayer, NotebookPanel> = new Signal<MessagePlayer, NotebookPanel>(this);
-  private _playerStopped: Signal<MessagePlayer, NotebookPanel> = new Signal<MessagePlayer, NotebookPanel>(this);
-  private _eventMessagesChanged: Signal<MessagePlayer, Array<EventMessage>> = new Signal<MessagePlayer, Array<EventMessage>>(this);
+  public recording: Blob;
+  public eventMessages: Array<EventMessage>;
 
-  private _eventMessages: Array<EventMessage>;
+  private _contentModel: PartialJSONValue;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
   private _intervalId: number;
   private _editor: CodeMirrorEditor;
   private _isRecording: boolean = false;
-  private _isPlaying: boolean = false;
   private _audio: HTMLAudioElement;
   private _player: Promise<any>;
-  private _recording: Promise<Blob>;
   private _executeCell: boolean;
   private _scrollToCell: boolean;
+  private _messageRecorder: MessageRecorder;
+  private _statusIndicator: StatusIndicator;
+  private _recording: Promise<Blob>;
+  private _scrollCheckbox: HTMLElement;
+  private _executionCheckbox: HTMLElement;
+  private _mediaRecorder: MediaRecorder;
 
-  constructor({ notebookPanel }: { notebookPanel: NotebookPanel }) {
+  public isPlaying: boolean = false;
 
-    this.createCellsTo = this.createCellsTo.bind(this);
-    this.createLinesTo = this.createLinesTo.bind(this);
-    this.playMessage = this.playMessage.bind(this);
-    this.onPlayPressed = this.onPlayPressed.bind(this);
-    this.onRecorderStarted = this.onRecorderStarted.bind(this);
-    this.onRecorderStopped = this.onRecorderStopped.bind(this);
-    this.onStopPressed = this.onStopPressed.bind(this);
-    this.onDisposed = this.onDisposed.bind(this);
+  constructor({
+    notebookPanel,
+    messageRecorder,
+    statusIndicator,
+    executionCheckbox,
+    scrollCheckbox
+  }: {
+    notebookPanel: NotebookPanel
+    messageRecorder: MessageRecorder,
+    statusIndicator: StatusIndicator,
+    executionCheckbox: HTMLElement,
+    scrollCheckbox: HTMLElement
+  }) {
 
     this._notebookPanel = notebookPanel;
-
     this._notebook = notebookPanel.content;
+    this._statusIndicator = statusIndicator;
+    this._executionCheckbox = executionCheckbox;
+    this._scrollCheckbox = scrollCheckbox;
 
-    notebookPanel.disposed.connect(this.onDisposed, this);
+    this._messageRecorder.messagePlayer = this;
+
+    this.handleExecutionCheckboxChange = this.handleExecutionCheckboxChange.bind(this);
+    this.handleScrollCheckboxEvent = this.handleScrollCheckboxEvent.bind(this);
+    this.handleKeydown = this.handleKeydown.bind(this);
+
+    notebookPanel.disposed.connect(this.dispose, this);
+
+    window.addEventListener("keydown", this.handleKeydown, true);
+    this._executionCheckbox.addEventListener('change', this.handleExecutionCheckboxChange, true);
+    this._scrollCheckbox.addEventListener('change', this.handleScrollCheckboxEvent, true);
 
     if (this._notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
       let data = JSON.parse(this._notebookPanel.content.model.metadata.get('etc_jupyterlab_authoring') as string);
 
-      this._eventMessages = data.eventMessages;
+      this.eventMessages = data.eventMessages;
 
-      this._recording = (async () => {
+      this._contentModel = notebookPanel.content.model.toJSON();
+      //  The Notebook needs to be saved so that it can be reset; hence freeze the Notebook.
+
+      (async () => {
 
         try {
 
           let result = await fetch(data.audio);
 
-          return result.blob();
+          this.recording = await result.blob();
         }
         catch (e) {
 
@@ -73,77 +96,79 @@ export class MessagePlayer {
     }
   }
 
-  private onDisposed(sender: NotebookPanel, args: any) {
+  private dispose() {
 
     clearInterval(this._intervalId);
+
+    window.removeEventListener("keydown", this.handleKeydown, true);
+    this._executionCheckbox.removeEventListener('change', this.handleExecutionCheckboxChange, true);
+    this._scrollCheckbox.removeEventListener('change', this.handleScrollCheckboxEvent, true);
 
     Signal.disconnectAll(this);
   }
 
-  public onScrollCheckboxChanged(sender: ScrollCheckbox, state: boolean) {
-
-    this._scrollToCell = state;
+  handleExecutionCheckboxChange(event: Event) {
+    this._executeCell = (event.target as HTMLInputElement).checked
   }
 
-  public onExecutionCheckboxChanged(sender: ExecutionCheckbox, state: boolean) {
-
-    this._executeCell = state;
+  handleScrollCheckboxEvent(event: Event) {
+    this._scrollToCell = (event.target as HTMLInputElement).checked
   }
 
-  public async onNotebookInitializationStarted(sender: any, args: any) {
+  handleKeydown(event: KeyboardEvent) {
 
     try {
-      if (
-        this._notebookPanel.isVisible &&
-        !this._isRecording
-      ) {
 
-        await this.onStopPressed();
+      if (this._notebookPanel.isVisible) {
+
+        if (event.ctrlKey && event.key == "F9") {
+          if (!this.isPlaying && !this._messageRecorder.isRecording) {
+
+            event.stopImmediatePropagation();
+            event.preventDefault();
+
+            this.resetNotebook();
+          }
+        }
+        else if (event.ctrlKey && event.key == "F9") {
+
+          if (this.isPlaying) {
+
+            event.stopImmediatePropagation();
+            event.preventDefault();
+
+            this.stopPlayer();
+          }
+        }
+        else if (event.ctrlKey && event.key == "F10") {
+
+          if (!this.isPlaying && !this._messageRecorder.isRecording) {
+
+            event.stopImmediatePropagation();
+            event.preventDefault();
+
+            this.startPlayer();
+          }
+        }
       }
     }
     catch (e) {
-
-      console.error(e);
+      console.log(e);
     }
   }
 
-  public onRecorderStarted() {
-
-    this._isRecording = true;
-
-    this._eventMessages = [];
-  }
-
-  public async onRecorderStopped(sender: MessageRecorder, args: NotebookPanel) {
+  public async stopPlayer() {
 
     try {
+      if (this._notebookPanel.isVisible && this.isPlaying) {
 
-      this._isRecording = false;
-
-      this._eventMessages = sender.eventMessages;
-
-      let recordings = await sender.recordings;
-
-      this._recording = Promise.resolve(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
-    }
-    catch (e) {
-
-      console.error(e);
-    }
-  }
-
-  public async onStopPressed() {
-
-    try {
-      if (this._notebookPanel.isVisible && this._isPlaying) {
-
-        this._isPlaying = false;
+        this.isPlaying = false;
 
         this._audio.pause();
 
         await this._player;
 
-        this._playerStopped.emit(this._notebookPanel);
+        this._statusIndicator.stop(this._notebookPanel);
       }
     }
     catch (e) {
@@ -152,93 +177,109 @@ export class MessagePlayer {
     }
   }
 
-  public async onPlayPressed(sender: PlayButton, event: Event) {
+  private async startDisplayRecording() {
 
     try {
-      if (
-        !this._isPlaying &&
-        !this._isRecording &&
-        this._notebookPanel.isVisible
-      ) {
 
-        let displayMediaStream = await (navigator.mediaDevices as any).getDisplayMedia({
-          video: true,
-          audio: true
+      this._mediaRecorder = new MediaRecorder(await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true }));
+
+      let displayRecording = new Promise<Blob>((r, j) => {
+
+        let recordings: Array<Blob> = [];
+
+        this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+
+          recordings.push(event.data);
         });
 
-        let mediaRecorder = new MediaRecorder(await displayMediaStream);
+        this._mediaRecorder.addEventListener('stop', () => {
 
-        let recordings = new Promise<Array<Blob>>((r, j) => {
-
-          let recordings: Array<Blob> = [];
-
-          mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
-
-            recordings.push(event.data);
-          });
-
-          mediaRecorder.addEventListener('stop', () => {
-
-            r(recordings);
-          });
-
-          mediaRecorder.addEventListener('error', j);
+          r(new Blob(recordings));
         });
 
-        mediaRecorder.start();
+        this._mediaRecorder.addEventListener('error', j);
+      });
 
-        this._playerStarted.emit(this._notebookPanel);
+      this._mediaRecorder.start();
 
-        //
-        const cell = this._notebookPanel.content.model.contentFactory.createCell(
-          this._notebookPanel.content.notebookConfig.defaultCell,
-          {}
-        );
+      await displayRecording;
 
-        //
-        this._notebookPanel.content.model.cells.insert(0, cell);
+      return displayRecording;
+    }
+    catch (e) {
+      console.error(e);
+    }
+  }
 
-        this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
-        //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
+  private async startAudioPlayback() {
+    try {
+      this._audio = new Audio();
 
-        this._isPlaying = true;
+      this._audio.src = URL.createObjectURL(this.recording);
 
-        this._audio = new Audio();
+      let audio = new Promise((r, j) => {
 
-        this._audio.src = URL.createObjectURL(await this._recording);
+        this._audio.addEventListener('ended', r);
 
-        let audioEnded = new Promise((r, j) => {
+        this._audio.addEventListener('error', j);
+      })
 
-          this._audio.addEventListener('ended', r);
+      await this._audio.play();
 
-          this._audio.addEventListener('error', j);
-        })
+      await audio;
 
-        await this._audio.play();
+      return audio;
+    }
+    catch (e) {
+      console.error(e);
+    }
+  }
 
-        for (let index = 0; this._isPlaying && index < this._eventMessages.length; index++) {
+  public async startPlayer() {
 
-          let message = this._eventMessages[index];
+    try {
 
-          await (this._player = this.playMessage(message));
-        }
+      let displayRecording = this.startDisplayRecording();
 
-        await audioEnded;
+      this._contentModel = this._notebookPanel.content.model.toJSON();
 
-        mediaRecorder.stop()
+      this._statusIndicator.play(this._notebookPanel);
 
-        let recording = new Blob(await recordings);
+      //
+      const cell = this._notebookPanel.content.model.contentFactory.createCell(
+        this._notebookPanel.content.notebookConfig.defaultCell,
+        {}
+      );
 
-        console.log(recording);
+      //
+      this._notebookPanel.content.model.cells.insert(0, cell);
 
-        let a = document.createElement("a");
+      this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
+      //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
 
-        a.href = URL.createObjectURL(recording);
+      this.isPlaying = true;
 
-        a.download = "file.webm";
+      let audio = this.startAudioPlayback();
 
-        a.click();
+      for (let index = 0; this.isPlaying && index < this.eventMessages.length; index++) {
+
+        let message = this.eventMessages[index];
+
+        await (this._player = this.playMessage(message));
       }
+
+      await audio;
+
+      this._mediaRecorder.stop()
+
+      let a = document.createElement("a");
+
+      a.href = URL.createObjectURL(await displayRecording);
+
+      a.download = "file.webm";
+
+      a.click();
+
     }
     catch (e) {
 
@@ -246,9 +287,9 @@ export class MessagePlayer {
     }
     finally {
 
-      this._playerStopped.emit(this._notebookPanel);
-
-      this._isPlaying = false;
+      this._statusIndicator.stop(this._notebookPanel);
+      
+      this.isPlaying = false;
     }
   }
 
@@ -304,7 +345,7 @@ export class MessagePlayer {
 
         if (message.input.length) {
 
-          for (let charIndex = 0; this._isPlaying && charIndex < message.input.length; charIndex++) {
+          for (let charIndex = 0; this.isPlaying && charIndex < message.input.length; charIndex++) {
 
             let pos = {
               line: message.line_index,
@@ -392,19 +433,17 @@ export class MessagePlayer {
     }
   }
 
-  get playerStarted(): ISignal<MessagePlayer, NotebookPanel> {
-    return this._playerStarted;
-  }
+  public resetNotebook() {
 
-  get playerStopped(): ISignal<MessagePlayer, NotebookPanel> {
-    return this._playerStopped;
-  }
+    try {
 
-  get eventMessagesChanged(): ISignal<MessagePlayer, Array<EventMessage>> {
-    return this._eventMessagesChanged;
-  }
+      this._notebookPanel.content.model.fromJSON(this._contentModel);
 
-  get eventMessages(): Array<EventMessage> {
-    return this._eventMessages;
+      this._notebookPanel.content.model.initialize();
+    }
+    catch (e) {
+
+      console.error(e);
+    }
   }
 }

@@ -1,123 +1,132 @@
 /// <reference types="@types/dom-mediacapture-record" />
 
-import { Notebook, NotebookPanel } from '@jupyterlab/notebook';
-import { AudioInputSelector, AdvanceButton, RecordButton, SaveButton, StopButton } from './controls';
+import { Notebook, NotebookActions, NotebookPanel } from '@jupyterlab/notebook';
 import { CodeCell, Cell, ICellModel } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import * as nbformat from '@jupyterlab/nbformat';
-import { JupyterFrontEnd } from '@jupyterlab/application';
 import { EventMessage } from './types';
-import { ISignal, Signal } from '@lumino/signaling';
+import { MessagePlayer } from './message_player';
+import { AudioInputSelector } from './audio_input_selector';
+import { StatusIndicator } from './status_indicator';
 
 export class MessageRecorder {
 
-    private _recorderStarted: Signal<MessageRecorder, NotebookPanel> = new Signal<MessageRecorder, NotebookPanel>(this);
-    private _recorderStopped: Signal<MessageRecorder, NotebookPanel> = new Signal<MessageRecorder, NotebookPanel>(this);
-    private _eventMessagesChanged: Signal<MessageRecorder, Array<EventMessage>> = new Signal<MessageRecorder, Array<EventMessage>>(this);
+    public messagePlayer: MessagePlayer;
+    public isRecording: boolean = false;
 
-    private _app: JupyterFrontEnd;
     private _notebookPanel: NotebookPanel;
     private _cellIndex: number | null;
     private _lineIndex: number;
-    private _isRecording: boolean = false;
-    private _isPlaying: boolean = false;
     private _editor: Editor;
     private _cell: Cell<ICellModel>;
-    private _recordings: Promise<Array<Blob>>;
+    private _recording: Promise<Blob>;
     private _mediaStream: Promise<MediaStream>;
     private _mediaRecorder: MediaRecorder;
     private _eventMessages: Array<EventMessage> = [];
     private _lastTimestamp: number;
+    private _statusIndicator: StatusIndicator;
 
     constructor({
-        app,
         notebookPanel,
-        audioInputSelector
+        audioInputSelector,
+        statusIndicator
     }:
         {
-            app: JupyterFrontEnd,
             notebookPanel: NotebookPanel,
-            audioInputSelector: AudioInputSelector
+            audioInputSelector: AudioInputSelector,
+            statusIndicator: StatusIndicator
         }) {
 
-        this._app = app;
         this._notebookPanel = notebookPanel;
         this._cellIndex = null;
-        this._notebookPanel.disposed.connect(this.onDisposed, this);
+        this._statusIndicator = statusIndicator;
 
-        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } });
+        this._notebookPanel.disposed.connect(this.dispose, this);
+
+        NotebookActions.executionScheduled.connect(this.executionScheduled, this);
+        NotebookActions.executed.connect(this.executed, this);
+
+        window.addEventListener("keydown", this.handleKeydown.bind(this), true);
+
+        audioInputSelector.eventTarget.addEventListener('audio_device_change', (event: Event) => this.onAudioDeviceChanged((event as CustomEvent).detail));
+
+        (async () => {
+            try {
+
+                await (this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } }));
+            }
+            catch (e) {
+                console.error(e);
+            }
+        })();
     }
 
-    public onDisposed(sender: NotebookPanel, args: any) {
+    public dispose(sender: NotebookPanel, args: any) {
 
-        Signal.disconnectAll(this);
     }
 
-    public onPlayerStarted() {
-
-        this._isPlaying = true;
-    }
-
-    public onPlayerStopped() {
-
-        this._isPlaying = false;
-    }
-
-    public async onDeviceSelected(sender: AudioInputSelector, deviceId: string) {
-
-        this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } });
-    }
-
-    public async onRecordPressed(sender: RecordButton, event: Event) {
+    handleKeydown(event: KeyboardEvent) {
 
         try {
-            if (
-                this._notebookPanel.isVisible &&
-                this._mediaStream &&
-                !this._isPlaying &&
-                !this._isRecording
-            ) {
 
-                this._mediaRecorder = new MediaRecorder(await this._mediaStream);
+            if (this._notebookPanel.isVisible) {
 
-                this._recordings = new Promise((r, j) => {
+                if (event.ctrlKey && event.key == "F8") {
 
-                    let recordings: Array<Blob> = [];
+                    if (
+                        !this.isRecording &&
+                        !this.messagePlayer.isPlaying
+                    ) {
 
-                    this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
 
-                        recordings.push(event.data);
-                    });
-
-                    this._mediaRecorder.addEventListener('stop', () => {
-
-                        r(recordings);
-                    });
-
-                    this._mediaRecorder.addEventListener('error', j);
-                });
-
-                this._mediaRecorder.start();
-
-                this._eventMessages = [];
-
-                this.aggregateMessage({
-                    event: "record_started",
-                    notebook_id: this._notebookPanel.content.id
-                });
-
-                this._notebookPanel.content.node.focus();
-
-                if (this._editor) {
-
-                    this._editor.focus();
+                        this.startRecorder();
+                    }
                 }
+                else if (event.ctrlKey && event.key == "F9") {
 
-                this._isRecording = true;
+                    if (this.isRecording) {
 
-                this._recorderStarted.emit(this._notebookPanel);
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+
+                        this.stopRecorder();
+                    }
+                }
+                else if (event.ctrlKey && event.key == "F12") {
+
+                    if (!this.isRecording) {
+
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+
+                        this.saveRecording();
+                    }
+                }
+                else if (event.code == "Space") {
+
+                    if (this.isRecording) {
+
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+
+                        this.advanceLine();
+                    }
+                }
             }
+        }
+        catch (e) {
+            console.log(e);
+        }
+    }
+
+    public async onAudioDeviceChanged(deviceId: string) {
+
+        try {
+
+            await (this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } }));
         }
         catch (e) {
 
@@ -125,61 +134,123 @@ export class MessageRecorder {
         }
     }
 
-    public onStopPressed(sender: StopButton | null, event: Event | null) {
+    private async startAudioRecorder() {
 
-        if (this._notebookPanel.isVisible && this._isRecording) {
+        try {
 
-            if (this._editor) {
+            this._mediaRecorder = new MediaRecorder(await this._mediaStream);
 
-                let input = this._editor.getLine(this._lineIndex);
+            this._recording = new Promise((r, j) => {
 
-                this.aggregateMessage({
-                    event: 'record_stopped',
-                    notebook_id: this._notebookPanel.content.id,
-                    cell_id: this._cell.model.id,
-                    cell_index: this._cellIndex,
-                    cell_type: this._cell.model.type,
-                    line_index: this._lineIndex,
-                    input: input
+                let recordings: Array<Blob> = [];
+
+                this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+
+                    recordings.push(event.data);
                 });
-            }
-            else {
 
-                this.aggregateMessage({
-                    event: 'record_stopped',
-                    notebook_id: this._notebookPanel.content.id
+                this._mediaRecorder.addEventListener('stop', () => {
+
+                    r(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
                 });
-            }
 
-            if (this._mediaRecorder?.state == 'recording') {
+                this._mediaRecorder.addEventListener('error', j);
+            });
 
-                this._mediaRecorder.stop();
-            }
+            this._mediaRecorder.start();
 
-            this._recorderStopped.emit(this._notebookPanel);
+            await this._recording;
+        }
+        catch (e) {
 
-            this._isRecording = false;
-            this._cellIndex = null;
-            this._editor = null;
-            this._notebookPanel.content.widgets[0].editorWidget.editor.focus();
-            this._notebookPanel.content.widgets[0].editorWidget.editor.blur();
-            this._notebookPanel.content.node.focus();
+            console.error(e);
         }
     }
 
-    public async onSavePressed(sender: SaveButton, event: Event) {
+    public startRecorder() {
 
         try {
-            if (this._isRecording) {
 
-                this.onStopPressed(null, null);
+            this.startAudioRecorder();
+
+            this._eventMessages = [];
+
+            this.aggregateMessage({
+                event: "record_started",
+                notebook_id: this._notebookPanel.content.id
+            });
+
+            this._notebookPanel.content.node.focus();
+
+            if (this._editor) {
+
+                this._editor.focus();
+            }
+
+            this.isRecording = true;
+
+            this._statusIndicator.record(this._notebookPanel);
+        }
+        catch (e) {
+
+            console.error(e);
+        }
+    }
+
+    public async stopRecorder() {
+
+        if (this._editor) {
+            //  The MessageRecorder may or may not have an editor when it stops; hence handle these cases separately.
+            let input = this._editor.getLine(this._lineIndex);
+
+            this.aggregateMessage({
+                event: 'record_stopped',
+                notebook_id: this._notebookPanel.content.id,
+                cell_id: this._cell.model.id,
+                cell_index: this._cellIndex,
+                cell_type: this._cell.model.type,
+                line_index: this._lineIndex,
+                input: input
+            });
+        }
+        else {
+
+            this.aggregateMessage({
+                event: 'record_stopped',
+                notebook_id: this._notebookPanel.content.id
+            });
+        }
+
+        if (this._mediaRecorder?.state == 'recording') {
+
+            this._mediaRecorder.stop();
+        }
+
+        this.messagePlayer.recording = await this._recording;;
+        this.messagePlayer.eventMessages = this._eventMessages;
+
+        this.isRecording = false;
+        this._cellIndex = null;
+        this._editor = null;
+        this._notebookPanel.content.widgets[0].editorWidget.editor.focus();
+        this._notebookPanel.content.widgets[0].editorWidget.editor.blur();
+        this._notebookPanel.content.node.focus();
+    }
+
+    public async saveRecording() {
+
+        try {
+
+            if (this.isRecording) {
+
+                this.stopRecorder();
             }
 
             if (this._eventMessages.length && this._notebookPanel.isVisible) {
 
                 let fileReader = new FileReader();
 
-                fileReader.readAsDataURL(new Blob(await this._recordings, { 'type': 'audio/ogg; codecs=opus' }));
+                fileReader.readAsDataURL(await this._recording);
 
                 let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
 
@@ -201,49 +272,44 @@ export class MessageRecorder {
                 await this._notebookPanel.context.saveAs();
             }
         }
+
         catch (e) {
 
             console.error(e);
         }
     }
 
-    public onAdvancePressed(sender: AdvanceButton, event: Event) {
+    public advanceLine() {
 
-        if (this._isRecording && this._notebookPanel.isVisible) {
+        if (this._cellIndex === null) {
 
-            event.stopImmediatePropagation();
-            event.preventDefault();
-
-            if (this._cellIndex === null) {
-
-                this.aggregateMessage({
-                    event: 'cell_started',
-                    notebook_id: this._notebookPanel.content.id
-                });
-            }
-            else {
-
-                let line = this._editor.getLine(this._lineIndex);
-
-                this.aggregateMessage({
-                    event: 'line_finished',
-                    notebook_id: this._notebookPanel.content.id,
-                    cell_id: this._cell.model.id,
-                    cell_index: this._cellIndex,
-                    cell_type: this._cell.model.type,
-                    line_index: this._lineIndex,
-                    input: line
-                });
-
-            }
-
-            this.advanceCursor();
+            this.aggregateMessage({
+                event: 'cell_started',
+                notebook_id: this._notebookPanel.content.id
+            });
         }
+        else {
+
+            let line = this._editor.getLine(this._lineIndex);
+
+            this.aggregateMessage({
+                event: 'line_finished',
+                notebook_id: this._notebookPanel.content.id,
+                cell_id: this._cell.model.id,
+                cell_index: this._cellIndex,
+                cell_type: this._cell.model.type,
+                line_index: this._lineIndex,
+                input: line
+            });
+
+        }
+
+        this.advanceCursor();
     }
 
-    public onExecutionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
+    public executionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
-        if (this._isRecording && args.notebook.isVisible) {
+        if (this.isRecording && args.notebook.isVisible) {
 
             let line = this._editor.getLine(this._lineIndex);
 
@@ -259,9 +325,9 @@ export class MessageRecorder {
         }
     }
 
-    public onExecuted(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
+    public executed(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
-        if (this._isRecording && this._notebookPanel.content == args.notebook) {
+        if (this.isRecording && this._notebookPanel.content == args.notebook) {
 
             let outputs: Array<nbformat.IOutput> = [];
 
@@ -365,25 +431,5 @@ export class MessageRecorder {
         this._eventMessages.push(message);
 
         console.log(message.input, message);
-    }
-
-    get recorderStarted(): ISignal<MessageRecorder, NotebookPanel> {
-        return this._recorderStarted;
-    }
-
-    get recorderStopped(): ISignal<MessageRecorder, NotebookPanel> {
-        return this._recorderStopped;
-    }
-
-    get eventMessagesChanged(): ISignal<MessageRecorder, Array<EventMessage>> {
-        return this._eventMessagesChanged;
-    }
-
-    get eventMessages(): Array<EventMessage> {
-        return this._eventMessages;
-    }
-
-    get recordings(): Promise<Array<Blob>> {
-        return this._recordings;
     }
 }
