@@ -1,17 +1,12 @@
 /// <reference types="@types/dom-mediacapture-record" />
 
 import {
-  JSONExt,
-  JSONObject,
-  PartialJSONObject,
   PartialJSONValue,
-  ReadonlyPartialJSONObject
 } from '@lumino/coreutils';
 import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { EventMessage } from "./types";
 import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
-import { ISignal, Signal } from "@lumino/signaling";
 import { MessageRecorder } from "./message_recorder";
 import { StatusIndicator } from './status_indicator';
 
@@ -19,25 +14,23 @@ export class MessagePlayer {
 
   public recording: Blob;
   public eventMessages: Array<EventMessage>;
+  public isPlaying: boolean = false;
 
   private _contentModel: PartialJSONValue;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
   private _intervalId: number;
   private _editor: CodeMirrorEditor;
-  private _isRecording: boolean = false;
-  private _audio: HTMLAudioElement;
-  private _player: Promise<any>;
+  private _audioPlayer: HTMLAudioElement;
+  private _audioPlayback: Promise<Event>;
   private _executeCell: boolean;
   private _scrollToCell: boolean;
   private _messageRecorder: MessageRecorder;
   private _statusIndicator: StatusIndicator;
-  private _recording: Promise<Blob>;
   private _scrollCheckbox: HTMLElement;
   private _executionCheckbox: HTMLElement;
   private _mediaRecorder: MediaRecorder;
-
-  public isPlaying: boolean = false;
+  private _displayRecording: Promise<Blob>;
 
   constructor({
     notebookPanel,
@@ -59,6 +52,7 @@ export class MessagePlayer {
     this._executionCheckbox = executionCheckbox;
     this._scrollCheckbox = scrollCheckbox;
 
+    this._messageRecorder = messageRecorder;
     this._messageRecorder.messagePlayer = this;
 
     this.handleExecutionCheckboxChange = this.handleExecutionCheckboxChange.bind(this);
@@ -99,12 +93,9 @@ export class MessagePlayer {
   private dispose() {
 
     clearInterval(this._intervalId);
-
     window.removeEventListener("keydown", this.handleKeydown, true);
     this._executionCheckbox.removeEventListener('change', this.handleExecutionCheckboxChange, true);
     this._scrollCheckbox.removeEventListener('change', this.handleScrollCheckboxEvent, true);
-
-    Signal.disconnectAll(this);
   }
 
   handleExecutionCheckboxChange(event: Event) {
@@ -164,9 +155,9 @@ export class MessagePlayer {
 
         this.isPlaying = false;
 
-        this._audio.pause();
+        this._audioPlayer.pause();
 
-        await this._player;
+        await this._audioPlayback;
 
         this._statusIndicator.stop(this._notebookPanel);
       }
@@ -181,9 +172,7 @@ export class MessagePlayer {
 
     try {
 
-      this._mediaRecorder = new MediaRecorder(await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true }));
-
-      let displayRecording = new Promise<Blob>((r, j) => {
+      this._displayRecording = new Promise<Blob>((r, j) => {
 
         let recordings: Array<Blob> = [];
 
@@ -202,9 +191,7 @@ export class MessagePlayer {
 
       this._mediaRecorder.start();
 
-      await displayRecording;
-
-      return displayRecording;
+      await this._displayRecording;
     }
     catch (e) {
       console.error(e);
@@ -212,23 +199,19 @@ export class MessagePlayer {
   }
 
   private async startAudioPlayback() {
+
     try {
-      this._audio = new Audio();
 
-      this._audio.src = URL.createObjectURL(this.recording);
+      this._audioPlayback = new Promise<Event>((r, j) => {
 
-      let audio = new Promise((r, j) => {
+        this._audioPlayer.addEventListener('ended', r);
 
-        this._audio.addEventListener('ended', r);
+        this._audioPlayer.addEventListener('error', j);
+      });
 
-        this._audio.addEventListener('error', j);
-      })
+      await this._audioPlayer.play();
 
-      await this._audio.play();
-
-      await audio;
-
-      return audio;
+      await this._audioPlayback;
     }
     catch (e) {
       console.error(e);
@@ -239,7 +222,16 @@ export class MessagePlayer {
 
     try {
 
-      let displayRecording = this.startDisplayRecording();
+      try {
+
+        this._mediaRecorder = new MediaRecorder(await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true }));
+
+        this.startDisplayRecording();
+      }
+      catch (e) {
+
+        console.error(e);
+      }
 
       this._contentModel = this._notebookPanel.content.model.toJSON();
 
@@ -259,22 +251,26 @@ export class MessagePlayer {
 
       this.isPlaying = true;
 
-      let audio = this.startAudioPlayback();
+      this._audioPlayer = new Audio();
+
+      this._audioPlayer.src = URL.createObjectURL(this.recording);
+
+      this.startAudioPlayback();
 
       for (let index = 0; this.isPlaying && index < this.eventMessages.length; index++) {
 
         let message = this.eventMessages[index];
 
-        await (this._player = this.playMessage(message));
+        await this.playMessage(message);
       }
 
-      await audio;
+      await this._audioPlayback;
 
       this._mediaRecorder.stop()
 
       let a = document.createElement("a");
 
-      a.href = URL.createObjectURL(await displayRecording);
+      a.href = URL.createObjectURL(await this._displayRecording);
 
       a.download = "file.webm";
 
@@ -288,7 +284,7 @@ export class MessagePlayer {
     finally {
 
       this._statusIndicator.stop(this._notebookPanel);
-      
+
       this.isPlaying = false;
     }
   }
@@ -381,11 +377,11 @@ export class MessagePlayer {
 
           if (!resolved) {
 
-            this._audio.pause();
+            this._audioPlayer.pause();
 
             await runAndAdvance;
 
-            this._audio.play();
+            this._audioPlayer.play();
           }
         }
         else {

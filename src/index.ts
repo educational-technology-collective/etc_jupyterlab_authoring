@@ -6,7 +6,6 @@ import {
 
 import {
   INotebookTracker,
-  NotebookActions,
   NotebookPanel
 } from "@jupyterlab/notebook";
 
@@ -27,7 +26,6 @@ import {
 import { IStatusBar } from "@jupyterlab/statusbar";
 import { MessageRecorder } from './message_recorder';
 import { MessagePlayer } from './message_player';
-import { MessageEditor } from "./message_editor";
 import { AudioInputSelector } from "./audio_input_selector";
 
 /**
@@ -80,7 +78,6 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     notebookTracker.currentChanged.connect(statusIndicator.onCurrentChanged, statusIndicator);
     //  There is one status indicator for all Notebooks; hence notify the status indicator whenever the user changes Notebooks.
-
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
 

@@ -26,6 +26,7 @@ export class MessageRecorder {
     private _eventMessages: Array<EventMessage> = [];
     private _lastTimestamp: number;
     private _statusIndicator: StatusIndicator;
+    private _audioInputSelector: AudioInputSelector;
 
     constructor({
         notebookPanel,
@@ -38,18 +39,22 @@ export class MessageRecorder {
             statusIndicator: StatusIndicator
         }) {
 
+        this.handleAudioDeviceChange = this.handleAudioDeviceChange.bind(this);
+        this.handleKeydown = this.handleKeydown.bind(this);
+
         this._notebookPanel = notebookPanel;
         this._cellIndex = null;
         this._statusIndicator = statusIndicator;
+        this._audioInputSelector = audioInputSelector;
 
         this._notebookPanel.disposed.connect(this.dispose, this);
 
         NotebookActions.executionScheduled.connect(this.executionScheduled, this);
         NotebookActions.executed.connect(this.executed, this);
 
-        window.addEventListener("keydown", this.handleKeydown.bind(this), true);
+        window.addEventListener("keydown", this.handleKeydown, true);
 
-        audioInputSelector.eventTarget.addEventListener('audio_device_change', (event: Event) => this.onAudioDeviceChanged((event as CustomEvent).detail));
+        this._audioInputSelector.eventTarget.addEventListener('audio_device_change', this.handleAudioDeviceChange);
 
         (async () => {
             try {
@@ -62,8 +67,10 @@ export class MessageRecorder {
         })();
     }
 
-    public dispose(sender: NotebookPanel, args: any) {
+    public dispose() {
 
+        this._audioInputSelector.eventTarget.removeEventListener('audio_device_change', this.handleAudioDeviceChange);
+        window.removeEventListener("keydown", this.handleKeydown, true);
     }
 
     handleKeydown(event: KeyboardEvent) {
@@ -122,9 +129,11 @@ export class MessageRecorder {
         }
     }
 
-    public async onAudioDeviceChanged(deviceId: string) {
+    public async handleAudioDeviceChange(event: Event) {
 
         try {
+
+            let deviceId = (event as CustomEvent).detail;
 
             await (this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } }));
         }

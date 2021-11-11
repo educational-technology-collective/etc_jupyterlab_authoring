@@ -1,19 +1,14 @@
-import { MessagePlayer } from "./message_player";
-import { MessageRecorder } from "./message_recorder";
-import { EventMessage } from "./types";
+// import { MessagePlayer } from "./message_player";
+// import { MessageRecorder } from "./message_recorder";
+// import { EventMessage } from "./types";
 
-import { Widget, Panel } from "@lumino/widgets";
+// import { Widget, Panel } from "@lumino/widgets";
 
-export class MessageEditor {
+// export class MessageEditor {
 
-    private _eventMessages: Array<EventMessage>;
+//     private _eventMessages: Array<EventMessage>;
 
-    constructor() {
+//     constructor() {
 
-    }
-
-    onEventMessagesChanged(sender: MessageRecorder | MessagePlayer, args: Array<EventMessage>) {
-
-        this._eventMessages = args;
-    }
-}
+//     }
+// }
