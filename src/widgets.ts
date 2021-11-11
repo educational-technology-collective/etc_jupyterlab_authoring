@@ -1,19 +1,41 @@
 import { Widget, Panel } from "@lumino/widgets";
 
-import { Signal, ISignal } from "@lumino/signaling";
-
 import { UUID } from '@lumino/coreutils';
 
-import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
-
 import {
-    stopStatus,
-    playStatus,
-    recordStatus,
     rightPanelIcon
 } from './icons'
 
 import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
+
+export class SavePlaybackWidget extends Widget {
+
+    constructor() {
+        super();
+
+        this.addClass('jp-SavePlaybackCheckboxWidget');
+
+        this.node.innerHTML = '<p>Save playback.</p>';
+
+        let input = document.createElement('input');
+
+        input.setAttribute('type', 'checkbox');
+
+        input.setAttribute('name', 'save');
+
+        input.classList.add('jp-mod-styled');
+
+        let label = document.createElement('label');
+
+        label.setAttribute('for', 'save');
+
+        label.innerHTML = 'Enable';
+
+        this.node.appendChild(input);
+
+        this.node.appendChild(label);
+    }
+}
 
 export class ScrollCheckboxWidget extends Widget {
 
@@ -22,7 +44,7 @@ export class ScrollCheckboxWidget extends Widget {
 
         this.addClass('jp-ScrollCheckBoxWidget');
 
-        this.node.innerHTML = '<p>Scroll to cell during Playback</p>';
+        this.node.innerHTML = '<p>Scroll to cell during playback.</p>';
 
         let input = document.createElement('input');
 
@@ -51,7 +73,7 @@ export class ExecutionCheckboxWidget extends Widget {
 
         this.addClass('jp-ExecutionCheckBoxWidget');
 
-        this.node.innerHTML = '<p>Execute Cells during Playback</p>';
+        this.node.innerHTML = '<p>Execute cells during playback.</p>';
 
         let input = document.createElement('input');
 

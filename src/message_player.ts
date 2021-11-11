@@ -29,6 +29,8 @@ export class MessagePlayer {
   private _statusIndicator: StatusIndicator;
   private _scrollCheckbox: HTMLElement;
   private _executionCheckbox: HTMLElement;
+  private _savePlaybackCheckbox: HTMLElement;
+  private _savePlayback: boolean;
   private _mediaRecorder: MediaRecorder;
   private _displayRecording: Promise<Blob>;
 
@@ -37,13 +39,15 @@ export class MessagePlayer {
     messageRecorder,
     statusIndicator,
     executionCheckbox,
-    scrollCheckbox
+    scrollCheckbox,
+    savePlaybackCheckbox
   }: {
     notebookPanel: NotebookPanel
     messageRecorder: MessageRecorder,
     statusIndicator: StatusIndicator,
     executionCheckbox: HTMLElement,
-    scrollCheckbox: HTMLElement
+    scrollCheckbox: HTMLElement,
+    savePlaybackCheckbox: HTMLElement
   }) {
 
     this._notebookPanel = notebookPanel;
@@ -51,19 +55,22 @@ export class MessagePlayer {
     this._statusIndicator = statusIndicator;
     this._executionCheckbox = executionCheckbox;
     this._scrollCheckbox = scrollCheckbox;
+    this._savePlaybackCheckbox = savePlaybackCheckbox;
 
     this._messageRecorder = messageRecorder;
     this._messageRecorder.messagePlayer = this;
 
     this.handleExecutionCheckboxChange = this.handleExecutionCheckboxChange.bind(this);
-    this.handleScrollCheckboxEvent = this.handleScrollCheckboxEvent.bind(this);
+    this.handleScrollCheckboxChange = this.handleScrollCheckboxChange.bind(this);
+    this.handleSavePlayback = this.handleSavePlayback.bind(this);
     this.handleKeydown = this.handleKeydown.bind(this);
 
     notebookPanel.disposed.connect(this.dispose, this);
 
     window.addEventListener("keydown", this.handleKeydown, true);
     this._executionCheckbox.addEventListener('change', this.handleExecutionCheckboxChange, true);
-    this._scrollCheckbox.addEventListener('change', this.handleScrollCheckboxEvent, true);
+    this._scrollCheckbox.addEventListener('change', this.handleScrollCheckboxChange, true);
+    this._savePlaybackCheckbox.addEventListener('change', this.handleSavePlayback, true);
 
     if (this._notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
@@ -95,15 +102,19 @@ export class MessagePlayer {
     clearInterval(this._intervalId);
     window.removeEventListener("keydown", this.handleKeydown, true);
     this._executionCheckbox.removeEventListener('change', this.handleExecutionCheckboxChange, true);
-    this._scrollCheckbox.removeEventListener('change', this.handleScrollCheckboxEvent, true);
+    this._scrollCheckbox.removeEventListener('change', this.handleScrollCheckboxChange, true);
   }
 
   handleExecutionCheckboxChange(event: Event) {
     this._executeCell = (event.target as HTMLInputElement).checked
   }
 
-  handleScrollCheckboxEvent(event: Event) {
+  handleScrollCheckboxChange(event: Event) {
     this._scrollToCell = (event.target as HTMLInputElement).checked
+  }
+
+  handleSavePlayback(event: Event) {
+    this._savePlayback = (event.target as HTMLInputElement).checked
   }
 
   handleKeydown(event: KeyboardEvent) {
@@ -222,15 +233,18 @@ export class MessagePlayer {
 
     try {
 
-      try {
+      if (this._savePlayback) {
 
-        this._mediaRecorder = new MediaRecorder(await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true }));
+        try {
 
-        this.startDisplayRecording();
-      }
-      catch (e) {
+          this._mediaRecorder = new MediaRecorder(await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true }));
 
-        console.error(e);
+          this.startDisplayRecording();
+        }
+        catch (e) {
+
+          console.error(e);
+        }
       }
 
       this._contentModel = this._notebookPanel.content.model.toJSON();
@@ -266,16 +280,21 @@ export class MessagePlayer {
 
       await this._audioPlayback;
 
-      this._mediaRecorder.stop()
+      if (this._mediaRecorder?.state == 'recording') {
 
-      let a = document.createElement("a");
+        if (this._savePlayback) {
 
-      a.href = URL.createObjectURL(await this._displayRecording);
-
-      a.download = "file.webm";
-
-      a.click();
-
+          this._mediaRecorder.stop();
+  
+          let a = document.createElement("a");
+  
+          a.href = URL.createObjectURL(await this._displayRecording);
+  
+          a.download = "file.webm";
+  
+          a.click();
+        }
+      }
     }
     catch (e) {
 

@@ -16,7 +16,8 @@ import {
   StatusIndicatorWidget,
   AuthoringPanel,
   ExecutionCheckboxWidget,
-  ScrollCheckboxWidget
+  ScrollCheckboxWidget,
+  SavePlaybackWidget
 } from './widgets';
 
 import {
@@ -54,14 +55,14 @@ const extension: JupyterFrontEndPlugin<void> = {
     let authoringPanel = new AuthoringPanel();
 
     let audioInputSelectorWidget = new AudioInputSelectorWidget();
-    let executionCheckboxWidget = new ExecutionCheckboxWidget()
-    let scrollCheckboxWidget = new ScrollCheckboxWidget()
+    let executionCheckboxWidget = new ExecutionCheckboxWidget();
+    let scrollCheckboxWidget = new ScrollCheckboxWidget();
+    let savePlaybackWidget = new SavePlaybackWidget();
 
     authoringPanel.addWidget(audioInputSelectorWidget);
-
     authoringPanel.addWidget(executionCheckboxWidget);
-
     authoringPanel.addWidget(scrollCheckboxWidget);
+    authoringPanel.addWidget(savePlaybackWidget);
 
     labShell.add(authoringPanel, 'right');
 
@@ -97,7 +98,8 @@ const extension: JupyterFrontEndPlugin<void> = {
           messageRecorder, 
           statusIndicator,
           executionCheckbox:executionCheckboxWidget.node,
-          scrollCheckbox: scrollCheckboxWidget.node
+          scrollCheckbox: scrollCheckboxWidget.node,
+          savePlaybackCheckbox: savePlaybackWidget.node
         });
       }
       catch (e) {
