@@ -38,7 +38,7 @@ export class MessagePlayer {
   private _charIndex: number;
   private _messageIndex: number;
   private _eventTarget: EventTarget;
-  private _proceed: Promise<boolean> = Promise.resolve(true);
+  private _player: Promise<void>;
 
   constructor({
     notebookPanel,
@@ -150,11 +150,7 @@ export class MessagePlayer {
 
             if (this._paused) {
 
-              this._eventTarget.dispatchEvent(new Event('stop'));
-            }
-            else {
-
-              this._proceed = Promise.resolve(false);
+              this._eventTarget.dispatchEvent(new Event('resume'));
             }
 
             await this.stop();
@@ -167,29 +163,15 @@ export class MessagePlayer {
             event.stopImmediatePropagation();
             event.preventDefault();
 
-            if (this._paused) {
+            if (!this._paused) {
 
-              this._eventTarget.dispatchEvent(new Event('start'));
-
-              this._audioPlayer.play();
-
-              if (this._savePlayback) {
-
-                this._mediaRecorder.resume();
-              }
-
-              this._paused = false;
               this._stopped = false;
 
-              this._statusIndicator.play(this._notebookPanel);
+              await (this._player = this.play());
             }
             else {
 
-              this._stopped = false;
-
-              this._proceed = Promise.resolve(true);
-
-              await this.play();
+              await this.resume();
             }
           }
         }
@@ -207,45 +189,56 @@ export class MessagePlayer {
     }
     catch (e) {
 
-      this._stopped = true;
-      this._paused = false;
       console.error(e);
     }
   }
 
+  private async resume() {
+
+    if (this._savePlayback) {
+
+      this._mediaRecorder.resume();
+    }
+
+    this._eventTarget.dispatchEvent(new Event('resume'));
+
+    await this._audioPlayer.play();
+
+    this._paused = false;
+
+    this._stopped = false;
+
+    this._statusIndicator.play(this._notebookPanel);
+  }
+
   private async pause() {
+
+    this._paused = true;
+
+    await new Promise((r, j) => {
+
+      this._eventTarget.addEventListener('paused', r, { once: true });
+    })
+
+    this._audioPlayer.pause();
 
     if (this._savePlayback) {
 
       this._mediaRecorder.pause();
     }
 
-    this._audioPlayer.pause();
-
-    this._paused = true;
-
     this._statusIndicator.pause(this._notebookPanel);
-
-    return await (this._proceed = new Promise<boolean>((r, j) => {
-
-      this._eventTarget.addEventListener('start', () => r(true), { once: true });
-
-      this._eventTarget.addEventListener('stop', () => r(false), { once: true });
-
-      this._eventTarget.addEventListener('error', j, { once: true });
-    }));
   }
 
   public async stop() {
 
-    if (await this._proceed) {
+    this._stopped = true;
 
-      await this._audioPlayback;
-    }
-    else {
+    await this._player;
 
-      this._audioPlayer.pause();
-    }
+    this._audioPlayer.pause();
+
+    await this._audioPlayback;
 
     if (this._savePlayback) {
 
@@ -253,8 +246,6 @@ export class MessagePlayer {
     }
 
     this._statusIndicator.stop(this._notebookPanel);
-
-    this._stopped = true;
   }
 
   public reset() {
@@ -299,11 +290,16 @@ export class MessagePlayer {
 
     this._statusIndicator.play(this._notebookPanel);
 
-    while (this._messageIndex < this.eventMessages.length) {
+    while (!this._stopped && this._messageIndex < this.eventMessages.length) {
 
-      if (!await this._proceed) {
+      if (this._paused) {
 
-        break;
+        await new Promise((r, j) => {
+
+          this._eventTarget.addEventListener('resume', r, { once: true });
+
+          this._eventTarget.dispatchEvent(new Event('paused'));
+        });
       }
 
       let message = this.eventMessages[this._messageIndex];
@@ -358,11 +354,16 @@ export class MessagePlayer {
 
           if (message.input.length) {
 
-            while (this._charIndex < message.input.length) {
+            while (!this._stopped && this._charIndex < message.input.length) {
 
-              if (!await this._proceed) {
+              if (this._paused) {
 
-                break;
+                await new Promise((r, j) => {
+
+                  this._eventTarget.addEventListener('resume', r, { once: true });
+
+                  this._eventTarget.dispatchEvent(new Event('paused'));
+                });
               }
 
               let pos = {
@@ -380,11 +381,6 @@ export class MessagePlayer {
             }
           }
           else {
-
-            if (!await this._proceed) {
-
-              break;
-            }
 
             await new Promise<void>((r, j) => setTimeout(r, duration));
           }
@@ -442,7 +438,17 @@ export class MessagePlayer {
       this._messageIndex++; this._charIndex = 0;
     }
 
-    await this.stop();
+    if (!this._stopped) {
+
+      await this._audioPlayback;
+
+      if (this._savePlayback) {
+
+        this._mediaRecorder.stop();
+      }
+
+      this._statusIndicator.stop(this._notebookPanel);
+    }
   }
 
   private async startDisplayRecording() {
@@ -538,6 +544,18 @@ export class MessagePlayer {
 
       lastLine = this._editor.lastLine();
     }
+  }
+
+  createPause(): Promise<boolean> {
+
+    return new Promise<boolean>((r, j) => {
+
+      this._eventTarget.addEventListener('start', () => r(true), { once: true });
+
+      this._eventTarget.addEventListener('stop', () => r(false), { once: true });
+
+      this._eventTarget.addEventListener('error', j, { once: true });
+    });
   }
 
   get isPlaying(): boolean {

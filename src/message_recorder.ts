@@ -313,7 +313,6 @@ export class MessageRecorder {
                 line_index: this._lineIndex,
                 input: line
             });
-
         }
 
         this.advanceCursor();
