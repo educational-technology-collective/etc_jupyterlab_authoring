@@ -8,12 +8,12 @@ import {
 
 import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
 
-export class SavePlaybackWidget extends Widget {
+export class SaveDisplayRecordingCheckboxWidget extends Widget {
 
     constructor() {
         super();
 
-        this.addClass('jp-SavePlaybackCheckboxWidget');
+        this.addClass('jp-SaveDisplayRecordingCheckboxWidget');
 
         this.node.innerHTML = '<p>Save playback.</p>';
 

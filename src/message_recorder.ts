@@ -13,20 +13,21 @@ import { StatusIndicator } from './status_indicator';
 export class MessageRecorder {
 
     public messagePlayer: MessagePlayer;
-    public isRecording: boolean = false;
 
+    private _recording: boolean;
     private _notebookPanel: NotebookPanel;
     private _cellIndex: number | null;
     private _lineIndex: number;
     private _editor: Editor;
     private _cell: Cell<ICellModel>;
-    private _recording: Promise<Blob>;
+    private _audioRecording: Promise<Blob>;
     private _mediaStream: Promise<MediaStream>;
     private _mediaRecorder: MediaRecorder;
     private _eventMessages: Array<EventMessage> = [];
     private _lastTimestamp: number;
     private _statusIndicator: StatusIndicator;
     private _audioInputSelector: AudioInputSelector;
+    private _priorDuration: number;
 
     constructor({
         notebookPanel,
@@ -70,10 +71,11 @@ export class MessageRecorder {
     public dispose() {
 
         this._audioInputSelector.eventTarget.removeEventListener('audio_device_change', this.handleAudioDeviceChange);
+
         window.removeEventListener("keydown", this.handleKeydown, true);
     }
 
-    handleKeydown(event: KeyboardEvent) {
+    async handleKeydown(event: KeyboardEvent) {
 
         try {
 
@@ -81,40 +83,54 @@ export class MessageRecorder {
 
                 if (event.ctrlKey && event.key == "F8") {
 
-                    if (
-                        !this.isRecording &&
-                        !this.messagePlayer.isPlaying
-                    ) {
+                    if (!this.messagePlayer.isPlaying) {
 
                         event.stopImmediatePropagation();
                         event.preventDefault();
 
-                        this.startRecorder();
+                        if (this._recording) {
+
+                            await this.resume();
+                        }
+                        else {
+
+                            await this.record();
+                        }
                     }
                 }
                 else if (event.ctrlKey && event.key == "F9") {
 
-                    if (this.isRecording) {
+                    if (this._recording) {
 
                         event.stopImmediatePropagation();
                         event.preventDefault();
 
-                        this.stopRecorder();
+                        await this.stop();
+                    }
+                }
+                else if (event.ctrlKey && event.key == "F11") {
+
+                    if (this._recording) {
+
+                        event.stopImmediatePropagation();
+                        event.preventDefault();
+
+                        await this.pause();
                     }
                 }
                 else if (event.ctrlKey && event.key == "F12") {
 
-                    if (!this.isRecording) {
+                    if (!this._recording) {
 
                         event.stopImmediatePropagation();
                         event.preventDefault();
 
-                        this.saveRecording();
+                        await this.save();
                     }
                 }
                 else if (event.code == "Space") {
 
-                    if (this.isRecording) {
+                    if (this._recording) {
 
                         event.stopImmediatePropagation();
                         event.preventDefault();
@@ -125,62 +141,16 @@ export class MessageRecorder {
             }
         }
         catch (e) {
+
             console.log(e);
         }
     }
 
-    public async handleAudioDeviceChange(event: Event) {
+    private async record() {
 
         try {
 
-            let deviceId = (event as CustomEvent).detail;
-
-            await (this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } }));
-        }
-        catch (e) {
-
-            console.error(e);
-        }
-    }
-
-    private async startAudioRecorder() {
-
-        try {
-
-            this._mediaRecorder = new MediaRecorder(await this._mediaStream);
-
-            this._recording = new Promise((r, j) => {
-
-                let recordings: Array<Blob> = [];
-
-                this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
-
-                    recordings.push(event.data);
-                });
-
-                this._mediaRecorder.addEventListener('stop', () => {
-
-                    r(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
-                });
-
-                this._mediaRecorder.addEventListener('error', j);
-            });
-
-            this._mediaRecorder.start();
-
-            await this._recording;
-        }
-        catch (e) {
-
-            console.error(e);
-        }
-    }
-
-    public startRecorder() {
-
-        try {
-
-            this.startAudioRecorder();
+            await this.startAudioRecorder();
 
             this._eventMessages = [];
 
@@ -196,7 +166,7 @@ export class MessageRecorder {
                 this._editor.focus();
             }
 
-            this.isRecording = true;
+            this._recording = true;
 
             this._statusIndicator.record(this._notebookPanel);
         }
@@ -206,7 +176,35 @@ export class MessageRecorder {
         }
     }
 
-    public async stopRecorder() {
+    private async pause() {
+
+        await new Promise((r, j) => {
+
+            this._mediaRecorder.addEventListener('pause', r, { once: true });
+
+            this._mediaRecorder.pause();
+        })
+
+        this._priorDuration = Date.now() - this._lastTimestamp;
+
+        this._statusIndicator.pause(this._notebookPanel);
+    }
+
+    private async resume() {
+
+        await new Promise((r, j) => {
+
+            this._mediaRecorder.addEventListener('resume', r, { once: true });
+
+            this._mediaRecorder.resume();
+        });
+
+        this._lastTimestamp = Date.now();
+
+        this._statusIndicator.record(this._notebookPanel);
+    }
+
+    private async stop() {
 
         if (this._editor) {
             //  The MessageRecorder may or may not have an editor when it stops; hence handle these cases separately.
@@ -235,63 +233,122 @@ export class MessageRecorder {
             this._mediaRecorder.stop();
         }
 
-        this.messagePlayer.recording = await this._recording;;
-
-        this._statusIndicator.stop(this._notebookPanel);
+        this.messagePlayer.audioRecording = await this._audioRecording;;
 
         this.messagePlayer.eventMessages = this._eventMessages;
 
-        this.isRecording = false;
+        this._recording = false;
         this._cellIndex = null;
         this._editor = null;
         this._notebookPanel.content.widgets[0].editorWidget.editor.focus();
         this._notebookPanel.content.widgets[0].editorWidget.editor.blur();
         this._notebookPanel.content.node.focus();
+
+        this._statusIndicator.stop(this._notebookPanel);
     }
 
-    public async saveRecording() {
+    private async save() {
 
         try {
 
-            if (this.isRecording) {
+            let fileReader = new FileReader();
 
-                this.stopRecorder();
+            let audioRecording = await this._audioRecording;
+
+            let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
+
+                fileReader.addEventListener('load', r);
+
+                fileReader.addEventListener('error', j);
+
+                fileReader.readAsDataURL(audioRecording);
+            });
+
+            let value = {
+                eventMessages: this._eventMessages,
+                audio: event.target.result
             }
 
-            if (this._eventMessages.length && this._notebookPanel.isVisible) {
+            this._notebookPanel.content.model.metadata.set(
+                'etc_jupyterlab_authoring',
+                JSON.stringify(value)
+            );
 
-                let fileReader = new FileReader();
-
-                fileReader.readAsDataURL(await this._recording);
-
-                let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
-
-                    fileReader.addEventListener('load', r);
-
-                    fileReader.addEventListener('error', j);
-                });
-
-                let value = {
-                    eventMessages: this._eventMessages,
-                    audio: event.target.result
-                }
-
-                this._notebookPanel.content.model.metadata.set(
-                    'etc_jupyterlab_authoring',
-                    JSON.stringify(value)
-                );
-
-                await this._notebookPanel.context.saveAs();
-            }
+            await this._notebookPanel.context.saveAs();
         }
-
         catch (e) {
 
             console.error(e);
         }
     }
 
-    public advanceLine() {
+    public async handleAudioDeviceChange(event: Event) {
+
+        try {
+
+            let deviceId = (event as CustomEvent).detail;
+
+            await (this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } }));
+        }
+        catch (e) {
+
+            console.error(e);
+        }
+    }
+
+    private async startAudioRecorder() {
+
+        try {
+
+            this._mediaRecorder = new MediaRecorder(await this._mediaStream);
+
+            (async () => {
+
+                try {
+
+                    this._audioRecording = new Promise((r, j) => {
+
+                        let recordings: Array<Blob> = [];
+
+                        this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+
+                            recordings.push(event.data);
+                        });
+
+                        this._mediaRecorder.addEventListener('stop', () => {
+
+                            r(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
+                        });
+
+                        this._mediaRecorder.addEventListener('error', j);
+                    });
+
+                    await this._audioRecording;
+                }
+                catch (e) {
+
+                    console.error(e);
+                }
+            })();
+
+            return new Promise((r, j) => {
+
+                this._mediaRecorder.addEventListener('start', r, { once: true });
+
+                this._mediaRecorder.start();
+            });
+        }
+        catch (e) {
+
+            console.error(e);
+        }
+    }
+
+
+
+
+
+    private advanceLine() {
 
         if (this._cellIndex === null) {
 
@@ -318,9 +375,9 @@ export class MessageRecorder {
         this.advanceCursor();
     }
 
-    public executionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
+    private executionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
-        if (this.isRecording && args.notebook.isVisible) {
+        if (this._recording && args.notebook.isVisible) {
 
             let line = this._editor.getLine(this._lineIndex);
 
@@ -336,9 +393,9 @@ export class MessageRecorder {
         }
     }
 
-    public executed(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
+    private executed(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
-        if (this.isRecording && this._notebookPanel.content == args.notebook) {
+        if (this._recording && this._notebookPanel.content == args.notebook) {
 
             let outputs: Array<nbformat.IOutput> = [];
 
@@ -361,6 +418,8 @@ export class MessageRecorder {
     }
 
     private advanceCursor() {
+
+        this._editor?.removeLineClass(this._lineIndex, 'wrap', 'active-line');
 
         if (this._cellIndex === null) {
 
@@ -413,6 +472,8 @@ export class MessageRecorder {
 
             this._lineIndex = null;
         }
+
+        this._editor?.addLineClass(this._lineIndex, 'wrap', 'active-line');
     }
 
     private aggregateMessage(message: EventMessage) {
@@ -426,8 +487,9 @@ export class MessageRecorder {
             case 'record_stopped':
                 message.start_timestamp = this._lastTimestamp;
                 message.stop_timestamp = now;
-                message.duration = message.stop_timestamp - message.start_timestamp;
+                message.duration = message.stop_timestamp - message.start_timestamp + (this._priorDuration ? this._priorDuration : 0);
                 this._lastTimestamp = now;
+                this._priorDuration = null;
                 break;
             //  The message must have a duration; hence, calculate a duration based on the timestamp of the previous message.
             case 'record_started':
@@ -442,5 +504,9 @@ export class MessageRecorder {
         this._eventMessages.push(message);
 
         console.log(message.input, message);
+    }
+
+    get isRecording(): boolean {
+        return this._recording;
     }
 }

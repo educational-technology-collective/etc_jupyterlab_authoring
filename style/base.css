@@ -1,4 +1,4 @@
-.jp-ExecutionCheckBoxWidget, .jp-ScrollCheckBoxWidget, .jp-AudioSelectorWidget, .jp-SavePlaybackCheckboxWidget {
+.jp-ExecutionCheckBoxWidget, .jp-ScrollCheckBoxWidget, .jp-AudioSelectorWidget, .jp-SaveDisplayRecordingCheckboxWidget {
   font-size: var(--jp-ui-font-size1) !important;
   padding: 12px 12px 0 12px;
 }
@@ -9,4 +9,8 @@
 
 .jp-AuthoringPanel {
   background: var(--jp-layout-color1);
+}
+
+.active-line {
+  background:lightcyan;
 }

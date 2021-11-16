@@ -17,7 +17,7 @@ import {
   AuthoringPanel,
   ExecutionCheckboxWidget,
   ScrollCheckboxWidget,
-  SavePlaybackWidget
+  SaveDisplayRecordingCheckboxWidget
 } from './widgets';
 
 import {
@@ -57,12 +57,12 @@ const extension: JupyterFrontEndPlugin<void> = {
     let audioInputSelectorWidget = new AudioInputSelectorWidget();
     let executionCheckboxWidget = new ExecutionCheckboxWidget();
     let scrollCheckboxWidget = new ScrollCheckboxWidget();
-    let savePlaybackWidget = new SavePlaybackWidget();
+    let saveDisplayRecordingCheckboxWidget = new SaveDisplayRecordingCheckboxWidget();
 
     authoringPanel.addWidget(audioInputSelectorWidget);
     authoringPanel.addWidget(executionCheckboxWidget);
     authoringPanel.addWidget(scrollCheckboxWidget);
-    authoringPanel.addWidget(savePlaybackWidget);
+    authoringPanel.addWidget(saveDisplayRecordingCheckboxWidget);
 
     labShell.add(authoringPanel, 'right');
 
@@ -87,19 +87,19 @@ const extension: JupyterFrontEndPlugin<void> = {
         await notebookPanel.revealed;
         await notebookPanel.sessionContext.ready;
 
-        let messageRecorder = new MessageRecorder({ 
+        let messageRecorder = new MessageRecorder({
           notebookPanel,
           audioInputSelector,
           statusIndicator
         });
 
-        let messagePlayer = new MessagePlayer({ 
-          notebookPanel, 
-          messageRecorder, 
+        let messagePlayer = new MessagePlayer({
+          notebookPanel,
+          messageRecorder,
           statusIndicator,
-          executionCheckbox:executionCheckboxWidget.node,
+          executionCheckbox: executionCheckboxWidget.node,
           scrollCheckbox: scrollCheckboxWidget.node,
-          savePlaybackCheckbox: savePlaybackWidget.node
+          saveDisplayRecordingCheckbox: saveDisplayRecordingCheckboxWidget.node
         });
       }
       catch (e) {

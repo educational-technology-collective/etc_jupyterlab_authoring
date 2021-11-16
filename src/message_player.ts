@@ -9,11 +9,10 @@ import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { MessageRecorder } from "./message_recorder";
 import { StatusIndicator } from './status_indicator';
-import { consoleIcon } from '@jupyterlab/ui-components';
 
 export class MessagePlayer {
 
-  public recording: Blob;
+  public audioRecording: Blob;
   public eventMessages: Array<EventMessage>;
 
   private _paused: boolean;
@@ -24,15 +23,15 @@ export class MessagePlayer {
   private _intervalId: number;
   private _editor: CodeMirrorEditor;
   private _audioPlayer: HTMLAudioElement;
-  private _audioPlayback: Promise<Event>;
+  private _audioPlaybackEnded: Promise<Event>;
   private _executeCell: boolean;
   private _scrollToCell: boolean;
   private _messageRecorder: MessageRecorder;
   private _statusIndicator: StatusIndicator;
   private _scrollCheckbox: HTMLElement;
   private _executionCheckbox: HTMLElement;
-  private _savePlaybackCheckbox: HTMLElement;
-  private _savePlayback: boolean;
+  private _saveDisplayRecordingCheckbox: HTMLElement;
+  private _saveDisplayRecording: boolean;
   private _mediaRecorder: MediaRecorder;
   private _displayRecording: Promise<Blob>;
   private _charIndex: number;
@@ -46,14 +45,14 @@ export class MessagePlayer {
     statusIndicator,
     executionCheckbox,
     scrollCheckbox,
-    savePlaybackCheckbox
+    saveDisplayRecordingCheckbox
   }: {
     notebookPanel: NotebookPanel
     messageRecorder: MessageRecorder,
     statusIndicator: StatusIndicator,
     executionCheckbox: HTMLElement,
     scrollCheckbox: HTMLElement,
-    savePlaybackCheckbox: HTMLElement
+    saveDisplayRecordingCheckbox: HTMLElement
   }) {
 
     this._eventTarget = new EventTarget();
@@ -63,14 +62,14 @@ export class MessagePlayer {
     this._statusIndicator = statusIndicator;
     this._executionCheckbox = executionCheckbox;
     this._scrollCheckbox = scrollCheckbox;
-    this._savePlaybackCheckbox = savePlaybackCheckbox;
+    this._saveDisplayRecordingCheckbox = saveDisplayRecordingCheckbox;
 
     this._messageRecorder = messageRecorder;
     this._messageRecorder.messagePlayer = this;
 
     this.handleExecutionCheckboxChange = this.handleExecutionCheckboxChange.bind(this);
     this.handleScrollCheckboxChange = this.handleScrollCheckboxChange.bind(this);
-    this.handleSavePlayback = this.handleSavePlayback.bind(this);
+    this.handleSaveDisplayRecordingCheckboxChange = this.handleSaveDisplayRecordingCheckboxChange.bind(this);
     this.handleKeydown = this.handleKeydown.bind(this);
 
     notebookPanel.disposed.connect(this.dispose, this);
@@ -78,7 +77,7 @@ export class MessagePlayer {
     window.addEventListener("keydown", this.handleKeydown, true);
     this._executionCheckbox.addEventListener('change', this.handleExecutionCheckboxChange, true);
     this._scrollCheckbox.addEventListener('change', this.handleScrollCheckboxChange, true);
-    this._savePlaybackCheckbox.addEventListener('change', this.handleSavePlayback, true);
+    this._saveDisplayRecordingCheckbox.addEventListener('change', this.handleSaveDisplayRecordingCheckboxChange, true);
 
     if (this._notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
@@ -95,7 +94,7 @@ export class MessagePlayer {
 
           let result = await fetch(data.audio);
 
-          this.recording = await result.blob();
+          this.audioRecording = await result.blob();
         }
         catch (e) {
 
@@ -121,8 +120,8 @@ export class MessagePlayer {
     this._scrollToCell = (event.target as HTMLInputElement).checked
   }
 
-  handleSavePlayback(event: Event) {
-    this._savePlayback = (event.target as HTMLInputElement).checked
+  handleSaveDisplayRecordingCheckboxChange(event: Event) {
+    this._saveDisplayRecording = (event.target as HTMLInputElement).checked
   }
 
   async handleKeydown(event: KeyboardEvent) {
@@ -158,7 +157,7 @@ export class MessagePlayer {
         }
         else if (event.ctrlKey && event.key == "F10") {
 
-          if (!this._messageRecorder.isRecording) {
+          if (!this._messageRecorder.isRecording && this.audioRecording) {
 
             event.stopImmediatePropagation();
             event.preventDefault();
@@ -195,9 +194,16 @@ export class MessagePlayer {
 
   private async resume() {
 
-    if (this._savePlayback) {
+    if (this._saveDisplayRecording) {
 
-      this._mediaRecorder.resume();
+      await new Promise((r, j) => {
+
+        this._mediaRecorder.addEventListener('resume', r, { once: true });
+
+        this._mediaRecorder.addEventListener('error', j, { once: true });
+
+        this._mediaRecorder.resume();
+      })
     }
 
     this._eventTarget.dispatchEvent(new Event('resume'));
@@ -220,9 +226,16 @@ export class MessagePlayer {
       this._eventTarget.addEventListener('paused', r, { once: true });
     })
 
-    this._audioPlayer.pause();
+    await new Promise((r, j) => {
 
-    if (this._savePlayback) {
+      this._audioPlayer.addEventListener('pause', r, { once: true });
+
+      this._audioPlayer.addEventListener('error', j, { once: true });
+
+      this._audioPlayer.pause();
+    })
+
+    if (this._saveDisplayRecording) {
 
       this._mediaRecorder.pause();
     }
@@ -236,13 +249,20 @@ export class MessagePlayer {
 
     await this._player;
 
-    this._audioPlayer.pause();
+    await new Promise<Event>((r, j) => {
 
-    await this._audioPlayback;
+      this._audioPlayer.addEventListener('ended', r, { once: true });
 
-    if (this._savePlayback) {
+      this._audioPlayer.addEventListener('pause', r, { once: true });
 
-      this._mediaRecorder.stop();
+      this._audioPlayer.addEventListener('error', j, { once: true });
+
+      this._audioPlayer.pause();
+    });
+
+    if (this._saveDisplayRecording) {
+
+      await this.saveDisplayRecording();
     }
 
     this._statusIndicator.stop(this._notebookPanel);
@@ -250,21 +270,14 @@ export class MessagePlayer {
 
   public reset() {
 
-    try {
+    this._notebookPanel.content.model.fromJSON(this._contentModel);
 
-      this._notebookPanel.content.model.fromJSON(this._contentModel);
-
-      this._notebookPanel.content.model.initialize();
-    }
-    catch (e) {
-
-      // console.error(e);
-    }
+    this._notebookPanel.content.model.initialize();
   }
 
   private async play() {
 
-    if (this._savePlayback) {
+    if (this._saveDisplayRecording) {
 
       await this.startDisplayRecording();
     }
@@ -366,6 +379,8 @@ export class MessagePlayer {
                 });
               }
 
+              let start = Date.now();
+
               let pos = {
                 line: message.line_index,
                 ch: this._charIndex
@@ -375,7 +390,7 @@ export class MessagePlayer {
 
               cell.update();
 
-              await new Promise<void>((r, j) => setTimeout(r, duration));
+              await new Promise<void>((r, j) => setTimeout(r, duration - (Date.now() - start)));
 
               this._charIndex++
             }
@@ -440,15 +455,37 @@ export class MessagePlayer {
 
     if (!this._stopped) {
 
-      await this._audioPlayback;
+      await this._audioPlaybackEnded;
+      
+      if (this._saveDisplayRecording) {
 
-      if (this._savePlayback) {
-
-        this._mediaRecorder.stop();
+        await this.saveDisplayRecording();
       }
+
+      this._stopped = true;
 
       this._statusIndicator.stop(this._notebookPanel);
     }
+  }
+
+  private async saveDisplayRecording() {
+
+    await new Promise((r, j) => {
+
+      this._mediaRecorder.addEventListener('stop', r, { once: true });
+
+      this._mediaRecorder.addEventListener('error', j, { once: true });
+
+      this._mediaRecorder.stop();
+    });
+
+    let a = document.createElement("a");
+
+    a.href = URL.createObjectURL(await this._displayRecording);
+
+    a.download = "recording.webm";
+
+    a.click();
   }
 
   private async startDisplayRecording() {
@@ -459,7 +496,7 @@ export class MessagePlayer {
 
       try {
 
-        this._displayRecording = new Promise<Blob>((r, j) => {
+        await (this._displayRecording = new Promise<Blob>((r, j) => {
 
           let recordings: Array<Blob> = [];
 
@@ -474,11 +511,9 @@ export class MessagePlayer {
           });
 
           this._mediaRecorder.addEventListener('error', j);
-        });
 
-        this._mediaRecorder.start();
-
-        await this._displayRecording;
+          this._mediaRecorder.start();
+        }));
       }
       catch (e) {
 
@@ -489,35 +524,29 @@ export class MessagePlayer {
 
   private async startAudioPlayback() {
 
-    if (!this._paused) {
+    this._audioPlayer = new Audio();
 
-      this._audioPlayer = new Audio();
+    this._audioPlayer.src = URL.createObjectURL(this.audioRecording);
 
-      this._audioPlayer.src = URL.createObjectURL(this.recording);
-    }
-
-    (async () => {
+    (async ()=>{
 
       try {
 
-        this._audioPlayback = new Promise<Event>((r, j) => {
+        this._audioPlaybackEnded = new Promise((r, j) => {
 
           this._audioPlayer.addEventListener('ended', r, { once: true });
-
-          this._audioPlayer.addEventListener('pause', r, { once: true });
-
+    
           this._audioPlayer.addEventListener('error', j, { once: true });
         });
 
-        await this._audioPlayback;
-      }
-      catch (e) {
-
+        await this._audioPlaybackEnded;
+      }      
+      catch(e){
         console.error(e);
       }
     })();
 
-    await this._audioPlayer.play();
+    return await this._audioPlayer.play();
   }
 
   private createCellsTo(index: number) {
@@ -559,6 +588,7 @@ export class MessagePlayer {
   }
 
   get isPlaying(): boolean {
+
     return !this._stopped
   }
 }
