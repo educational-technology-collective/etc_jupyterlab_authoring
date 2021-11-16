@@ -236,6 +236,9 @@ export class MessageRecorder {
         }
 
         this.messagePlayer.recording = await this._recording;;
+
+        this._statusIndicator.stop(this._notebookPanel);
+
         this.messagePlayer.eventMessages = this._eventMessages;
 
         this.isRecording = false;

@@ -5,6 +5,7 @@ import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
 import {
     stopStatus,
     playStatus,
+    pauseStatus,
     recordStatus
 } from './icons'
 
@@ -35,6 +36,13 @@ export class StatusIndicator {
         this.updateStatus();
     }
 
+    public pause(notebookPanel: NotebookPanel) {
+
+        this._map.set(notebookPanel, 'pause');
+
+        this.updateStatus();
+    }
+
     public record(notebookPanel: NotebookPanel) {
 
         this._map.set(notebookPanel, 'record');
@@ -45,6 +53,7 @@ export class StatusIndicator {
     public onCurrentChanged(sender: INotebookTracker, notebookPanel: NotebookPanel) {
 
         if (notebookPanel) {
+
             if (!this._map.has(notebookPanel)) {
 
                 this._map.set(notebookPanel, 'stop');
@@ -79,6 +88,14 @@ export class StatusIndicator {
                     break;
                 case 'play':
                     playStatus.element({
+                        container: this._widget.node,
+                        stylesheet: 'toolbarButton',
+                        alignSelf: 'normal',
+                        height: '24px'
+                    });
+                    break;
+                case 'pause':
+                    pauseStatus.element({
                         container: this._widget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',

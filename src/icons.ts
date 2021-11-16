@@ -12,6 +12,7 @@ import ejectDisabledButtonSVG from "../icons/eject_disabled.svg";
 import recordStatusSVG from "../icons/record_status.svg";
 import stopStatusSVG from "../icons/stop_status.svg";
 import playStatusSVG from "../icons/play_status.svg";
+import pauseStatusSVG from "../icons/pause_status.svg";
 import rightPanelIconSVG from '../icons/GS-pen.svg';
 
 export const rightPanelIcon = new LabIcon({
@@ -77,4 +78,9 @@ export const stopStatus = new LabIcon({
 export const playStatus = new LabIcon({
     name: 'etc_jupyterlab_authoring:play_status',
     svgstr: playStatusSVG
+});
+
+export const pauseStatus = new LabIcon({
+    name: 'etc_jupyterlab_authoring:pause_status',
+    svgstr: pauseStatusSVG
 });

@@ -9,13 +9,15 @@ import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { MessageRecorder } from "./message_recorder";
 import { StatusIndicator } from './status_indicator';
+import { consoleIcon } from '@jupyterlab/ui-components';
 
 export class MessagePlayer {
 
   public recording: Blob;
   public eventMessages: Array<EventMessage>;
-  public isPlaying: boolean = false;
 
+  private _paused: boolean;
+  private _stopped: boolean = true;
   private _contentModel: PartialJSONValue;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
@@ -33,6 +35,10 @@ export class MessagePlayer {
   private _savePlayback: boolean;
   private _mediaRecorder: MediaRecorder;
   private _displayRecording: Promise<Blob>;
+  private _charIndex: number;
+  private _messageIndex: number;
+  private _eventTarget: EventTarget;
+  private _proceed: Promise<boolean> = Promise.resolve(true);
 
   constructor({
     notebookPanel,
@@ -49,6 +55,8 @@ export class MessagePlayer {
     scrollCheckbox: HTMLElement,
     savePlaybackCheckbox: HTMLElement
   }) {
+
+    this._eventTarget = new EventTarget();
 
     this._notebookPanel = notebookPanel;
     this._notebook = notebookPanel.content;
@@ -117,309 +125,393 @@ export class MessagePlayer {
     this._savePlayback = (event.target as HTMLInputElement).checked
   }
 
-  handleKeydown(event: KeyboardEvent) {
+  async handleKeydown(event: KeyboardEvent) {
 
     try {
 
       if (this._notebookPanel.isVisible) {
 
-        if (event.ctrlKey && event.key == "F9") {
-          if (!this.isPlaying && !this._messageRecorder.isRecording) {
+        if (event.ctrlKey && event.key == "F6") {
+
+          if (this._stopped && !this._messageRecorder.isRecording) {
 
             event.stopImmediatePropagation();
             event.preventDefault();
 
-            this.resetNotebook();
+            this.reset();
           }
         }
         else if (event.ctrlKey && event.key == "F9") {
 
-          if (this.isPlaying) {
+          if (!this._stopped && !this._messageRecorder.isRecording) {
 
             event.stopImmediatePropagation();
             event.preventDefault();
 
-            this.stopPlayer();
+            if (this._paused) {
+
+              this._eventTarget.dispatchEvent(new Event('stop'));
+            }
+            else {
+
+              this._proceed = Promise.resolve(false);
+            }
+
+            await this.stop();
           }
         }
         else if (event.ctrlKey && event.key == "F10") {
 
-          if (!this.isPlaying && !this._messageRecorder.isRecording) {
+          if (!this._messageRecorder.isRecording) {
 
             event.stopImmediatePropagation();
             event.preventDefault();
 
-            this.startPlayer();
+            if (this._paused) {
+
+              this._eventTarget.dispatchEvent(new Event('start'));
+
+              this._audioPlayer.play();
+
+              if (this._savePlayback) {
+
+                this._mediaRecorder.resume();
+              }
+
+              this._paused = false;
+              this._stopped = false;
+
+              this._statusIndicator.play(this._notebookPanel);
+            }
+            else {
+
+              this._stopped = false;
+
+              this._proceed = Promise.resolve(true);
+
+              await this.play();
+            }
+          }
+        }
+        else if (event.ctrlKey && event.key == "F11") {
+
+          if (!this._stopped && !this._messageRecorder.isRecording) {
+
+            event.stopImmediatePropagation();
+            event.preventDefault();
+
+            await this.pause();
           }
         }
       }
     }
     catch (e) {
-      console.log(e);
-    }
-  }
 
-  public async stopPlayer() {
-
-    try {
-      if (this._notebookPanel.isVisible && this.isPlaying) {
-
-        this.isPlaying = false;
-
-        this._audioPlayer.pause();
-
-        await this._audioPlayback;
-
-        this._statusIndicator.stop(this._notebookPanel);
-      }
-    }
-    catch (e) {
-
+      this._stopped = true;
+      this._paused = false;
       console.error(e);
     }
   }
 
-  private async startDisplayRecording() {
+  private async pause() {
 
-    try {
+    if (this._savePlayback) {
 
-      this._displayRecording = new Promise<Blob>((r, j) => {
-
-        let recordings: Array<Blob> = [];
-
-        this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
-
-          recordings.push(event.data);
-        });
-
-        this._mediaRecorder.addEventListener('stop', () => {
-
-          r(new Blob(recordings));
-        });
-
-        this._mediaRecorder.addEventListener('error', j);
-      });
-
-      this._mediaRecorder.start();
-
-      await this._displayRecording;
+      this._mediaRecorder.pause();
     }
-    catch (e) {
-      console.error(e);
-    }
+
+    this._audioPlayer.pause();
+
+    this._paused = true;
+
+    this._statusIndicator.pause(this._notebookPanel);
+
+    return await (this._proceed = new Promise<boolean>((r, j) => {
+
+      this._eventTarget.addEventListener('start', () => r(true), { once: true });
+
+      this._eventTarget.addEventListener('stop', () => r(false), { once: true });
+
+      this._eventTarget.addEventListener('error', j, { once: true });
+    }));
   }
 
-  private async startAudioPlayback() {
+  public async stop() {
 
-    try {
-
-      this._audioPlayback = new Promise<Event>((r, j) => {
-
-        this._audioPlayer.addEventListener('ended', r);
-
-        this._audioPlayer.addEventListener('error', j);
-      });
-
-      await this._audioPlayer.play();
+    if (await this._proceed) {
 
       await this._audioPlayback;
     }
-    catch (e) {
-      console.error(e);
+    else {
+
+      this._audioPlayer.pause();
     }
+
+    if (this._savePlayback) {
+
+      this._mediaRecorder.stop();
+    }
+
+    this._statusIndicator.stop(this._notebookPanel);
+
+    this._stopped = true;
   }
 
-  public async startPlayer() {
+  public reset() {
 
     try {
 
-      if (this._savePlayback) {
+      this._notebookPanel.content.model.fromJSON(this._contentModel);
 
-        try {
-
-          this._mediaRecorder = new MediaRecorder(await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true }));
-
-          this.startDisplayRecording();
-        }
-        catch (e) {
-
-          console.error(e);
-        }
-      }
-
-      this._contentModel = this._notebookPanel.content.model.toJSON();
-
-      this._statusIndicator.play(this._notebookPanel);
-
-      //
-      const cell = this._notebookPanel.content.model.contentFactory.createCell(
-        this._notebookPanel.content.notebookConfig.defaultCell,
-        {}
-      );
-
-      //
-      this._notebookPanel.content.model.cells.insert(0, cell);
-
-      this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
-      //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
-
-      this.isPlaying = true;
-
-      this._audioPlayer = new Audio();
-
-      this._audioPlayer.src = URL.createObjectURL(this.recording);
-
-      this.startAudioPlayback();
-
-      for (let index = 0; this.isPlaying && index < this.eventMessages.length; index++) {
-
-        let message = this.eventMessages[index];
-
-        await this.playMessage(message);
-      }
-
-      await this._audioPlayback;
-
-      if (this._mediaRecorder?.state == 'recording') {
-
-        if (this._savePlayback) {
-
-          this._mediaRecorder.stop();
-  
-          let a = document.createElement("a");
-  
-          a.href = URL.createObjectURL(await this._displayRecording);
-  
-          a.download = "file.webm";
-  
-          a.click();
-        }
-      }
+      this._notebookPanel.content.model.initialize();
     }
     catch (e) {
 
-      console.error(e);
-    }
-    finally {
-
-      this._statusIndicator.stop(this._notebookPanel);
-
-      this.isPlaying = false;
+      // console.error(e);
     }
   }
 
-  public async playMessage(message: EventMessage) {
+  private async play() {
 
-    if (message.cell_type) {
-      //  Some events depend on having a cell; hence, this block will only handle events that have a cell_type.
+    if (this._savePlayback) {
 
-      if (message.cell_index > this._notebook.model.cells.length - 1) {
+      await this.startDisplayRecording();
+    }
 
-        this.createCellsTo(message.cell_index);
-        //  The Notebook may not have sufficient cells; hence, create cells to accomodate the cell index.
+    this._messageIndex = 0;
+    this._charIndex = 0;
+
+    this._contentModel = this._notebookPanel.content.model.toJSON();
+
+    //
+    const cell = this._notebookPanel.content.model.contentFactory.createCell(
+      this._notebookPanel.content.notebookConfig.defaultCell,
+      {}
+    );
+
+    //
+    this._notebookPanel.content.model.cells.insert(0, cell);
+
+    this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
+    //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
+
+    await this.startAudioPlayback();
+
+    this._statusIndicator.play(this._notebookPanel);
+
+    while (this._messageIndex < this.eventMessages.length) {
+
+      if (!await this._proceed) {
+
+        break;
       }
 
-      let cell: Cell<ICellModel> = this._notebook.widgets[message.cell_index];
+      let message = this.eventMessages[this._messageIndex];
 
-      if (this._scrollToCell) {
+      if (message.cell_type) {
+        //  Some events depend on having a cell; hence, this block will only handle events that have a cell_type.
 
-        this._notebook.scrollToCell(cell);
-      }
+        if (message.cell_index > this._notebook.model.cells.length - 1) {
 
-      if (message.event == "line_finished" || message.event == "record_stopped") {
-
-        if (message.cell_type != cell.model.type) {
-          //  The Cell may not be the same type as the recorded cell; hence, change the cell type accordingly.
-
-          this._notebook.select(this._notebook.widgets[message.cell_index]);
-
-          if (message.cell_type == "markdown") {
-
-            NotebookActions.changeCellType(this._notebook, "markdown");
-
-            cell = this._notebook.widgets[message.cell_index];
-
-            (cell as MarkdownCell).rendered = true;
-          }
-          else if (message.cell_type == "raw") {
-
-            NotebookActions.changeCellType(this._notebook, "raw");
-
-            cell = this._notebook.widgets[message.cell_index];
-          }
+          this.createCellsTo(message.cell_index);
+          //  The Notebook may not have sufficient cells; hence, create cells to accomodate the cell index.
         }
 
-        this._editor = (cell.editor as CodeMirrorEditor);
+        let cell: Cell<ICellModel> = this._notebook.widgets[message.cell_index];
 
-        if (message.line_index > this._editor.lastLine()) {
+        if (this._scrollToCell) {
 
-          this.createLinesTo(message.line_index);
+          this._notebook.scrollToCell(cell);
         }
 
-        let duration = message.input.length ? message.duration / message.input.length : message.duration;
+        if (message.event == "line_finished" || message.event == "record_stopped") {
 
-        if (message.input.length) {
+          if (message.cell_type != cell.model.type) {
+            //  The Cell may not be the same type as the recorded cell; hence, change the cell type accordingly.
 
-          for (let charIndex = 0; this.isPlaying && charIndex < message.input.length; charIndex++) {
+            this._notebook.select(this._notebook.widgets[message.cell_index]);
 
-            let pos = {
-              line: message.line_index,
-              ch: charIndex
-            };
+            if (message.cell_type == "markdown") {
 
-            this._editor.doc.replaceRange(message.input[charIndex], pos);
+              NotebookActions.changeCellType(this._notebook, "markdown");
 
-            cell.update();
+              cell = this._notebook.widgets[message.cell_index];
+
+              (cell as MarkdownCell).rendered = true;
+            }
+            else if (message.cell_type == "raw") {
+
+              NotebookActions.changeCellType(this._notebook, "raw");
+
+              cell = this._notebook.widgets[message.cell_index];
+            }
+          }
+
+          this._editor = (cell.editor as CodeMirrorEditor);
+
+          if (message.line_index > this._editor.lastLine()) {
+
+            this.createLinesTo(message.line_index);
+          }
+
+          let duration = message.input.length ? message.duration / message.input.length : message.duration;
+
+          if (message.input.length) {
+
+            while (this._charIndex < message.input.length) {
+
+              if (!await this._proceed) {
+
+                break;
+              }
+
+              let pos = {
+                line: message.line_index,
+                ch: this._charIndex
+              };
+
+              this._editor.doc.replaceRange(message.input[this._charIndex], pos);
+
+              cell.update();
+
+              await new Promise<void>((r, j) => setTimeout(r, duration));
+
+              this._charIndex++
+            }
+          }
+          else {
+
+            if (!await this._proceed) {
+
+              break;
+            }
 
             await new Promise<void>((r, j) => setTimeout(r, duration));
           }
         }
-        else {
+        else if (message.event == "execution_finished") {
 
-          await new Promise<void>((r, j) => setTimeout(r, duration));
-        }
-      }
-      else if (message.event == "execution_finished") {
+          if (this._executeCell) {
 
-        if (this._executeCell) {
+            let resolved = null;
 
-          let resolved = null;
+            let runAndAdvance = (async () => {
 
-          let runAndAdvance = (async () => {
+              try {
 
-            await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
+                await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
 
-            resolved = true;
-          })();
+                resolved = true;
+              }
+              catch (e) { // This will cause an unhandled promise rejection warning, due to the setTimeout below; hence, do not allow this to reject.
 
-          await new Promise((r, j) => { setTimeout(r, message.duration) });
+                console.error(e);
+              }
+            })();
 
-          if (!resolved) {
+            await new Promise((r, j) => { setTimeout(r, message.duration) });
 
-            this._audioPlayer.pause();
+            if (!resolved) {
+              //  This is the case where the execution is taking longer than the duration.
 
-            await runAndAdvance;
+              this._audioPlayer.pause();
 
-            this._audioPlayer.play();
+              await runAndAdvance;
+
+              this._audioPlayer.play();
+            }
+          }
+          else {
+
+            await new Promise((r, j) => {
+
+              (cell as CodeCell).model.outputs.fromJSON(message.outputs);
+
+              setTimeout(r, message.duration);
+            });
           }
         }
-        else {
-
-          await new Promise((r, j) => {
-
-            (cell as CodeCell).model.outputs.fromJSON(message.outputs);
-
-            setTimeout(r, message.duration);
-          });
-        }
       }
-    }
-    else {
+      else {
 
-      let duration = message.duration ? message.duration : 0;
+        let duration = message.duration ? message.duration : 0;
 
-      await new Promise((r, j) => { setTimeout(r, duration) });
+        await new Promise((r, j) => { setTimeout(r, duration) });
+      }
+
+      this._messageIndex++; this._charIndex = 0;
     }
+
+    await this.stop();
+  }
+
+  private async startDisplayRecording() {
+
+    this._mediaRecorder = new MediaRecorder(await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true }));
+
+    (async () => {
+
+      try {
+
+        this._displayRecording = new Promise<Blob>((r, j) => {
+
+          let recordings: Array<Blob> = [];
+
+          this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+
+            recordings.push(event.data);
+          });
+
+          this._mediaRecorder.addEventListener('stop', () => {
+
+            r(new Blob(recordings));
+          });
+
+          this._mediaRecorder.addEventListener('error', j);
+        });
+
+        this._mediaRecorder.start();
+
+        await this._displayRecording;
+      }
+      catch (e) {
+
+        console.error(e);
+      }
+    })();
+  }
+
+  private async startAudioPlayback() {
+
+    if (!this._paused) {
+
+      this._audioPlayer = new Audio();
+
+      this._audioPlayer.src = URL.createObjectURL(this.recording);
+    }
+
+    (async () => {
+
+      try {
+
+        this._audioPlayback = new Promise<Event>((r, j) => {
+
+          this._audioPlayer.addEventListener('ended', r, { once: true });
+
+          this._audioPlayer.addEventListener('pause', r, { once: true });
+
+          this._audioPlayer.addEventListener('error', j, { once: true });
+        });
+
+        await this._audioPlayback;
+      }
+      catch (e) {
+
+        console.error(e);
+      }
+    })();
+
+    await this._audioPlayer.play();
   }
 
   private createCellsTo(index: number) {
@@ -448,17 +540,7 @@ export class MessagePlayer {
     }
   }
 
-  public resetNotebook() {
-
-    try {
-
-      this._notebookPanel.content.model.fromJSON(this._contentModel);
-
-      this._notebookPanel.content.model.initialize();
-    }
-    catch (e) {
-
-      console.error(e);
-    }
+  get isPlaying(): boolean {
+    return !this._stopped
   }
 }
