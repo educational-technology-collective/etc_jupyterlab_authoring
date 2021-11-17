@@ -147,12 +147,9 @@ export class MessagePlayer {
             event.stopImmediatePropagation();
             event.preventDefault();
 
-            if (this._paused) {
-
-              this._eventTarget.dispatchEvent(new Event('resume'));
-            }
-
             await this.stop();
+
+            this.reset();
           }
         }
         else if (event.ctrlKey && event.key == "F10") {
@@ -162,13 +159,11 @@ export class MessagePlayer {
             event.stopImmediatePropagation();
             event.preventDefault();
 
-            if (!this._paused) {
-
-              this._stopped = false;
+            if (!this._paused && this._stopped) {
 
               await (this._player = this.play());
             }
-            else {
+            else if (this._paused) {
 
               await this.resume();
             }
@@ -181,7 +176,10 @@ export class MessagePlayer {
             event.stopImmediatePropagation();
             event.preventDefault();
 
-            await this.pause();
+            if (!this._paused) {
+
+              await this.pause();
+            }
           }
         }
       }
@@ -291,6 +289,7 @@ export class MessagePlayer {
       await this.startDisplayRecording();
     }
 
+    this._stopped = false;
     this._messageIndex = 0;
     this._charIndex = 0;
 
@@ -511,7 +510,21 @@ export class MessagePlayer {
 
   private async startDisplayRecording() {
 
-    this._mediaRecorder = new MediaRecorder(await (navigator.mediaDevices as any).getDisplayMedia({ video: true, audio: true }));
+    this._mediaRecorder = new MediaRecorder(
+      await (navigator.mediaDevices as any).getDisplayMedia(
+        {
+          video: {
+            "aspectRatio": 1.7777777777777777,
+            "cursor": "never",
+            "displaySurface": "browser",
+            "frameRate": 30,
+            "height": 2160,
+            "logicalSurface": true,
+            "resizeMode": "crop-and-scale",
+            "width": 3840
+          },
+          audio: true
+        }));
 
     (async () => {
 
