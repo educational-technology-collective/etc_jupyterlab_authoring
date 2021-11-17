@@ -247,18 +247,27 @@ export class MessagePlayer {
 
     this._stopped = true;
 
+    if (this._paused) {
+
+      this._paused = false;
+
+      this._eventTarget.dispatchEvent(new Event('stop'));
+    }
+    else {
+
+      await new Promise<Event>((r, j) => {
+
+        this._audioPlayer.addEventListener('ended', r, { once: true });
+
+        this._audioPlayer.addEventListener('pause', r, { once: true });
+
+        this._audioPlayer.addEventListener('error', j, { once: true });
+
+        this._audioPlayer.pause();
+      });
+    }
+
     await this._player;
-
-    await new Promise<Event>((r, j) => {
-
-      this._audioPlayer.addEventListener('ended', r, { once: true });
-
-      this._audioPlayer.addEventListener('pause', r, { once: true });
-
-      this._audioPlayer.addEventListener('error', j, { once: true });
-
-      this._audioPlayer.pause();
-    });
 
     if (this._saveDisplayRecording) {
 
@@ -307,12 +316,18 @@ export class MessagePlayer {
 
       if (this._paused) {
 
-        await new Promise((r, j) => {
+        let proceed = await new Promise((r, j) => {
 
-          this._eventTarget.addEventListener('resume', r, { once: true });
+          this._eventTarget.addEventListener('resume', () => r(true), { once: true });
+
+          this._eventTarget.addEventListener('stop', () => r(false), { once: true });
 
           this._eventTarget.dispatchEvent(new Event('paused'));
         });
+
+        if (!proceed) {
+          break;
+        }
       }
 
       let message = this.eventMessages[this._messageIndex];
@@ -371,12 +386,18 @@ export class MessagePlayer {
 
               if (this._paused) {
 
-                await new Promise((r, j) => {
+                let proceed = await new Promise((r, j) => {
 
-                  this._eventTarget.addEventListener('resume', r, { once: true });
+                  this._eventTarget.addEventListener('resume', () => r(true), { once: true });
+
+                  this._eventTarget.addEventListener('stop', () => r(false), { once: true });
 
                   this._eventTarget.dispatchEvent(new Event('paused'));
                 });
+
+                if (!proceed) {
+                  break;
+                }
               }
 
               let start = Date.now();
@@ -456,7 +477,7 @@ export class MessagePlayer {
     if (!this._stopped) {
 
       await this._audioPlaybackEnded;
-      
+
       if (this._saveDisplayRecording) {
 
         await this.saveDisplayRecording();
@@ -528,20 +549,20 @@ export class MessagePlayer {
 
     this._audioPlayer.src = URL.createObjectURL(this.audioRecording);
 
-    (async ()=>{
+    (async () => {
 
       try {
 
         this._audioPlaybackEnded = new Promise((r, j) => {
 
           this._audioPlayer.addEventListener('ended', r, { once: true });
-    
+
           this._audioPlayer.addEventListener('error', j, { once: true });
         });
 
         await this._audioPlaybackEnded;
-      }      
-      catch(e){
+      }
+      catch (e) {
         console.error(e);
       }
     })();
