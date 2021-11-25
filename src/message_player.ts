@@ -218,12 +218,12 @@ export class MessagePlayer {
   private async pause() {
 
     this._paused = true;
-    console.log('1')
+
     await new Promise((r, j) => {
 
       this._eventTarget.addEventListener('paused', r, { once: true });
     })
-    console.log('2')
+
     await new Promise((r, j) => {
 
       this._audioPlayer.addEventListener('pause', r, { once: true });
@@ -232,7 +232,7 @@ export class MessagePlayer {
 
       this._audioPlayer.pause();
     })
-    console.log('3')
+
     if (this._saveDisplayRecording) {
 
       this._mediaRecorder.pause();
