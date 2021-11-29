@@ -3,7 +3,13 @@ import { Widget, Panel } from "@lumino/widgets";
 import { UUID } from '@lumino/coreutils';
 
 import {
-    rightPanelIcon
+    rightPanelIcon,
+    recordOffButton,
+    stopButton,
+    playButton,
+    pauseButton,
+    ejectButton,
+    saveButton
 } from './icons'
 
 import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
@@ -14,8 +20,6 @@ export class SaveDisplayRecordingCheckboxWidget extends Widget {
         super();
 
         this.addClass('jp-SaveDisplayRecordingCheckboxWidget');
-
-        this.node.innerHTML = '<p>Save playback.</p>';
 
         let input = document.createElement('input');
 
@@ -29,7 +33,7 @@ export class SaveDisplayRecordingCheckboxWidget extends Widget {
 
         label.setAttribute('for', 'save');
 
-        label.innerHTML = 'Enable';
+        label.innerHTML = 'Save playback.';
 
         this.node.appendChild(input);
 
@@ -37,14 +41,29 @@ export class SaveDisplayRecordingCheckboxWidget extends Widget {
     }
 }
 
+export class ButtonControlsWidget extends Widget {
+
+    constructor() {
+        super();
+
+        this.addClass('jp-ButtonControlsWidget');
+
+        this.node.appendChild(recordOffButton.element());
+        this.node.appendChild(stopButton.element());
+        this.node.appendChild(playButton.element());
+        this.node.appendChild(pauseButton.element());
+        this.node.appendChild(ejectButton.element());
+        this.node.appendChild(saveButton.element());
+    }
+}
+
+
 export class ScrollCheckboxWidget extends Widget {
 
     constructor() {
         super();
 
         this.addClass('jp-ScrollCheckBoxWidget');
-
-        this.node.innerHTML = '<p>Scroll to cell during playback.</p>';
 
         let input = document.createElement('input');
 
@@ -58,7 +77,7 @@ export class ScrollCheckboxWidget extends Widget {
 
         label.setAttribute('for', 'scroll');
 
-        label.innerHTML = 'Enable';
+        label.innerHTML = 'Scroll to cell during playback.';
 
         this.node.appendChild(input);
 
@@ -73,8 +92,6 @@ export class ExecutionCheckboxWidget extends Widget {
 
         this.addClass('jp-ExecutionCheckBoxWidget');
 
-        this.node.innerHTML = '<p>Execute cells during playback.</p>';
-
         let input = document.createElement('input');
 
         input.setAttribute('type', 'checkbox');
@@ -87,7 +104,7 @@ export class ExecutionCheckboxWidget extends Widget {
 
         label.setAttribute('for', 'execution');
 
-        label.innerHTML = 'Enable';
+        label.innerHTML = 'Execute cells during playback.';
 
         this.node.appendChild(input);
 

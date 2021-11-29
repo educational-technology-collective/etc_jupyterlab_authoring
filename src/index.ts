@@ -17,7 +17,8 @@ import {
   AuthoringPanel,
   ExecutionCheckboxWidget,
   ScrollCheckboxWidget,
-  SaveDisplayRecordingCheckboxWidget
+  SaveDisplayRecordingCheckboxWidget,
+  ButtonControlsWidget
 } from './widgets';
 
 import {
@@ -28,12 +29,14 @@ import { IStatusBar } from "@jupyterlab/statusbar";
 import { MessageRecorder } from './message_recorder';
 import { MessagePlayer } from './message_player';
 import { AudioInputSelector } from "./audio_input_selector";
+import { each } from "@lumino/algorithm";
 
+const PLUGIN_ID = 'etc_jupyterlab_authoring:plugin';
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
  */
 const extension: JupyterFrontEndPlugin<void> = {
-  id: 'etc_jupyterlab_authoring:plugin',
+  id: PLUGIN_ID,
   autoStart: true,
   requires: [
     INotebookTracker,
@@ -46,7 +49,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     labShell: ILabShell,
     statusBar: IStatusBar
   ) => {
-    console.log("JupyterLab extension etc_jupyterlab_authoring is activated!");
+    console.log(`JupyterLab extension ${PLUGIN_ID} is activated!`);
 
     Signal.setExceptionHandler((error: Error) => {
       console.error(error);
@@ -86,6 +89,11 @@ const extension: JupyterFrontEndPlugin<void> = {
 
         await notebookPanel.revealed;
         await notebookPanel.sessionContext.ready;
+
+        let buttonControlsWidget = new ButtonControlsWidget();
+
+        notebookPanel.toolbar.insertAfter('cellType', `${PLUGIN_ID} :button_controls_widget`, buttonControlsWidget);
+
 
         let messageRecorder = new MessageRecorder({
           notebookPanel,

@@ -7,9 +7,9 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="16"
-   height="16"
-   viewBox="0 0 16 16"
+   width="24"
+   height="24"
+   viewBox="0 0 24 24"
    version="1.1"
    id="svg308"
    sodipodi:docname="record_on.svg"
@@ -47,12 +47,13 @@
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="svg308" />
+     inkscape:current-layer="svg308"
+     inkscape:document-rotation="0" />
   <circle
-     cx="8"
-     cy="8"
+     cx="12"
+     cy="12"
      fill="#a30000"
      id="circle2"
-     style="stroke-width:0.666667"
-     r="8" />
+     style="stroke-width:0.500001"
+     r="6" />
 </svg>

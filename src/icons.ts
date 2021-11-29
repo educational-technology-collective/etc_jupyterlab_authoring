@@ -14,6 +14,7 @@ import stopStatusSVG from "../icons/stop_status.svg";
 import playStatusSVG from "../icons/play_status.svg";
 import pauseStatusSVG from "../icons/pause_status.svg";
 import rightPanelIconSVG from '../icons/GS-pen.svg';
+import saveButtonSVG from '../icons/save.svg';
 
 export const rightPanelIcon = new LabIcon({
     name: 'etc_jupyterlab_authoring:right_panel_icon',
@@ -84,3 +85,10 @@ export const pauseStatus = new LabIcon({
     name: 'etc_jupyterlab_authoring:pause_status',
     svgstr: pauseStatusSVG
 });
+
+export const saveButton = new LabIcon({
+    name: 'etc_jupyterlab_authoring:save',
+    svgstr: saveButtonSVG
+});
+
+
