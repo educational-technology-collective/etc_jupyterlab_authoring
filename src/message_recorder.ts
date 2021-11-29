@@ -14,14 +14,14 @@ export class MessageRecorder {
 
     public messagePlayer: MessagePlayer;
 
-    private _recording: boolean;
+    private _recording: boolean = false;
     private _notebookPanel: NotebookPanel;
     private _cellIndex: number | null;
     private _lineIndex: number;
     private _editor: Editor;
     private _cell: Cell<ICellModel>;
     private _audioRecording: Promise<Blob>;
-    private _mediaStream: Promise<MediaStream>;
+    private _mediaStream: MediaStream;
     private _mediaRecorder: MediaRecorder;
     private _eventMessages: Array<EventMessage> = [];
     private _lastTimestamp: number;
@@ -40,7 +40,6 @@ export class MessageRecorder {
             statusIndicator: StatusIndicator
         }) {
 
-        this.handleAudioDeviceChange = this.handleAudioDeviceChange.bind(this);
         this.handleKeydown = this.handleKeydown.bind(this);
 
         this._notebookPanel = notebookPanel;
@@ -54,23 +53,9 @@ export class MessageRecorder {
         NotebookActions.executed.connect(this.executed, this);
 
         window.addEventListener("keydown", this.handleKeydown, true);
-
-        this._audioInputSelector.eventTarget.addEventListener('audio_device_change', this.handleAudioDeviceChange);
-
-        (async () => {
-            try {
-
-                await (this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId: audioInputSelector.deviceId } }));
-            }
-            catch (e) {
-                console.error(e);
-            }
-        })();
     }
 
     public dispose() {
-
-        this._audioInputSelector.eventTarget.removeEventListener('audio_device_change', this.handleAudioDeviceChange);
 
         window.removeEventListener("keydown", this.handleKeydown, true);
     }
@@ -183,7 +168,7 @@ export class MessageRecorder {
             this._mediaRecorder.addEventListener('pause', r, { once: true });
 
             this._mediaRecorder.pause();
-        })
+        });
 
         this._priorDuration = Date.now() - this._lastTimestamp;
 
@@ -207,6 +192,9 @@ export class MessageRecorder {
     private async stop() {
 
         if (this._editor) {
+
+            this._editor.removeLineClass(this._lineIndex, 'wrap', 'active-line');
+
             //  The MessageRecorder may or may not have an editor when it stops; hence handle these cases separately.
             let input = this._editor.getLine(this._lineIndex);
 
@@ -228,9 +216,15 @@ export class MessageRecorder {
             });
         }
 
-        if (this._mediaRecorder?.state == 'recording') {
+        if (this._mediaRecorder?.state == 'recording' || this._mediaRecorder?.state == 'paused') {
 
             this._mediaRecorder.stop();
+
+            this._mediaStream.getTracks().forEach((track) => {
+                if (track.readyState == 'live') {
+                    track.stop();
+                }
+            });
         }
 
         this.messagePlayer.audioRecording = await this._audioRecording;;
@@ -282,23 +276,11 @@ export class MessageRecorder {
         }
     }
 
-    public async handleAudioDeviceChange(event: Event) {
-
-        try {
-
-            let deviceId = (event as CustomEvent).detail;
-
-            await (this._mediaStream = navigator.mediaDevices.getUserMedia({ audio: { deviceId } }));
-        }
-        catch (e) {
-
-            console.error(e);
-        }
-    }
-
     private async startAudioRecorder() {
 
         try {
+
+            this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: this._audioInputSelector.deviceId } });
 
             this._mediaRecorder = new MediaRecorder(await this._mediaStream);
 

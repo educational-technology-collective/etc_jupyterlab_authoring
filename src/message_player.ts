@@ -485,6 +485,8 @@ export class MessagePlayer {
       this._stopped = true;
 
       this._statusIndicator.stop(this._notebookPanel);
+
+      this.reset();
     }
   }
 
