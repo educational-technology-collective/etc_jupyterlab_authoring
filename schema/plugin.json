@@ -1,8 +1,45 @@
 {
   "jupyter.lab.shortcuts": [],
-  "title": "@educational-technology-collective/etc_jupyterlab_authoring",
-  "description": "@educational-technology-collective/etc_jupyterlab_authoring settings.",
+  "title": "ETC JupyterLab Authoring",
+  "description": "Settings for ETC JupyterLab Authoring",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "reset": {
+      "type": "string",
+      "title": "Reset Keystroke",
+      "description": "The keystroke for the reset command.",
+      "default": "Ctrl F6"
+    },
+    "record": {
+      "type": "string",
+      "title": "Record Keystroke",
+      "description": "The keystroke for the record command.",
+      "default": "Ctrl F8"
+    },
+    "stop": {
+      "type": "string",
+      "title": "Stop Keystroke",
+      "description": "The keystroke for the stop command.",
+      "default": "Ctrl F9"
+    },
+    "play": {
+      "type": "string",
+      "title": "Play Keystroke",
+      "description": "The keystroke for the play command.",
+      "default": "Ctrl F10"
+    },
+    "pause": {
+      "type": "string",
+      "title": "Pause Keystroke",
+      "description": "The keystroke for the pause command.",
+      "default": "Ctrl F11"
+    },
+    "save": {
+      "type": "string",
+      "title": "Save Keystroke",
+      "description": "The keystroke for the save command.",
+      "default": "Ctrl F12"
+    }
+  },
   "additionalProperties": false
 }

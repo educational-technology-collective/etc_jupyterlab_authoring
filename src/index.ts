@@ -9,7 +9,7 @@ import {
   NotebookPanel
 } from "@jupyterlab/notebook";
 
-import { Signal } from "@lumino/signaling";
+import { ISignal, Signal } from "@lumino/signaling";
 
 import {
   AudioInputSelectorWidget,
@@ -18,7 +18,7 @@ import {
   ExecutionCheckboxWidget,
   ScrollCheckboxWidget,
   SaveDisplayRecordingCheckboxWidget,
-  ButtonControlsWidget
+  ShowMediaControlsCheckboxWidget
 } from './widgets';
 
 import {
@@ -30,8 +30,13 @@ import { MessageRecorder } from './message_recorder';
 import { MessagePlayer } from './message_player';
 import { AudioInputSelector } from "./audio_input_selector";
 import { each } from "@lumino/algorithm";
+import { MediaControls } from "./media-controls";
 
-const PLUGIN_ID = 'etc_jupyterlab_authoring:plugin';
+import { ISettingRegistry } from '@jupyterlab/settingregistry';
+import { CommandRegistry } from "@lumino/commands";
+
+export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
+
 /**
  * Initialization data for the etc-jupyterlab-authoring extension.
  */
@@ -41,19 +46,19 @@ const extension: JupyterFrontEndPlugin<void> = {
   requires: [
     INotebookTracker,
     ILabShell,
-    IStatusBar
+    IStatusBar,
+    ISettingRegistry
   ],
-  activate: (
+  activate: async (
     app: JupyterFrontEnd,
     notebookTracker: INotebookTracker,
     labShell: ILabShell,
-    statusBar: IStatusBar
+    statusBar: IStatusBar,
+    settingRegistry: ISettingRegistry
   ) => {
     console.log(`JupyterLab extension ${PLUGIN_ID} is activated!`);
 
-    Signal.setExceptionHandler((error: Error) => {
-      console.error(error);
-    });
+    let settings = await settingRegistry.load(PLUGIN_ID);
 
     let authoringPanel = new AuthoringPanel();
 
@@ -61,11 +66,13 @@ const extension: JupyterFrontEndPlugin<void> = {
     let executionCheckboxWidget = new ExecutionCheckboxWidget();
     let scrollCheckboxWidget = new ScrollCheckboxWidget();
     let saveDisplayRecordingCheckboxWidget = new SaveDisplayRecordingCheckboxWidget();
+    let showMediaControlsCheckboxWidget = new ShowMediaControlsCheckboxWidget();
 
     authoringPanel.addWidget(audioInputSelectorWidget);
     authoringPanel.addWidget(executionCheckboxWidget);
     authoringPanel.addWidget(scrollCheckboxWidget);
     authoringPanel.addWidget(saveDisplayRecordingCheckboxWidget);
+    authoringPanel.addWidget(showMediaControlsCheckboxWidget);
 
     labShell.add(authoringPanel, 'right');
 
@@ -90,11 +97,6 @@ const extension: JupyterFrontEndPlugin<void> = {
         await notebookPanel.revealed;
         await notebookPanel.sessionContext.ready;
 
-        let buttonControlsWidget = new ButtonControlsWidget();
-
-        notebookPanel.toolbar.insertAfter('cellType', `${PLUGIN_ID} :button_controls_widget`, buttonControlsWidget);
-
-
         let messageRecorder = new MessageRecorder({
           notebookPanel,
           audioInputSelector,
@@ -109,6 +111,16 @@ const extension: JupyterFrontEndPlugin<void> = {
           scrollCheckbox: scrollCheckboxWidget.node,
           saveDisplayRecordingCheckbox: saveDisplayRecordingCheckboxWidget.node
         });
+
+        let mediaControls = new MediaControls({
+          commandRegistry: app.commands,
+          settings: settings,
+          notebookPanel,
+          showMediaControlsCheckboxWidget,
+          messageRecorder,
+          messagePlayer
+        });
+
       }
       catch (e) {
 

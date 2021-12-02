@@ -13,8 +13,9 @@ import { StatusIndicator } from './status_indicator';
 export class MessageRecorder {
 
     public messagePlayer: MessagePlayer;
+    public isRecording: boolean = false;
+    public isPaused: boolean = false;
 
-    private _recording: boolean = false;
     private _notebookPanel: NotebookPanel;
     private _cellIndex: number | null;
     private _lineIndex: number;
@@ -40,8 +41,6 @@ export class MessageRecorder {
             statusIndicator: StatusIndicator
         }) {
 
-        this.handleKeydown = this.handleKeydown.bind(this);
-
         this._notebookPanel = notebookPanel;
         this._cellIndex = null;
         this._statusIndicator = statusIndicator;
@@ -51,87 +50,13 @@ export class MessageRecorder {
 
         NotebookActions.executionScheduled.connect(this.executionScheduled, this);
         NotebookActions.executed.connect(this.executed, this);
-
-        window.addEventListener("keydown", this.handleKeydown, true);
     }
 
     public dispose() {
 
-        window.removeEventListener("keydown", this.handleKeydown, true);
     }
 
-    async handleKeydown(event: KeyboardEvent) {
-
-        try {
-
-            if (this._notebookPanel.isVisible) {
-
-                if (event.ctrlKey && event.key == "F8") {
-
-                    if (!this.messagePlayer.isPlaying) {
-
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
-
-                        if (this._recording) {
-
-                            await this.resume();
-                        }
-                        else {
-
-                            await this.record();
-                        }
-                    }
-                }
-                else if (event.ctrlKey && event.key == "F9") {
-
-                    if (this._recording) {
-
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
-
-                        await this.stop();
-                    }
-                }
-                else if (event.ctrlKey && event.key == "F11") {
-
-                    if (this._recording) {
-
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
-
-                        await this.pause();
-                    }
-                }
-                else if (event.ctrlKey && event.key == "F12") {
-
-                    if (!this._recording) {
-
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
-
-                        await this.save();
-                    }
-                }
-                else if (event.code == "Space") {
-
-                    if (this._recording) {
-
-                        event.stopImmediatePropagation();
-                        event.preventDefault();
-
-                        this.advanceLine();
-                    }
-                }
-            }
-        }
-        catch (e) {
-
-            console.log(e);
-        }
-    }
-
-    private async record() {
+    public async record() {
 
         try {
 
@@ -151,7 +76,7 @@ export class MessageRecorder {
                 this._editor.focus();
             }
 
-            this._recording = true;
+            this.isRecording = true;
 
             this._statusIndicator.record(this._notebookPanel);
         }
@@ -161,7 +86,7 @@ export class MessageRecorder {
         }
     }
 
-    private async pause() {
+    public async pause() {
 
         await new Promise((r, j) => {
 
@@ -173,9 +98,11 @@ export class MessageRecorder {
         this._priorDuration = Date.now() - this._lastTimestamp;
 
         this._statusIndicator.pause(this._notebookPanel);
+
+        this.isPaused = true;
     }
 
-    private async resume() {
+    public async resume() {
 
         await new Promise((r, j) => {
 
@@ -187,9 +114,11 @@ export class MessageRecorder {
         this._lastTimestamp = Date.now();
 
         this._statusIndicator.record(this._notebookPanel);
+
+        this.isPaused = false;
     }
 
-    private async stop() {
+    public async stop() {
 
         if (this._editor) {
 
@@ -231,7 +160,7 @@ export class MessageRecorder {
 
         this.messagePlayer.eventMessages = this._eventMessages;
 
-        this._recording = false;
+        this.isRecording = false;
         this._cellIndex = null;
         this._editor = null;
         this._notebookPanel.content.widgets[0].editorWidget.editor.focus();
@@ -241,7 +170,7 @@ export class MessageRecorder {
         this._statusIndicator.stop(this._notebookPanel);
     }
 
-    private async save() {
+    public async save() {
 
         try {
 
@@ -326,11 +255,7 @@ export class MessageRecorder {
         }
     }
 
-
-
-
-
-    private advanceLine() {
+    public advanceLine() {
 
         if (this._cellIndex === null) {
 
@@ -359,7 +284,7 @@ export class MessageRecorder {
 
     private executionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
-        if (this._recording && args.notebook.isVisible) {
+        if (this.isRecording && args.notebook.isVisible) {
 
             let line = this._editor.getLine(this._lineIndex);
 
@@ -377,7 +302,7 @@ export class MessageRecorder {
 
     private executed(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
-        if (this._recording && this._notebookPanel.content == args.notebook) {
+        if (this.isRecording && this._notebookPanel.content == args.notebook) {
 
             let outputs: Array<nbformat.IOutput> = [];
 
@@ -486,9 +411,5 @@ export class MessageRecorder {
         this._eventMessages.push(message);
 
         console.log(message.input, message);
-    }
-
-    get isRecording(): boolean {
-        return this._recording;
     }
 }

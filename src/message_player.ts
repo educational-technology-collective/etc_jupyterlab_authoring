@@ -14,9 +14,9 @@ export class MessagePlayer {
 
   public audioRecording: Blob;
   public eventMessages: Array<EventMessage>;
+  public isPaused: boolean = false;
+  public isStopped: boolean = true;
 
-  private _paused: boolean;
-  private _stopped: boolean = true;
   private _contentModel: PartialJSONValue;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
@@ -70,11 +70,9 @@ export class MessagePlayer {
     this.handleExecutionCheckboxChange = this.handleExecutionCheckboxChange.bind(this);
     this.handleScrollCheckboxChange = this.handleScrollCheckboxChange.bind(this);
     this.handleSaveDisplayRecordingCheckboxChange = this.handleSaveDisplayRecordingCheckboxChange.bind(this);
-    this.handleKeydown = this.handleKeydown.bind(this);
 
     notebookPanel.disposed.connect(this.dispose, this);
 
-    window.addEventListener("keydown", this.handleKeydown, true);
     this._executionCheckbox.addEventListener('change', this.handleExecutionCheckboxChange, true);
     this._scrollCheckbox.addEventListener('change', this.handleScrollCheckboxChange, true);
     this._saveDisplayRecordingCheckbox.addEventListener('change', this.handleSaveDisplayRecordingCheckboxChange, true);
@@ -107,7 +105,7 @@ export class MessagePlayer {
   private dispose() {
 
     clearInterval(this._intervalId);
-    window.removeEventListener("keydown", this.handleKeydown, true);
+
     this._executionCheckbox.removeEventListener('change', this.handleExecutionCheckboxChange, true);
     this._scrollCheckbox.removeEventListener('change', this.handleScrollCheckboxChange, true);
   }
@@ -124,72 +122,6 @@ export class MessagePlayer {
     this._saveDisplayRecording = (event.target as HTMLInputElement).checked
   }
 
-  async handleKeydown(event: KeyboardEvent) {
-
-    try {
-
-      if (this._notebookPanel.isVisible) {
-
-        if (event.ctrlKey && event.key == "F6") {
-
-          if (this._stopped && !this._messageRecorder.isRecording) {
-
-            event.stopImmediatePropagation();
-            event.preventDefault();
-
-            this.reset();
-          }
-        }
-        else if (event.ctrlKey && event.key == "F9") {
-
-          if (!this._stopped && !this._messageRecorder.isRecording) {
-
-            event.stopImmediatePropagation();
-            event.preventDefault();
-
-            await this.stop();
-
-            this.reset();
-          }
-        }
-        else if (event.ctrlKey && event.key == "F10") {
-
-          if (!this._messageRecorder.isRecording && this.audioRecording) {
-
-            event.stopImmediatePropagation();
-            event.preventDefault();
-
-            if (!this._paused && this._stopped) {
-
-              await (this._player = this.play());
-            }
-            else if (this._paused) {
-
-              await this.resume();
-            }
-          }
-        }
-        else if (event.ctrlKey && event.key == "F11") {
-
-          if (!this._stopped && !this._messageRecorder.isRecording) {
-
-            event.stopImmediatePropagation();
-            event.preventDefault();
-
-            if (!this._paused) {
-
-              await this.pause();
-            }
-          }
-        }
-      }
-    }
-    catch (e) {
-
-      console.error(e);
-    }
-  }
-
   private async resume() {
 
     if (this._saveDisplayRecording) {
@@ -204,9 +136,9 @@ export class MessagePlayer {
       })
     }
 
-    this._paused = false;
+    this.isPaused = false;
 
-    this._stopped = false;
+    this.isStopped = false;
 
     this._eventTarget.dispatchEvent(new Event('resume'));
 
@@ -215,14 +147,14 @@ export class MessagePlayer {
     this._statusIndicator.play(this._notebookPanel);
   }
 
-  private async pause() {
+  public async pause() {
 
-    this._paused = true;
+    this.isPaused = true;
 
     await new Promise((r, j) => {
 
       this._eventTarget.addEventListener('paused', r, { once: true });
-    })
+    });
 
     await new Promise((r, j) => {
 
@@ -231,7 +163,7 @@ export class MessagePlayer {
       this._audioPlayer.addEventListener('error', j, { once: true });
 
       this._audioPlayer.pause();
-    })
+    });
 
     if (this._saveDisplayRecording) {
 
@@ -243,16 +175,17 @@ export class MessagePlayer {
 
   public async stop() {
 
-    this._stopped = true;
+    this.isStopped = true;
 
-    if (this._paused) {
+    if (this.isPaused) {
 
-      this._paused = false;
+      this.isPaused = false;
 
       this._eventTarget.dispatchEvent(new Event('stop'));
     }
     else {
 
+      //  The audio player of the message player is not already paused; hence, pause the audio player.
       await new Promise<Event>((r, j) => {
 
         this._audioPlayer.addEventListener('ended', r, { once: true });
@@ -282,14 +215,26 @@ export class MessagePlayer {
     this._notebookPanel.content.model.initialize();
   }
 
-  private async play() {
+  public async play() {
+
+    if (!this.isPaused && this.isStopped) {
+
+      await (this._player = this.playMessages());
+    }
+    else if (this.isPaused) {
+
+      await this.resume();
+    }
+  }
+
+  private async playMessages() {
 
     if (this._saveDisplayRecording) {
 
       await this.startDisplayRecording();
     }
 
-    this._stopped = false;
+    this.isStopped = false;
     this._messageIndex = 0;
     this._charIndex = 0;
 
@@ -311,9 +256,9 @@ export class MessagePlayer {
 
     this._statusIndicator.play(this._notebookPanel);
 
-    while (!this._stopped && this._messageIndex < this.eventMessages.length) {
+    while (!this.isStopped && this._messageIndex < this.eventMessages.length) {
 
-      if (this._paused) {
+      if (this.isPaused) {
 
         let proceed = await new Promise((r, j) => {
 
@@ -381,9 +326,9 @@ export class MessagePlayer {
 
           if (message.input.length) {
 
-            while (!this._stopped && this._charIndex < message.input.length) {
+            while (!this.isStopped && this._charIndex < message.input.length) {
 
-              if (this._paused) {
+              if (this.isPaused) {
 
                 let proceed = await new Promise((r, j) => {
 
@@ -473,7 +418,7 @@ export class MessagePlayer {
       this._messageIndex++; this._charIndex = 0;
     }
 
-    if (!this._stopped) {
+    if (!this.isStopped) {
 
       await this._audioPlaybackEnded;
 
@@ -482,7 +427,7 @@ export class MessagePlayer {
         await this.saveDisplayRecording();
       }
 
-      this._stopped = true;
+      this.isStopped = true;
 
       this._statusIndicator.stop(this._notebookPanel);
 
@@ -625,6 +570,6 @@ export class MessagePlayer {
 
   get isPlaying(): boolean {
 
-    return !this._stopped
+    return !this.isStopped
   }
 }

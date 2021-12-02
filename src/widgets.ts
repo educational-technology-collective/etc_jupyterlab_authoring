@@ -1,4 +1,4 @@
-import { Widget, Panel } from "@lumino/widgets";
+import { Widget, Panel, MenuBar, TabBar, BoxPanel } from "@lumino/widgets";
 
 import { UUID } from '@lumino/coreutils';
 
@@ -41,19 +41,28 @@ export class SaveDisplayRecordingCheckboxWidget extends Widget {
     }
 }
 
-export class ButtonControlsWidget extends Widget {
+export class MediaControlsPanel extends BoxPanel {
 
-    constructor() {
-        super();
+    constructor(options: BoxPanel.IOptions) {
+        super(options);
 
-        this.addClass('jp-ButtonControlsWidget');
+        this.addClass('jp-MediaControlsPanel');
 
-        this.node.appendChild(recordOffButton.element());
-        this.node.appendChild(stopButton.element());
-        this.node.appendChild(playButton.element());
-        this.node.appendChild(pauseButton.element());
-        this.node.appendChild(ejectButton.element());
-        this.node.appendChild(saveButton.element());
+        let recordOffButtonElement = recordOffButton.element({className:'record'});
+        let stopButtonElement = stopButton.element({className:'stop'});
+        let playButtonElement = playButton.element({className:'play'});
+        let pauseButtonElement = pauseButton.element({className:'pause'});
+        let saveButtonElement = saveButton.element({className:'save'});
+        let resetButtonElement = ejectButton.element({className:'reset'});
+
+        this.addWidget(new Widget({ node: recordOffButtonElement }));
+        this.addWidget(new Widget({ node: stopButtonElement }));
+        this.addWidget(new Widget({ node: playButtonElement }));
+        this.addWidget(new Widget({ node: pauseButtonElement }));
+        this.addWidget(new Widget({ node: resetButtonElement }));
+        this.addWidget(new Widget({ node: saveButtonElement }));
+
+        // recordOffButtonElement.setAttribute('title', 'TEST');
     }
 }
 
@@ -78,6 +87,33 @@ export class ScrollCheckboxWidget extends Widget {
         label.setAttribute('for', 'scroll');
 
         label.innerHTML = 'Scroll to cell during playback.';
+
+        this.node.appendChild(input);
+
+        this.node.appendChild(label);
+    }
+}
+
+export class ShowMediaControlsCheckboxWidget extends Widget {
+
+    constructor() {
+        super();
+
+        this.addClass('jp-ShowMediaControlsCheckboxWidget');
+
+        let input = document.createElement('input');
+
+        input.setAttribute('type', 'checkbox');
+
+        input.setAttribute('name', 'execution');
+
+        input.classList.add('jp-mod-styled');
+
+        let label = document.createElement('label');
+
+        label.setAttribute('for', 'execution');
+
+        label.innerHTML = 'Show media controls in toolbar.';
 
         this.node.appendChild(input);
 
