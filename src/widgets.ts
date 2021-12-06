@@ -14,6 +14,8 @@ import {
 
 import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
 
+import { Message } from '@lumino/messaging';
+
 export class SaveDisplayRecordingCheckboxWidget extends Widget {
 
     constructor() {
@@ -48,12 +50,12 @@ export class MediaControlsPanel extends BoxPanel {
 
         this.addClass('jp-MediaControlsPanel');
 
-        let recordOffButtonElement = recordOffButton.element({className:'record'});
-        let stopButtonElement = stopButton.element({className:'stop'});
-        let playButtonElement = playButton.element({className:'play'});
-        let pauseButtonElement = pauseButton.element({className:'pause'});
-        let saveButtonElement = saveButton.element({className:'save'});
-        let resetButtonElement = ejectButton.element({className:'reset'});
+        let recordOffButtonElement = recordOffButton.element({ className: 'record' });
+        let stopButtonElement = stopButton.element({ className: 'stop' });
+        let playButtonElement = playButton.element({ className: 'play' });
+        let pauseButtonElement = pauseButton.element({ className: 'pause' });
+        let saveButtonElement = saveButton.element({ className: 'save' });
+        let resetButtonElement = ejectButton.element({ className: 'reset' });
 
         this.addWidget(new Widget({ node: recordOffButtonElement }));
         this.addWidget(new Widget({ node: stopButtonElement }));
@@ -63,6 +65,11 @@ export class MediaControlsPanel extends BoxPanel {
         this.addWidget(new Widget({ node: saveButtonElement }));
 
         // recordOffButtonElement.setAttribute('title', 'TEST');
+        this.update();
+    }
+
+    protected onUpdateRequest(msg: Message) {
+        console.log('UPDATE');
     }
 }
 

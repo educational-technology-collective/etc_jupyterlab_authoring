@@ -39,6 +39,12 @@
       "title": "Save Keystroke",
       "description": "The keystroke for the save command.",
       "default": "Ctrl F12"
+    },
+    "advance": {
+      "type": "string",
+      "title": "Advance Cursor",
+      "description": "Advance the cursor when recording.",
+      "default": "Space"
     }
   },
   "additionalProperties": false

@@ -15,7 +15,7 @@ export class MessagePlayer {
   public audioRecording: Blob;
   public eventMessages: Array<EventMessage>;
   public isPaused: boolean = false;
-  public isStopped: boolean = true;
+  public isPlaying: boolean = false;
 
   private _contentModel: PartialJSONValue;
   private _notebookPanel: NotebookPanel;
@@ -86,6 +86,7 @@ export class MessagePlayer {
       this._contentModel = notebookPanel.content.model.toJSON();
       //  The Notebook needs to be saved so that it can be reset; hence freeze the Notebook.
 
+
       (async () => {
 
         try {
@@ -138,7 +139,7 @@ export class MessagePlayer {
 
     this.isPaused = false;
 
-    this.isStopped = false;
+    this.isPlaying = true;
 
     this._eventTarget.dispatchEvent(new Event('resume'));
 
@@ -175,7 +176,7 @@ export class MessagePlayer {
 
   public async stop() {
 
-    this.isStopped = true;
+    this.isPlaying = false;
 
     if (this.isPaused) {
 
@@ -217,7 +218,7 @@ export class MessagePlayer {
 
   public async play() {
 
-    if (!this.isPaused && this.isStopped) {
+    if (!this.isPaused && !this.isPlaying) {
 
       await (this._player = this.playMessages());
     }
@@ -234,7 +235,7 @@ export class MessagePlayer {
       await this.startDisplayRecording();
     }
 
-    this.isStopped = false;
+    this.isPlaying = true;
     this._messageIndex = 0;
     this._charIndex = 0;
 
@@ -256,7 +257,7 @@ export class MessagePlayer {
 
     this._statusIndicator.play(this._notebookPanel);
 
-    while (!this.isStopped && this._messageIndex < this.eventMessages.length) {
+    while (this.isPlaying && this._messageIndex < this.eventMessages.length) {
 
       if (this.isPaused) {
 
@@ -326,7 +327,7 @@ export class MessagePlayer {
 
           if (message.input.length) {
 
-            while (!this.isStopped && this._charIndex < message.input.length) {
+            while (this.isPlaying && this._charIndex < message.input.length) {
 
               if (this.isPaused) {
 
@@ -418,7 +419,7 @@ export class MessagePlayer {
       this._messageIndex++; this._charIndex = 0;
     }
 
-    if (!this.isStopped) {
+    if (this.isPlaying) {
 
       await this._audioPlaybackEnded;
 
@@ -427,7 +428,7 @@ export class MessagePlayer {
         await this.saveDisplayRecording();
       }
 
-      this.isStopped = true;
+      this.isPlaying = false;
 
       this._statusIndicator.stop(this._notebookPanel);
 
@@ -566,10 +567,5 @@ export class MessagePlayer {
 
       this._eventTarget.addEventListener('error', j, { once: true });
     });
-  }
-
-  get isPlaying(): boolean {
-
-    return !this.isStopped
   }
 }

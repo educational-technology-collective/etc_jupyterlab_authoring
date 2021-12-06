@@ -30,10 +30,11 @@ import { MessageRecorder } from './message_recorder';
 import { MessagePlayer } from './message_player';
 import { AudioInputSelector } from "./audio_input_selector";
 import { each } from "@lumino/algorithm";
-import { MediaControls } from "./media-controls";
+import { Controller } from "./controller";
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { CommandRegistry } from "@lumino/commands";
+import { CommandSignal } from "./command_signal";
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
 
@@ -57,6 +58,9 @@ const extension: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry
   ) => {
     console.log(`JupyterLab extension ${PLUGIN_ID} is activated!`);
+
+    app.commands.commandExecuted.connect((sender: any, args: any) => { console.log(args) });
+
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
@@ -112,9 +116,8 @@ const extension: JupyterFrontEndPlugin<void> = {
           saveDisplayRecordingCheckbox: saveDisplayRecordingCheckboxWidget.node
         });
 
-        let mediaControls = new MediaControls({
+        let controller = new Controller({
           commandRegistry: app.commands,
-          settings: settings,
           notebookPanel,
           showMediaControlsCheckboxWidget,
           messageRecorder,
