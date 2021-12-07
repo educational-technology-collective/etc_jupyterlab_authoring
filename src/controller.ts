@@ -2,7 +2,7 @@ import { NotebookPanel } from '@jupyterlab/notebook';
 
 import { Widget, Panel, MenuBar, TabBar, BoxPanel, BoxLayout } from "@lumino/widgets";
 
-import { MediaControlsPanel, ShowMediaControlsCheckboxWidget } from './widgets';
+import { MediaControls, SaveDisplayRecordingCheckbox, ShowMediaControlsCheckbox } from './widgets';
 
 import { PLUGIN_ID } from './index';
 import { MessagePlayer } from './message_player';
@@ -14,12 +14,14 @@ import { IDisposable } from '@lumino/disposable';
 import { commands } from 'codemirror';
 import { CommandSignal } from './command_signal';
 import { Signal } from '@lumino/signaling';
+import { KeyBindings } from './key_bindings';
 
 export class Controller {
 
-    private _mediaControlsPanel: MediaControlsPanel;
-    private _showMediaControlsCheckbox: HTMLInputElement;
+    private _mediaControls: MediaControls;
+    private _showMediaControlsCheckbox: Widget;
     private _notebookPanel: NotebookPanel;
+    private _keyBindings: KeyBindings;
     private _messagePlayer: MessagePlayer;
     private _messageRecorder: MessageRecorder;
     private _commandRegistry: CommandRegistry;
@@ -33,40 +35,41 @@ export class Controller {
     private _saveButton: HTMLElement;
 
     constructor({
-        commandRegistry,
         notebookPanel,
-        showMediaControlsCheckboxWidget,
+        mediaControls,
+        commandRegistry,
+        keyBindings,
+        showMediaControlsCheckbox,
+        saveDisplayRecordingCheckbox,
         messageRecorder,
         messagePlayer
     }: {
-        commandRegistry: CommandRegistry,
         notebookPanel: NotebookPanel,
-        showMediaControlsCheckboxWidget: ShowMediaControlsCheckboxWidget,
+        mediaControls: MediaControls,
+        commandRegistry: CommandRegistry,
+        keyBindings: KeyBindings,
+        showMediaControlsCheckbox: ShowMediaControlsCheckbox,
+        saveDisplayRecordingCheckbox: SaveDisplayRecordingCheckbox,
         messageRecorder: MessageRecorder,
         messagePlayer: MessagePlayer
     }) {
 
-
         this._notebookPanel = notebookPanel;
+        this._mediaControls = mediaControls;
+        this._keyBindings = keyBindings;
         this._messageRecorder = messageRecorder;
         this._messagePlayer = messagePlayer;
         this._commandRegistry = commandRegistry;
-        this._showMediaControlsCheckbox = showMediaControlsCheckboxWidget.node.getElementsByTagName('input')[0];
+        this._showMediaControlsCheckbox = showMediaControlsCheckbox;
 
-        let mediaControlsPanel = this._mediaControlsPanel = new MediaControlsPanel({ direction: 'left-to-right', alignment: 'start' });
+        this._keyBindings.keyPressed.connect(this.handleKeyPressed, this);
 
-        this._notebookPanel.toolbar.insertAfter(
-            'cellType',
-            `${PLUGIN_ID}:button_controls_widget`,
-            mediaControlsPanel
-        );
-
-        this._resetButton = mediaControlsPanel.node.querySelector('.reset');
-        this._recordButton = mediaControlsPanel.node.querySelector('.record');
-        this._stopButton = mediaControlsPanel.node.querySelector('.stop');
-        this._playButton = mediaControlsPanel.node.querySelector('.play');
-        this._pauseButton = mediaControlsPanel.node.querySelector('.pause');
-        this._saveButton = mediaControlsPanel.node.querySelector('.save');
+        this._resetButton = mediaControls.node.querySelector('.reset');
+        this._recordButton = mediaControls.node.querySelector('.record');
+        this._stopButton = mediaControls.node.querySelector('.stop');
+        this._playButton = mediaControls.node.querySelector('.play');
+        this._pauseButton = mediaControls.node.querySelector('.pause');
+        this._saveButton = mediaControls.node.querySelector('.save');
 
         this._resetButton.addEventListener('click', this, true);
         this._recordButton.addEventListener('click', this, true);
@@ -75,7 +78,7 @@ export class Controller {
         this._pauseButton.addEventListener('click', this, true);
         this._saveButton.addEventListener('click', this, true);
 
-        this._showMediaControlsCheckbox.addEventListener('click', this, true);
+        this._showMediaControlsCheckbox.node.addEventListener('click', this, true);
 
         this.processShowMediaControls();
     }
@@ -87,72 +90,96 @@ export class Controller {
 
     public async handleEvent(event: Event) {
 
-        if (event.type == 'click') {
+        try {
 
-            if (event.currentTarget == this._resetButton) {
-                this.processReset();
+            if (event.type == 'click') {
+
+                if (event.currentTarget == this._resetButton) {
+                    this.processReset();
+                }
+                else if (event.currentTarget == this._recordButton) {
+                    await this.processRecord();
+                }
+                else if (event.currentTarget == this._stopButton) {
+                    await this.processStop();
+                }
+                else if (event.currentTarget == this._playButton) {
+                    await this.processPlay();
+                }
+                else if (event.currentTarget == this._pauseButton) {
+                    await this.processPause();
+                }
+                else if (event.currentTarget == this._saveButton) {
+                    await this.processSave();
+                }
+                else if (event.target == this._showMediaControlsCheckbox.node.getElementsByTagName('input')[0]) {
+                    this.processShowMediaControls();
+                }
             }
-            else if (event.currentTarget == this._recordButton) {
-                this.processRecord();
-            }
-            else if (event.currentTarget == this._stopButton) {
-                this.processStop();
-            }
-            else if (event.currentTarget == this._playButton) {
-                this.processPlay();
-            }
-            else if (event.currentTarget == this._pauseButton) {
-                this.processPause();
-            }
-            else if (event.currentTarget == this._saveButton) {
-                this.processSave();
-            }
-            else if(event.currentTarget == this._showMediaControlsCheckbox) {
-                this.processShowMediaControls();
-            }
+        }
+        catch(e) {
+
+            console.error(e);
         }
     }
 
-    private async handleKeyPressed(sender: CommandRegistry, args: { process: string }) {
+    private async handleKeyPressed(sender: KeyBindings, args: { key: string }) {
 
-        switch (args.process) {
+        try {
 
-            case 'reset':
-                this.processReset();
-                break;
-            case 'record':
-                this.processRecord();
-                break;
-            case 'stop':
-                this.processStop();
-                break;
-            case 'play':
-                this.processPlay();
-                break;
-            case 'pause':
-                this.processPause();
-                break;
-            case 'save':
-                this.processSave();
-                break;
+            if (this._notebookPanel.isVisible) {
+
+                switch (args.key) {
+    
+                    case 'reset':
+                        this.processReset();
+                        break;
+                    case 'record':
+                        await this.processRecord();
+                        break;
+                    case 'stop':
+                        await this.processStop();
+                        break;
+                    case 'play':
+                        await this.processPlay();
+                        break;
+                    case 'pause':
+                        await this.processPause();
+                        break;
+                    case 'save':
+                        await this.processSave();
+                        break;
+                    case 'advance':
+                        this.processAdvance();
+                        break;
+                }
+            }
+        }
+        catch(e) {
+
+            console.error(e);
         }
     }
 
     public processShowMediaControls() {
 
-        if (this._showMediaControlsCheckbox.checked) {
+        let checkbox = this._showMediaControlsCheckbox.node.getElementsByTagName('input')[0];
 
-            this._mediaControlsPanel.show();
+        if (checkbox.checked) {
+
+            this._mediaControls.show();
         }
         else {
 
-            this._mediaControlsPanel.hide();
+            this._mediaControls.hide();
         }
     }
 
     private async processStop() {
 
         if (this._messageRecorder.isRecording) {
+
+            this._keyBindings.detachAdvanceKeyBinding();
 
             await this._messageRecorder.stop();
         }
@@ -213,6 +240,8 @@ export class Controller {
                 await this._messageRecorder.resume();
             }
             else if (!this._messageRecorder.isRecording) {
+
+                this._keyBindings.attachAdvanceKeyBinding();
 
                 await this._messageRecorder.record();
             }

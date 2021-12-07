@@ -9,6 +9,9 @@ import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { MessageRecorder } from "./message_recorder";
 import { StatusIndicator } from './status_indicator';
+import { Widget } from "@lumino/widgets";
+import { consoleIcon } from '@jupyterlab/ui-components';
+
 
 export class MessagePlayer {
 
@@ -28,9 +31,9 @@ export class MessagePlayer {
   private _scrollToCell: boolean;
   private _messageRecorder: MessageRecorder;
   private _statusIndicator: StatusIndicator;
-  private _scrollCheckbox: HTMLElement;
-  private _executionCheckbox: HTMLElement;
-  private _saveDisplayRecordingCheckbox: HTMLElement;
+  private _scrollCheckbox: Widget;
+  private _executionCheckbox: Widget;
+  private _saveDisplayRecordingCheckbox: Widget;
   private _saveDisplayRecording: boolean;
   private _mediaRecorder: MediaRecorder;
   private _displayRecording: Promise<Blob>;
@@ -50,9 +53,9 @@ export class MessagePlayer {
     notebookPanel: NotebookPanel
     messageRecorder: MessageRecorder,
     statusIndicator: StatusIndicator,
-    executionCheckbox: HTMLElement,
-    scrollCheckbox: HTMLElement,
-    saveDisplayRecordingCheckbox: HTMLElement
+    executionCheckbox: Widget,
+    scrollCheckbox: Widget,
+    saveDisplayRecordingCheckbox: Widget
   }) {
 
     this._eventTarget = new EventTarget();
@@ -73,9 +76,9 @@ export class MessagePlayer {
 
     notebookPanel.disposed.connect(this.dispose, this);
 
-    this._executionCheckbox.addEventListener('change', this.handleExecutionCheckboxChange, true);
-    this._scrollCheckbox.addEventListener('change', this.handleScrollCheckboxChange, true);
-    this._saveDisplayRecordingCheckbox.addEventListener('change', this.handleSaveDisplayRecordingCheckboxChange, true);
+    this._executionCheckbox.node.getElementsByTagName('input')[0].addEventListener('change', this.handleExecutionCheckboxChange, true);
+    this._scrollCheckbox.node.getElementsByTagName('input')[0].addEventListener('change', this.handleScrollCheckboxChange, true);
+    this._saveDisplayRecordingCheckbox.node.getElementsByTagName('input')[0].addEventListener('change', this.handleSaveDisplayRecordingCheckboxChange, true);
 
     if (this._notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
@@ -107,12 +110,16 @@ export class MessagePlayer {
 
     clearInterval(this._intervalId);
 
-    this._executionCheckbox.removeEventListener('change', this.handleExecutionCheckboxChange, true);
-    this._scrollCheckbox.removeEventListener('change', this.handleScrollCheckboxChange, true);
+    this._executionCheckbox.node.getElementsByTagName('input')[0].removeEventListener('change', this.handleExecutionCheckboxChange, true);
+    this._scrollCheckbox.node.getElementsByTagName('input')[0].removeEventListener('change', this.handleScrollCheckboxChange, true);
   }
 
   handleExecutionCheckboxChange(event: Event) {
+
+
     this._executeCell = (event.target as HTMLInputElement).checked
+    
+    console.log(this._executeCell);
   }
 
   handleScrollCheckboxChange(event: Event) {

@@ -1,4 +1,4 @@
-import { Widget, Panel, MenuBar, TabBar, BoxPanel } from "@lumino/widgets";
+import { Widget, Panel, BoxPanel } from "@lumino/widgets";
 
 import { UUID } from '@lumino/coreutils';
 
@@ -10,18 +10,18 @@ import {
     pauseButton,
     ejectButton,
     saveButton
-} from './icons'
+} from './icons';
 
 import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
+import { ISettingRegistry } from "@jupyterlab/settingregistry";
+import { Signal } from "@lumino/signaling";
 
-import { Message } from '@lumino/messaging';
-
-export class SaveDisplayRecordingCheckboxWidget extends Widget {
+export class SaveDisplayRecordingCheckbox extends Widget {
 
     constructor() {
         super();
 
-        this.addClass('jp-SaveDisplayRecordingCheckboxWidget');
+        this.addClass('jp-SaveDisplayRecordingCheckbox');
 
         let input = document.createElement('input');
 
@@ -43,12 +43,12 @@ export class SaveDisplayRecordingCheckboxWidget extends Widget {
     }
 }
 
-export class MediaControlsPanel extends BoxPanel {
+export class MediaControls extends BoxPanel {
 
-    constructor(options: BoxPanel.IOptions) {
+    constructor({ options, settings }: { options: BoxPanel.IOptions, settings: ISettingRegistry.ISettings }) {
         super(options);
 
-        this.addClass('jp-MediaControlsPanel');
+        this.addClass('jp-MediaControls');
 
         let recordOffButtonElement = recordOffButton.element({ className: 'record' });
         let stopButtonElement = stopButton.element({ className: 'stop' });
@@ -64,22 +64,39 @@ export class MediaControlsPanel extends BoxPanel {
         this.addWidget(new Widget({ node: resetButtonElement }));
         this.addWidget(new Widget({ node: saveButtonElement }));
 
-        // recordOffButtonElement.setAttribute('title', 'TEST');
-        this.update();
+        let updateToolTips = (settings: ISettingRegistry.ISettings, args: void) => {
+
+            ['record', 'stop', 'play', 'pause', 'reset', 'save'].forEach((value: string) => {
+
+                let keyBinding = settings.get(value).composite.toString();
+
+                this.node.querySelector(
+                    `.${value}`
+                ).setAttribute(
+                    'title', `${value[0].toUpperCase() + value.slice(1)}: ${keyBinding}`
+                );
+            });
+        }
+
+        settings.changed.connect(updateToolTips, this);
+
+        updateToolTips(settings);
     }
 
-    protected onUpdateRequest(msg: Message) {
-        console.log('UPDATE');
+    dispose() {
+        super.dispose();
+
+        Signal.disconnectAll(this);
     }
 }
 
 
-export class ScrollCheckboxWidget extends Widget {
+export class ScrollCheckbox extends Widget {
 
     constructor() {
         super();
 
-        this.addClass('jp-ScrollCheckBoxWidget');
+        this.addClass('jp-ScrollCheckBox');
 
         let input = document.createElement('input');
 
@@ -101,12 +118,12 @@ export class ScrollCheckboxWidget extends Widget {
     }
 }
 
-export class ShowMediaControlsCheckboxWidget extends Widget {
+export class ShowMediaControlsCheckbox extends Widget {
 
     constructor() {
         super();
 
-        this.addClass('jp-ShowMediaControlsCheckboxWidget');
+        this.addClass('jp-ShowMediaControlsCheckbox');
 
         let input = document.createElement('input');
 
@@ -128,12 +145,12 @@ export class ShowMediaControlsCheckboxWidget extends Widget {
     }
 }
 
-export class ExecutionCheckboxWidget extends Widget {
+export class ExecutionCheckbox extends Widget {
 
     constructor() {
         super();
 
-        this.addClass('jp-ExecutionCheckBoxWidget');
+        this.addClass('jp-ExecutionCheckBox');
 
         let input = document.createElement('input');
 
@@ -155,12 +172,12 @@ export class ExecutionCheckboxWidget extends Widget {
     }
 }
 
-export class AudioInputSelectorWidget extends Widget {
+export class AudioInputSelectorContainer extends Widget {
 
     constructor() {
         super();
 
-        this.addClass('jp-AudioSelectorWidget');
+        this.addClass('jp-AudioSelector');
 
         this.node.innerHTML = 'Audio Input';
 
@@ -195,10 +212,10 @@ export class AuthoringPanel extends Panel {
     }
 }
 
-export class StatusIndicatorWidget extends Widget {
+export class StatusIndicatorContainer extends Widget {
 
     constructor() {
         super();
-        this.addClass("jp-StatusIndicatorWidget");
+        this.addClass("jp-StatusIndicatorContainer");
     }
 }
