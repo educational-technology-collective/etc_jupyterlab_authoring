@@ -11,6 +11,10 @@ import { MessageRecorder } from "./message_recorder";
 import { StatusIndicator } from './status_indicator';
 import { Widget } from "@lumino/widgets";
 import { consoleIcon } from '@jupyterlab/ui-components';
+import { MediaControls } from './media_controls';
+import { KeyBindings } from './key_bindings';
+import { ExecutionCheckbox, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
+import { Signal } from '@lumino/signaling';
 
 
 export class MessagePlayer {
@@ -19,22 +23,17 @@ export class MessagePlayer {
   public eventMessages: Array<EventMessage>;
   public isPaused: boolean = false;
   public isPlaying: boolean = false;
+  public executeCellEnabled: boolean;
+  public scrollToCellEnabled: boolean;
+  public saveDisplayRecordingEnabled: boolean;
 
   private _contentModel: PartialJSONValue;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
-  private _intervalId: number;
   private _editor: CodeMirrorEditor;
   private _audioPlayer: HTMLAudioElement;
   private _audioPlaybackEnded: Promise<Event>;
-  private _executeCell: boolean;
-  private _scrollToCell: boolean;
-  private _messageRecorder: MessageRecorder;
   private _statusIndicator: StatusIndicator;
-  private _scrollCheckbox: Widget;
-  private _executionCheckbox: Widget;
-  private _saveDisplayRecordingCheckbox: Widget;
-  private _saveDisplayRecording: boolean;
   private _mediaRecorder: MediaRecorder;
   private _displayRecording: Promise<Blob>;
   private _charIndex: number;
@@ -44,18 +43,20 @@ export class MessagePlayer {
 
   constructor({
     notebookPanel,
-    messageRecorder,
-    statusIndicator,
+    mediaControls,
+    keyBindings,
+    saveDisplayRecordingCheckbox,
     executionCheckbox,
     scrollCheckbox,
-    saveDisplayRecordingCheckbox
+    statusIndicator
   }: {
-    notebookPanel: NotebookPanel
-    messageRecorder: MessageRecorder,
+    notebookPanel: NotebookPanel,
+    mediaControls: MediaControls,
+    keyBindings: KeyBindings,
     statusIndicator: StatusIndicator,
-    executionCheckbox: Widget,
-    scrollCheckbox: Widget,
-    saveDisplayRecordingCheckbox: Widget
+    executionCheckbox: ExecutionCheckbox,
+    scrollCheckbox: ScrollCheckbox,
+    saveDisplayRecordingCheckbox: SaveDisplayRecordingCheckbox
   }) {
 
     this._eventTarget = new EventTarget();
@@ -63,22 +64,14 @@ export class MessagePlayer {
     this._notebookPanel = notebookPanel;
     this._notebook = notebookPanel.content;
     this._statusIndicator = statusIndicator;
-    this._executionCheckbox = executionCheckbox;
-    this._scrollCheckbox = scrollCheckbox;
-    this._saveDisplayRecordingCheckbox = saveDisplayRecordingCheckbox;
-
-    this._messageRecorder = messageRecorder;
-    this._messageRecorder.messagePlayer = this;
-
-    this.handleExecutionCheckboxChange = this.handleExecutionCheckboxChange.bind(this);
-    this.handleScrollCheckboxChange = this.handleScrollCheckboxChange.bind(this);
-    this.handleSaveDisplayRecordingCheckboxChange = this.handleSaveDisplayRecordingCheckboxChange.bind(this);
 
     notebookPanel.disposed.connect(this.dispose, this);
 
-    this._executionCheckbox.node.getElementsByTagName('input')[0].addEventListener('change', this.handleExecutionCheckboxChange, true);
-    this._scrollCheckbox.node.getElementsByTagName('input')[0].addEventListener('change', this.handleScrollCheckboxChange, true);
-    this._saveDisplayRecordingCheckbox.node.getElementsByTagName('input')[0].addEventListener('change', this.handleSaveDisplayRecordingCheckboxChange, true);
+    saveDisplayRecordingCheckbox.checkboxChanged.connect((sender: SaveDisplayRecordingCheckbox, checked: boolean) => this.saveDisplayRecordingEnabled = checked, this);
+    executionCheckbox.checkboxChanged.connect((sender: ExecutionCheckbox, checked: boolean) => this.executeCellEnabled = checked, this);
+    scrollCheckbox.checkboxChanged.connect((sender: ScrollCheckbox, checked: boolean) => this.scrollToCellEnabled = checked, this);
+    keyBindings.keyPressed.connect(this.processCommand, this);
+    mediaControls.buttonPressed.connect(this.processCommand, this);
 
     if (this._notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
@@ -88,7 +81,6 @@ export class MessagePlayer {
 
       this._contentModel = notebookPanel.content.model.toJSON();
       //  The Notebook needs to be saved so that it can be reset; hence freeze the Notebook.
-
 
       (async () => {
 
@@ -108,31 +100,41 @@ export class MessagePlayer {
 
   private dispose() {
 
-    clearInterval(this._intervalId);
-
-    this._executionCheckbox.node.getElementsByTagName('input')[0].removeEventListener('change', this.handleExecutionCheckboxChange, true);
-    this._scrollCheckbox.node.getElementsByTagName('input')[0].removeEventListener('change', this.handleScrollCheckboxChange, true);
+    Signal.disconnectAll(this);
   }
 
-  handleExecutionCheckboxChange(event: Event) {
+  private async processCommand(sender: KeyBindings | MediaControls, args: { command: string }) {
 
+    try {
 
-    this._executeCell = (event.target as HTMLInputElement).checked
-    
-    console.log(this._executeCell);
-  }
+      if (this._notebookPanel.isVisible) {
 
-  handleScrollCheckboxChange(event: Event) {
-    this._scrollToCell = (event.target as HTMLInputElement).checked
-  }
+        switch (args.command) {
 
-  handleSaveDisplayRecordingCheckboxChange(event: Event) {
-    this._saveDisplayRecording = (event.target as HTMLInputElement).checked
+          case 'reset':
+            this.reset();
+            break;
+          case 'stop':
+            await this.stop();
+            break;
+          case 'play':
+            await this.play();
+            break;
+          case 'pause':
+            await this.pause();
+            break;
+        }
+      }
+    }
+    catch (e) {
+
+      console.error(e);
+    }
   }
 
   private async resume() {
 
-    if (this._saveDisplayRecording) {
+    if (this.saveDisplayRecordingEnabled) {
 
       await new Promise((r, j) => {
 
@@ -157,46 +159,16 @@ export class MessagePlayer {
 
   public async pause() {
 
-    this.isPaused = true;
+    if (this.isPlaying && !this.isPaused) {
 
-    await new Promise((r, j) => {
+      this.isPaused = true;
 
-      this._eventTarget.addEventListener('paused', r, { once: true });
-    });
+      await new Promise((r, j) => {
 
-    await new Promise((r, j) => {
+        this._eventTarget.addEventListener('paused', r, { once: true });
+      });
 
-      this._audioPlayer.addEventListener('pause', r, { once: true });
-
-      this._audioPlayer.addEventListener('error', j, { once: true });
-
-      this._audioPlayer.pause();
-    });
-
-    if (this._saveDisplayRecording) {
-
-      this._mediaRecorder.pause();
-    }
-
-    this._statusIndicator.pause(this._notebookPanel);
-  }
-
-  public async stop() {
-
-    this.isPlaying = false;
-
-    if (this.isPaused) {
-
-      this.isPaused = false;
-
-      this._eventTarget.dispatchEvent(new Event('stop'));
-    }
-    else {
-
-      //  The audio player of the message player is not already paused; hence, pause the audio player.
-      await new Promise<Event>((r, j) => {
-
-        this._audioPlayer.addEventListener('ended', r, { once: true });
+      await new Promise((r, j) => {
 
         this._audioPlayer.addEventListener('pause', r, { once: true });
 
@@ -204,28 +176,67 @@ export class MessagePlayer {
 
         this._audioPlayer.pause();
       });
+
+      if (this.saveDisplayRecordingEnabled) {
+
+        this._mediaRecorder.pause();
+      }
+
+      this._statusIndicator.pause(this._notebookPanel);
     }
+  }
 
-    await this._player;
+  public async stop() {
 
-    if (this._saveDisplayRecording) {
+    if (this.isPlaying) {
 
-      await this.saveDisplayRecording();
+      this.isPlaying = false;
+
+      if (this.isPaused) {
+
+        this.isPaused = false;
+
+        this._eventTarget.dispatchEvent(new Event('stop'));
+      }
+      else {
+
+        //  The audio player of the message player is not already paused; hence, pause the audio player.
+        await new Promise<Event>((r, j) => {
+
+          this._audioPlayer.addEventListener('ended', r, { once: true });
+
+          this._audioPlayer.addEventListener('pause', r, { once: true });
+
+          this._audioPlayer.addEventListener('error', j, { once: true });
+
+          this._audioPlayer.pause();
+        });
+      }
+
+      await this._player;
+
+      if (this.saveDisplayRecordingEnabled) {
+
+        await this.saveDisplayRecording();
+      }
+
+      this._statusIndicator.stop(this._notebookPanel);
     }
-
-    this._statusIndicator.stop(this._notebookPanel);
   }
 
   public reset() {
 
-    this._notebookPanel.content.model.fromJSON(this._contentModel);
+    if (!this.isPlaying) {
 
-    this._notebookPanel.content.model.initialize();
+      this._notebookPanel.content.model.fromJSON(this._contentModel);
+
+      this._notebookPanel.content.model.initialize();
+    }
   }
 
   public async play() {
 
-    if (!this.isPaused && !this.isPlaying) {
+    if (this.audioRecording && !this.isPaused && !this.isPlaying) {
 
       await (this._player = this.playMessages());
     }
@@ -237,7 +248,7 @@ export class MessagePlayer {
 
   private async playMessages() {
 
-    if (this._saveDisplayRecording) {
+    if (this.enableSaveDisplayRecording) {
 
       await this.startDisplayRecording();
     }
@@ -295,7 +306,7 @@ export class MessagePlayer {
 
         let cell: Cell<ICellModel> = this._notebook.widgets[message.cell_index];
 
-        if (this._scrollToCell) {
+        if (this.enableScrollToCell) {
 
           this._notebook.scrollToCell(cell);
         }

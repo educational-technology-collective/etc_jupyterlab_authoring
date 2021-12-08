@@ -6,7 +6,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 
 export class KeyBindings {
 
-    private _keyPressed: Signal<KeyBindings, { key: string }> = new Signal<KeyBindings, { key: string }>(this);
+    private _keyPressed: Signal<KeyBindings, { command: string }> = new Signal<KeyBindings, { command: string }>(this);
     private _keyBindingDisposables: Array<IDisposable> = [];
     private _advanceKeyBindingDisposable: IDisposable;
     private _commandRegistry: CommandRegistry;
@@ -125,7 +125,7 @@ export class KeyBindings {
         this._advanceKeyBindingDisposable.dispose();
     }
 
-    get keyPressed(): ISignal<KeyBindings, { key: string }> {
+    get keyPressed(): ISignal<KeyBindings, { command: string }> {
         return this._keyPressed;
     }
 }

@@ -2,7 +2,7 @@ import { NotebookPanel } from '@jupyterlab/notebook';
 
 import { Widget, Panel, MenuBar, TabBar, BoxPanel, BoxLayout } from "@lumino/widgets";
 
-import { MediaControls, SaveDisplayRecordingCheckbox, ShowMediaControlsCheckbox } from './widgets';
+import { ExecutionCheckbox, SaveDisplayRecordingCheckbox, ScrollCheckbox, ShowMediaControlsCheckbox } from './components';
 
 import { PLUGIN_ID } from './index';
 import { MessagePlayer } from './message_player';
@@ -15,24 +15,21 @@ import { commands } from 'codemirror';
 import { CommandSignal } from './command_signal';
 import { Signal } from '@lumino/signaling';
 import { KeyBindings } from './key_bindings';
+import { MediaControls } from './media_controls';
 
 export class Controller {
 
     private _mediaControls: MediaControls;
-    private _showMediaControlsCheckbox: Widget;
+    private _showMediaControlsCheckbox: ShowMediaControlsCheckbox;
+    private _saveDisplayRecordingCheckbox: SaveDisplayRecordingCheckbox;
+    private _executionCheckbox: ExecutionCheckbox;
+    private _scrollCheckbox: ScrollCheckbox;
     private _notebookPanel: NotebookPanel;
     private _keyBindings: KeyBindings;
     private _messagePlayer: MessagePlayer;
     private _messageRecorder: MessageRecorder;
     private _commandRegistry: CommandRegistry;
     private _settings: ISettingRegistry.ISettings;
-
-    private _resetButton: HTMLElement;
-    private _recordButton: HTMLElement;
-    private _stopButton: HTMLElement;
-    private _playButton: HTMLElement;
-    private _pauseButton: HTMLElement;
-    private _saveButton: HTMLElement;
 
     constructor({
         notebookPanel,
@@ -41,6 +38,8 @@ export class Controller {
         keyBindings,
         showMediaControlsCheckbox,
         saveDisplayRecordingCheckbox,
+        executionCheckbox,
+        scrollCheckbox,
         messageRecorder,
         messagePlayer
     }: {
@@ -50,6 +49,8 @@ export class Controller {
         keyBindings: KeyBindings,
         showMediaControlsCheckbox: ShowMediaControlsCheckbox,
         saveDisplayRecordingCheckbox: SaveDisplayRecordingCheckbox,
+        executionCheckbox: ExecutionCheckbox,
+        scrollCheckbox: ScrollCheckbox,
         messageRecorder: MessageRecorder,
         messagePlayer: MessagePlayer
     }) {
@@ -61,76 +62,32 @@ export class Controller {
         this._messagePlayer = messagePlayer;
         this._commandRegistry = commandRegistry;
         this._showMediaControlsCheckbox = showMediaControlsCheckbox;
+        this._saveDisplayRecordingCheckbox = saveDisplayRecordingCheckbox;
+        this._executionCheckbox = executionCheckbox;
+        this._scrollCheckbox = scrollCheckbox;
 
-        this._keyBindings.keyPressed.connect(this.handleKeyPressed, this);
+        this._keyBindings.keyPressed.connect(this.processCommand, this);
+        this._mediaControls.buttonPressed.connect(this.processCommand, this);
+        this._showMediaControlsCheckbox.checkboxChanged.connect(this._mediaControls.updatePanelVisibily);
+        saveDisplayRecordingCheckbox.checkboxChanged.connect(
+            (sender: SaveDisplayRecordingCheckbox, value: boolean) => this._messagePlayer.enableaveDisplayRecording = value);
+        saveDisplayRecordingCheckbox.checkboxChanged.connect(
+            (sender: SaveDisplayRecordingCheckbox, value: boolean) => this._messagePlayer.enableSaveDisplayRecording = value);
 
-        this._resetButton = mediaControls.node.querySelector('.reset');
-        this._recordButton = mediaControls.node.querySelector('.record');
-        this._stopButton = mediaControls.node.querySelector('.stop');
-        this._playButton = mediaControls.node.querySelector('.play');
-        this._pauseButton = mediaControls.node.querySelector('.pause');
-        this._saveButton = mediaControls.node.querySelector('.save');
-
-        this._resetButton.addEventListener('click', this, true);
-        this._recordButton.addEventListener('click', this, true);
-        this._stopButton.addEventListener('click', this, true);
-        this._playButton.addEventListener('click', this, true);
-        this._pauseButton.addEventListener('click', this, true);
-        this._saveButton.addEventListener('click', this, true);
-
-        this._showMediaControlsCheckbox.node.addEventListener('click', this, true);
-
-        this.processShowMediaControls();
     }
 
     public dispose() {
 
-        this._resetButton.removeEventListener('click', this);
     }
 
-    public async handleEvent(event: Event) {
-
-        try {
-
-            if (event.type == 'click') {
-
-                if (event.currentTarget == this._resetButton) {
-                    this.processReset();
-                }
-                else if (event.currentTarget == this._recordButton) {
-                    await this.processRecord();
-                }
-                else if (event.currentTarget == this._stopButton) {
-                    await this.processStop();
-                }
-                else if (event.currentTarget == this._playButton) {
-                    await this.processPlay();
-                }
-                else if (event.currentTarget == this._pauseButton) {
-                    await this.processPause();
-                }
-                else if (event.currentTarget == this._saveButton) {
-                    await this.processSave();
-                }
-                else if (event.target == this._showMediaControlsCheckbox.node.getElementsByTagName('input')[0]) {
-                    this.processShowMediaControls();
-                }
-            }
-        }
-        catch(e) {
-
-            console.error(e);
-        }
-    }
-
-    private async handleKeyPressed(sender: KeyBindings, args: { key: string }) {
+    private async processCommand(sender: KeyBindings | MediaControls, args: { command: string }) {
 
         try {
 
             if (this._notebookPanel.isVisible) {
 
-                switch (args.key) {
-    
+                switch (args.command) {
+
                     case 'reset':
                         this.processReset();
                         break;
@@ -155,23 +112,9 @@ export class Controller {
                 }
             }
         }
-        catch(e) {
+        catch (e) {
 
             console.error(e);
-        }
-    }
-
-    public processShowMediaControls() {
-
-        let checkbox = this._showMediaControlsCheckbox.node.getElementsByTagName('input')[0];
-
-        if (checkbox.checked) {
-
-            this._mediaControls.show();
-        }
-        else {
-
-            this._mediaControls.hide();
         }
     }
 

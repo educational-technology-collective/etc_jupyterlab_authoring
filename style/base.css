@@ -1,24 +1,24 @@
-.jp-ExecutionCheckBoxWidget, 
-.jp-ScrollCheckBoxWidget, 
-.jp-AudioSelectorWidget, 
-.jp-SaveDisplayRecordingCheckboxWidget,
-.jp-ShowMediaControlsCheckboxWidget {
+.jp-ExecutionCheckBox, 
+.jp-ScrollCheckBox, 
+.jp-AudioSelector, 
+.jp-SaveDisplayRecordingCheckbox,
+.jp-ShowMediaControlsCheckbox {
   font-size: var(--jp-ui-font-size1) !important;
   padding: 12px 12px 0 12px;
 }
 
-.jp-ExecutionCheckBoxWidget input, 
-.jp-ScrollCheckBoxWidget input, 
-.jp-SaveDisplayRecordingCheckboxWidget input,
-.jp-ShowMediaControlsCheckboxWidget input {
+.jp-ExecutionCheckBox input, 
+.jp-ScrollCheckBox input, 
+.jp-SaveDisplayRecordingCheckbox input,
+.jp-ShowMediaControlsCheckbox input {
   vertical-align: bottom;
 }
 
-.jp-AudioSelectorWidget select {
+.jp-AudioSelector select {
   font-size: var(--jp-ui-font-size1) !important;
 }
 
-.jp-MediaControlsPanel {
+.jp-MediaControls {
   border-radius: 5px;
   border: 1px solid #aaa;
   padding: 0 6px !important;
@@ -26,11 +26,11 @@
   box-sizing: border-box;
 }
 
-.jp-MediaControlsPanel div:hover {
+.jp-MediaControls div:hover {
   background-color: rgba(167, 182, 194, 0.3);
 }
 
-.jp-MediaControlsPanel div {
+.jp-MediaControls div {
   width:24px !important;
 }
 

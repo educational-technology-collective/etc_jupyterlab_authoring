@@ -18,8 +18,7 @@ import {
   ScrollCheckbox,
   SaveDisplayRecordingCheckbox,
   ShowMediaControlsCheckbox,
-  MediaControls
-} from './widgets';
+} from './components';
 
 import {
   StatusIndicator
@@ -33,6 +32,7 @@ import { Controller } from "./controller";
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { KeyBindings } from "./key_bindings";
+import { MediaControls } from "./media_controls";
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
 
@@ -55,13 +55,14 @@ const extension: JupyterFrontEndPlugin<void> = {
     statusBar: IStatusBar,
     settingRegistry: ISettingRegistry
   ) => {
+
     console.log(`JupyterLab extension ${PLUGIN_ID} is activated!`);
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
-    app.commands.commandExecuted.connect((sender: any, args: any) => { console.log(args) });
+    // app.commands.commandExecuted.connect((sender: any, args: any) => { console.log(args) });
 
-    let keyBindings = new KeyBindings({commandRegistry: app.commands, settings: settings});
+    let keyBindings = new KeyBindings({ commandRegistry: app.commands, settings: settings });
 
     let authoringPanel = new AuthoringPanel();
 
@@ -71,18 +72,18 @@ const extension: JupyterFrontEndPlugin<void> = {
     let saveDisplayRecordingCheckbox = new SaveDisplayRecordingCheckbox();
     let showMediaControlsCheckbox = new ShowMediaControlsCheckbox();
 
-    authoringPanel.addWidget(audioInputSelectorContainer);
-    authoringPanel.addWidget(executionCheckbox);
-    authoringPanel.addWidget(scrollCheckbox);
-    authoringPanel.addWidget(saveDisplayRecordingCheckbox);
-    authoringPanel.addWidget(showMediaControlsCheckbox);
+    authoringPanel.addWidget(audioInputSelectorContainer.widget);
+    authoringPanel.addWidget(executionCheckbox.widget);
+    authoringPanel.addWidget(scrollCheckbox.widget);
+    authoringPanel.addWidget(saveDisplayRecordingCheckbox.widget);
+    authoringPanel.addWidget(showMediaControlsCheckbox.widget);
 
     labShell.add(authoringPanel, 'right');
 
     let statusIndicatorContainer = new StatusIndicatorContainer();
     let statusIndicator = new StatusIndicator({ widget: statusIndicatorContainer });
 
-    let audioInputSelector = new AudioInputSelector({ node: audioInputSelectorContainer.node });
+    let audioInputSelector = new AudioInputSelector({ node: audioInputSelectorContainer.widget.node });
 
     statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:statusIndicator', {
       item: statusIndicatorContainer,
@@ -99,40 +100,33 @@ const extension: JupyterFrontEndPlugin<void> = {
 
         await notebookPanel.revealed;
         await notebookPanel.sessionContext.ready;
+        
+        let mediaControls = new MediaControls({ notebookPanel, settings, showMediaControlsCheckbox });
 
         let messageRecorder = new MessageRecorder({
+          app,
           notebookPanel,
+          mediaControls,
+          keyBindings,
           audioInputSelector,
           statusIndicator
         });
 
         let messagePlayer = new MessagePlayer({
           notebookPanel,
-          messageRecorder,
-          statusIndicator,
-          executionCheckbox: executionCheckbox,
-          scrollCheckbox: scrollCheckbox,
-          saveDisplayRecordingCheckbox: saveDisplayRecordingCheckbox
+          mediaControls,
+          keyBindings,
+          saveDisplayRecordingCheckbox,
+          executionCheckbox,
+          scrollCheckbox,
+          statusIndicator
         });
-
-        let mediaControls = new MediaControls({options:{ direction: 'left-to-right', alignment: 'start' }, settings});
 
         notebookPanel.toolbar.insertAfter(
-            'cellType',
-            `${PLUGIN_ID}:button_controls_widget`,
-            mediaControls
+          'cellType',
+          `${PLUGIN_ID}:button_controls_widget`,
+          mediaControls.panel
         );
-
-        let controller = new Controller({
-          notebookPanel,
-          mediaControls,
-          commandRegistry: app.commands,
-          keyBindings,
-          showMediaControlsCheckbox,
-          saveDisplayRecordingCheckbox,
-          messageRecorder,
-          messagePlayer
-        });
       }
       catch (e) {
 

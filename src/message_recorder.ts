@@ -9,13 +9,16 @@ import { EventMessage } from './types';
 import { MessagePlayer } from './message_player';
 import { AudioInputSelector } from './audio_input_selector';
 import { StatusIndicator } from './status_indicator';
+import { JupyterFrontEnd } from '@jupyterlab/application';
+import { MediaControls } from './media_controls';
+import { KeyBindings } from './key_bindings';
 
 export class MessageRecorder {
 
-    public messagePlayer: MessagePlayer;
     public isRecording: boolean = false;
     public isPaused: boolean = false;
 
+    private _app: JupyterFrontEnd;
     private _notebookPanel: NotebookPanel;
     private _cellIndex: number | null;
     private _lineIndex: number;
@@ -31,16 +34,23 @@ export class MessageRecorder {
     private _priorDuration: number;
 
     constructor({
+        app,
         notebookPanel,
+        mediaControls,
+        keyBindings,
         audioInputSelector,
         statusIndicator
     }:
         {
+            app: JupyterFrontEnd,
             notebookPanel: NotebookPanel,
+            mediaControls: MediaControls,
+            keyBindings: KeyBindings,
             audioInputSelector: AudioInputSelector,
             statusIndicator: StatusIndicator
         }) {
 
+        this._app = app;
         this._notebookPanel = notebookPanel;
         this._cellIndex = null;
         this._statusIndicator = statusIndicator;
@@ -58,32 +68,25 @@ export class MessageRecorder {
 
     public async record() {
 
-        try {
+        await this.startAudioRecorder();
 
-            await this.startAudioRecorder();
+        this._eventMessages = [];
 
-            this._eventMessages = [];
+        this.aggregateMessage({
+            event: "record_started",
+            notebook_id: this._notebookPanel.content.id
+        });
 
-            this.aggregateMessage({
-                event: "record_started",
-                notebook_id: this._notebookPanel.content.id
-            });
+        this._notebookPanel.content.node.focus();
 
-            this._notebookPanel.content.node.focus();
+        if (this._editor) {
 
-            if (this._editor) {
-
-                this._editor.focus();
-            }
-
-            this.isRecording = true;
-
-            this._statusIndicator.record(this._notebookPanel);
+            this._editor.focus();
         }
-        catch (e) {
 
-            console.error(e);
-        }
+        this.isRecording = true;
+
+        this._statusIndicator.record(this._notebookPanel);
     }
 
     public async pause() {
@@ -156,10 +159,6 @@ export class MessageRecorder {
             });
         }
 
-        this.messagePlayer.audioRecording = await this._audioRecording;;
-
-        this.messagePlayer.eventMessages = this._eventMessages;
-
         this.isRecording = false;
         this._cellIndex = null;
         this._editor = null;
@@ -172,87 +171,77 @@ export class MessageRecorder {
 
     public async save() {
 
-        try {
+        let fileReader = new FileReader();
 
-            let fileReader = new FileReader();
+        let audioRecording = await this._audioRecording;
 
-            let audioRecording = await this._audioRecording;
+        let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
 
-            let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
+            fileReader.addEventListener('load', r);
 
-                fileReader.addEventListener('load', r);
+            fileReader.addEventListener('error', j);
 
-                fileReader.addEventListener('error', j);
+            fileReader.readAsDataURL(audioRecording);
+        });
 
-                fileReader.readAsDataURL(audioRecording);
-            });
-
-            let value = {
-                eventMessages: this._eventMessages,
-                audio: event.target.result
-            }
-
-            this._notebookPanel.content.model.metadata.set(
-                'etc_jupyterlab_authoring',
-                JSON.stringify(value)
-            );
-
-            await this._notebookPanel.context.saveAs();
+        let value = {
+            eventMessages: this._eventMessages,
+            audio: event.target.result
         }
-        catch (e) {
 
-            console.error(e);
-        }
+        let notebookPanel: NotebookPanel = await this._app.commands.execute('notebook:create-new');
+
+        await notebookPanel.context.ready;
+
+        notebookPanel.content.model.metadata.set(
+            'etc_jupyterlab_authoring',
+            JSON.stringify(value)
+        );
+
+        await notebookPanel.context.saveAs();
     }
 
     private async startAudioRecorder() {
 
-        try {
+        this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: this._audioInputSelector.deviceId } });
 
-            this._mediaStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: this._audioInputSelector.deviceId } });
+        this._mediaRecorder = new MediaRecorder(await this._mediaStream);
 
-            this._mediaRecorder = new MediaRecorder(await this._mediaStream);
+        (async () => {
 
-            (async () => {
+            try {
 
-                try {
+                this._audioRecording = new Promise((r, j) => {
 
-                    this._audioRecording = new Promise((r, j) => {
+                    let recordings: Array<Blob> = [];
 
-                        let recordings: Array<Blob> = [];
+                    this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
 
-                        this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
-
-                            recordings.push(event.data);
-                        });
-
-                        this._mediaRecorder.addEventListener('stop', () => {
-
-                            r(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
-                        });
-
-                        this._mediaRecorder.addEventListener('error', j);
+                        recordings.push(event.data);
                     });
 
-                    await this._audioRecording;
-                }
-                catch (e) {
+                    this._mediaRecorder.addEventListener('stop', () => {
 
-                    console.error(e);
-                }
-            })();
+                        r(new Blob(recordings, { 'type': 'audio/ogg; codecs=opus' }));
+                    });
 
-            return new Promise((r, j) => {
+                    this._mediaRecorder.addEventListener('error', j);
+                });
 
-                this._mediaRecorder.addEventListener('start', r, { once: true });
+                await this._audioRecording;
+            }
+            catch (e) {
 
-                this._mediaRecorder.start();
-            });
-        }
-        catch (e) {
+                console.error(e);
+            }
+        })();
 
-            console.error(e);
-        }
+        return new Promise((r, j) => {
+
+            this._mediaRecorder.addEventListener('start', r, { once: true });
+
+            this._mediaRecorder.start();
+        });
     }
 
     public advanceLine() {
