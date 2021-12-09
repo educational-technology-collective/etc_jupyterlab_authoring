@@ -7,7 +7,7 @@ import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import * as nbformat from '@jupyterlab/nbformat';
 import { EventMessage } from './types';
 import { MessagePlayer } from './message_player';
-import { AudioInputSelector } from './audio_input_selector';
+import { AudioInputSelector } from './av_input_selectors';
 import { StatusIndicator } from './status_indicator';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { KeyBindings } from './key_bindings';

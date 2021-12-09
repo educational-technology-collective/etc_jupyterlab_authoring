@@ -1,6 +1,7 @@
 .jp-ExecutionCheckBox, 
 .jp-ScrollCheckBox, 
 .jp-AudioSelector, 
+.jp-VideoSelector, 
 .jp-SaveDisplayRecordingCheckbox,
 .jp-ShowMediaControlsCheckbox {
   font-size: var(--jp-ui-font-size1) !important;
@@ -15,6 +16,10 @@
 }
 
 .jp-AudioSelector select {
+  font-size: var(--jp-ui-font-size1) !important;
+}
+
+.jp-VideoSelector select {
   font-size: var(--jp-ui-font-size1) !important;
 }
 
@@ -34,7 +39,6 @@
 .jp-MediaControlsBoxPanel div {
   width:24px !important;
 }
-
 
 .jp-AuthoringPanel {
   background: var(--jp-layout-color1);

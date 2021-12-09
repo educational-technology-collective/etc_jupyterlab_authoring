@@ -239,6 +239,37 @@ export class AudioInputSelectorContainer {
     }
 }
 
+
+export class VideoInputSelectorContainer {
+
+    public widget: Widget;
+
+    constructor() {
+
+        this.widget = new Widget();
+
+        this.widget.addClass('jp-VideoSelector');
+
+        this.widget.node.innerHTML = 'Video Input';
+
+        let div = document.createElement('div');
+
+        div.classList.add('jp-select-wrapper');
+
+        let select = document.createElement('select');
+
+        select.classList.add('jp-mod-styled');
+
+        let span = document.createElement('span');
+
+        span.classList.add('f1st5hdn');
+
+        span.innerHTML = caretDownEmptyIcon.svgstr;
+
+        this.widget.node.appendChild(div).append(select, span);
+    }
+}
+
 export class AuthoringPanel extends Panel {
 
     constructor() {

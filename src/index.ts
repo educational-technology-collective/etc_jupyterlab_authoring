@@ -11,6 +11,7 @@ import {
 } from "@jupyterlab/notebook";
 
 import {
+  VideoInputSelectorContainer,
   AudioInputSelectorContainer,
   StatusIndicatorContainer,
   AuthoringPanel,
@@ -28,7 +29,7 @@ import {
 import { IStatusBar } from "@jupyterlab/statusbar";
 import { MessageRecorder } from './message_recorder';
 import { MessagePlayer } from './message_player';
-import { AudioInputSelector } from "./audio_input_selector";
+import { AudioInputSelector, VideoInputSelector } from "./av_input_selectors";
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { KeyBindings } from "./key_bindings";
@@ -66,12 +67,14 @@ const extension: JupyterFrontEndPlugin<void> = {
     let authoringPanel = new AuthoringPanel();
 
     let audioInputSelectorContainer = new AudioInputSelectorContainer();
+    let videoInputSelectorContainer = new VideoInputSelectorContainer();
     let executionCheckbox = new ExecutionCheckbox();
     let scrollCheckbox = new ScrollCheckbox();
     let saveDisplayRecordingCheckbox = new SaveDisplayRecordingCheckbox();
     let showMediaControlsCheckbox = new ShowMediaControlsCheckbox();
 
     authoringPanel.addWidget(audioInputSelectorContainer.widget);
+    authoringPanel.addWidget(videoInputSelectorContainer.widget);
     authoringPanel.addWidget(executionCheckbox.widget);
     authoringPanel.addWidget(scrollCheckbox.widget);
     authoringPanel.addWidget(saveDisplayRecordingCheckbox.widget);
@@ -83,6 +86,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     let statusIndicator = new StatusIndicator({ widget: statusIndicatorContainer });
 
     let audioInputSelector = new AudioInputSelector({ node: audioInputSelectorContainer.widget.node });
+    let videoInputSelector = new VideoInputSelector({ node: videoInputSelectorContainer.widget.node });
 
     statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:statusIndicator', {
       item: statusIndicatorContainer,
