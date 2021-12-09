@@ -10,8 +10,8 @@ import { MessagePlayer } from './message_player';
 import { AudioInputSelector } from './audio_input_selector';
 import { StatusIndicator } from './status_indicator';
 import { JupyterFrontEnd } from '@jupyterlab/application';
-import { MediaControls } from './media_controls';
 import { KeyBindings } from './key_bindings';
+import { MediaControls } from './components';
 
 export class MessageRecorder {
 
@@ -32,6 +32,7 @@ export class MessageRecorder {
     private _statusIndicator: StatusIndicator;
     private _audioInputSelector: AudioInputSelector;
     private _priorDuration: number;
+    private _keyBindings: KeyBindings;
 
     constructor({
         app,
@@ -55,7 +56,10 @@ export class MessageRecorder {
         this._cellIndex = null;
         this._statusIndicator = statusIndicator;
         this._audioInputSelector = audioInputSelector;
+        this._keyBindings = keyBindings;
 
+        keyBindings.keyPressed.connect(this.processCommand, this);
+        mediaControls.buttonPressed.connect(this.processCommand, this);
         this._notebookPanel.disposed.connect(this.dispose, this);
 
         NotebookActions.executionScheduled.connect(this.executionScheduled, this);
@@ -66,43 +70,88 @@ export class MessageRecorder {
 
     }
 
+    private async processCommand(sender: KeyBindings | MediaControls, args: { command: string }) {
+
+        try {
+    
+          if (this._notebookPanel.isVisible) {
+    
+            switch (args.command) {
+    
+              case 'record':
+                this.record();
+                break;
+              case 'stop':
+                await this.stop();
+                break;
+              case 'pause':
+                await this.pause();
+                break;
+              case 'save':
+                await this.save();
+                break;
+            case 'advance':
+                this.advanceLine();
+                break;
+            }
+          }
+        }
+        catch (e) {
+    
+          console.error(e);
+        }
+      }
+
     public async record() {
 
-        await this.startAudioRecorder();
+        if (this.isPaused) {
 
-        this._eventMessages = [];
-
-        this.aggregateMessage({
-            event: "record_started",
-            notebook_id: this._notebookPanel.content.id
-        });
-
-        this._notebookPanel.content.node.focus();
-
-        if (this._editor) {
-
-            this._editor.focus();
+            await this.resume();
         }
+        else if (!this.isRecording) {
 
-        this.isRecording = true;
+            this._keyBindings.attachAdvanceKeyBinding();
 
-        this._statusIndicator.record(this._notebookPanel);
+            await this.startAudioRecorder();
+
+            this._eventMessages = [];
+    
+            this.aggregateMessage({
+                event: "record_started",
+                notebook_id: this._notebookPanel.content.id
+            });
+    
+            this._notebookPanel.content.node.focus();
+    
+            if (this._editor) {
+    
+                this._editor.focus();
+            }
+    
+            this.isRecording = true;
+    
+            this._statusIndicator.record(this._notebookPanel);
+
+        }
     }
 
     public async pause() {
 
-        await new Promise((r, j) => {
+        if (this.isRecording) {
 
-            this._mediaRecorder.addEventListener('pause', r, { once: true });
+            await new Promise((r, j) => {
 
-            this._mediaRecorder.pause();
-        });
-
-        this._priorDuration = Date.now() - this._lastTimestamp;
-
-        this._statusIndicator.pause(this._notebookPanel);
-
-        this.isPaused = true;
+                this._mediaRecorder.addEventListener('pause', r, { once: true });
+    
+                this._mediaRecorder.pause();
+            });
+    
+            this._priorDuration = Date.now() - this._lastTimestamp;
+    
+            this._statusIndicator.pause(this._notebookPanel);
+    
+            this.isPaused = true;
+        }
     }
 
     public async resume() {
@@ -123,82 +172,90 @@ export class MessageRecorder {
 
     public async stop() {
 
-        if (this._editor) {
+        if (this.isRecording) {
 
-            this._editor.removeLineClass(this._lineIndex, 'wrap', 'active-line');
+            this._keyBindings.detachAdvanceKeyBinding();
 
-            //  The MessageRecorder may or may not have an editor when it stops; hence handle these cases separately.
-            let input = this._editor.getLine(this._lineIndex);
+            if (this._editor) {
 
-            this.aggregateMessage({
-                event: 'record_stopped',
-                notebook_id: this._notebookPanel.content.id,
-                cell_id: this._cell.model.id,
-                cell_index: this._cellIndex,
-                cell_type: this._cell.model.type,
-                line_index: this._lineIndex,
-                input: input
-            });
+                this._editor.removeLineClass(this._lineIndex, 'wrap', 'active-line');
+    
+                //  The MessageRecorder may or may not have an editor when it stops; hence handle these cases separately.
+                let input = this._editor.getLine(this._lineIndex);
+    
+                this.aggregateMessage({
+                    event: 'record_stopped',
+                    notebook_id: this._notebookPanel.content.id,
+                    cell_id: this._cell.model.id,
+                    cell_index: this._cellIndex,
+                    cell_type: this._cell.model.type,
+                    line_index: this._lineIndex,
+                    input: input
+                });
+            }
+            else {
+    
+                this.aggregateMessage({
+                    event: 'record_stopped',
+                    notebook_id: this._notebookPanel.content.id
+                });
+            }
+    
+            if (this._mediaRecorder?.state == 'recording' || this._mediaRecorder?.state == 'paused') {
+    
+                this._mediaRecorder.stop();
+    
+                this._mediaStream.getTracks().forEach((track) => {
+                    if (track.readyState == 'live') {
+                        track.stop();
+                    }
+                });
+            }
+    
+            this.isRecording = false;
+            this._cellIndex = null;
+            this._editor = null;
+            this._notebookPanel.content.widgets[0].editorWidget.editor.focus();
+            this._notebookPanel.content.widgets[0].editorWidget.editor.blur();
+            this._notebookPanel.content.node.focus();
+    
+            this._statusIndicator.stop(this._notebookPanel);
         }
-        else {
-
-            this.aggregateMessage({
-                event: 'record_stopped',
-                notebook_id: this._notebookPanel.content.id
-            });
-        }
-
-        if (this._mediaRecorder?.state == 'recording' || this._mediaRecorder?.state == 'paused') {
-
-            this._mediaRecorder.stop();
-
-            this._mediaStream.getTracks().forEach((track) => {
-                if (track.readyState == 'live') {
-                    track.stop();
-                }
-            });
-        }
-
-        this.isRecording = false;
-        this._cellIndex = null;
-        this._editor = null;
-        this._notebookPanel.content.widgets[0].editorWidget.editor.focus();
-        this._notebookPanel.content.widgets[0].editorWidget.editor.blur();
-        this._notebookPanel.content.node.focus();
-
-        this._statusIndicator.stop(this._notebookPanel);
     }
 
     public async save() {
 
-        let fileReader = new FileReader();
+        if (!this.isRecording) {
 
-        let audioRecording = await this._audioRecording;
+            let fileReader = new FileReader();
 
-        let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
-
-            fileReader.addEventListener('load', r);
-
-            fileReader.addEventListener('error', j);
-
-            fileReader.readAsDataURL(audioRecording);
-        });
-
-        let value = {
-            eventMessages: this._eventMessages,
-            audio: event.target.result
+            let audioRecording = await this._audioRecording;
+    
+            let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
+    
+                fileReader.addEventListener('load', r);
+    
+                fileReader.addEventListener('error', j);
+    
+                fileReader.readAsDataURL(audioRecording);
+            });
+    
+            let value = {
+                eventMessages: this._eventMessages,
+                audio: event.target.result
+            }
+    
+            let notebookPanel: NotebookPanel = await this._app.commands.execute('notebook:create-new');
+    
+            await notebookPanel.context.ready;
+    
+            notebookPanel.content.model.metadata.set(
+                'etc_jupyterlab_authoring',
+                JSON.stringify(value)
+            );
+    
+            await notebookPanel.context.saveAs();
         }
-
-        let notebookPanel: NotebookPanel = await this._app.commands.execute('notebook:create-new');
-
-        await notebookPanel.context.ready;
-
-        notebookPanel.content.model.metadata.set(
-            'etc_jupyterlab_authoring',
-            JSON.stringify(value)
-        );
-
-        await notebookPanel.context.saveAs();
     }
 
     private async startAudioRecorder() {
@@ -246,29 +303,32 @@ export class MessageRecorder {
 
     public advanceLine() {
 
-        if (this._cellIndex === null) {
+        if (this.isRecording) {
 
-            this.aggregateMessage({
-                event: 'cell_started',
-                notebook_id: this._notebookPanel.content.id
-            });
+            if (this._cellIndex === null) {
+
+                this.aggregateMessage({
+                    event: 'cell_started',
+                    notebook_id: this._notebookPanel.content.id
+                });
+            }
+            else {
+    
+                let line = this._editor.getLine(this._lineIndex);
+    
+                this.aggregateMessage({
+                    event: 'line_finished',
+                    notebook_id: this._notebookPanel.content.id,
+                    cell_id: this._cell.model.id,
+                    cell_index: this._cellIndex,
+                    cell_type: this._cell.model.type,
+                    line_index: this._lineIndex,
+                    input: line
+                });
+            }
+    
+            this.advanceCursor();
         }
-        else {
-
-            let line = this._editor.getLine(this._lineIndex);
-
-            this.aggregateMessage({
-                event: 'line_finished',
-                notebook_id: this._notebookPanel.content.id,
-                cell_id: this._cell.model.id,
-                cell_index: this._cellIndex,
-                cell_type: this._cell.model.type,
-                line_index: this._lineIndex,
-                input: line
-            });
-        }
-
-        this.advanceCursor();
     }
 
     private executionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {

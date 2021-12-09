@@ -11,9 +11,8 @@ import { MessageRecorder } from "./message_recorder";
 import { StatusIndicator } from './status_indicator';
 import { Widget } from "@lumino/widgets";
 import { consoleIcon } from '@jupyterlab/ui-components';
-import { MediaControls } from './media_controls';
 import { KeyBindings } from './key_bindings';
-import { ExecutionCheckbox, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
+import { ExecutionCheckbox, MediaControls, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
 import { Signal } from '@lumino/signaling';
 
 
@@ -23,9 +22,9 @@ export class MessagePlayer {
   public eventMessages: Array<EventMessage>;
   public isPaused: boolean = false;
   public isPlaying: boolean = false;
-  public executeCellEnabled: boolean;
-  public scrollToCellEnabled: boolean;
-  public saveDisplayRecordingEnabled: boolean;
+  public executeCellEnabled: boolean = false;
+  public scrollToCellEnabled: boolean = false;
+  public saveDisplayRecordingEnabled: boolean = false;
 
   private _contentModel: PartialJSONValue;
   private _notebookPanel: NotebookPanel;
@@ -68,8 +67,15 @@ export class MessagePlayer {
     notebookPanel.disposed.connect(this.dispose, this);
 
     saveDisplayRecordingCheckbox.checkboxChanged.connect((sender: SaveDisplayRecordingCheckbox, checked: boolean) => this.saveDisplayRecordingEnabled = checked, this);
+    this.saveDisplayRecordingEnabled = saveDisplayRecordingCheckbox.checked;
+
     executionCheckbox.checkboxChanged.connect((sender: ExecutionCheckbox, checked: boolean) => this.executeCellEnabled = checked, this);
-    scrollCheckbox.checkboxChanged.connect((sender: ScrollCheckbox, checked: boolean) => this.scrollToCellEnabled = checked, this);
+    this.executeCellEnabled = executionCheckbox.checked;
+
+    scrollCheckbox.checkboxChanged.connect(
+      (sender: ScrollCheckbox, checked: boolean) => { this.scrollToCellEnabled = checked; console.log(this.scrollToCellEnabled); }, this);
+    this.scrollToCellEnabled = scrollCheckbox.checked;
+
     keyBindings.keyPressed.connect(this.processCommand, this);
     mediaControls.buttonPressed.connect(this.processCommand, this);
 
@@ -104,6 +110,8 @@ export class MessagePlayer {
   }
 
   private async processCommand(sender: KeyBindings | MediaControls, args: { command: string }) {
+
+    console.log('processCommand');
 
     try {
 
@@ -248,7 +256,7 @@ export class MessagePlayer {
 
   private async playMessages() {
 
-    if (this.enableSaveDisplayRecording) {
+    if (this.saveDisplayRecordingEnabled) {
 
       await this.startDisplayRecording();
     }
@@ -275,6 +283,10 @@ export class MessagePlayer {
 
     this._statusIndicator.play(this._notebookPanel);
 
+    let startTimestamp = this.eventMessages[0].start_timestamp;
+
+    console.log(startTimestamp);
+
     while (this.isPlaying && this._messageIndex < this.eventMessages.length) {
 
       if (this.isPaused) {
@@ -295,6 +307,8 @@ export class MessagePlayer {
 
       let message = this.eventMessages[this._messageIndex];
 
+      let targetTime = message.start_timestamp - startTimestamp;
+
       if (message.cell_type) {
         //  Some events depend on having a cell; hence, this block will only handle events that have a cell_type.
 
@@ -306,7 +320,7 @@ export class MessagePlayer {
 
         let cell: Cell<ICellModel> = this._notebook.widgets[message.cell_index];
 
-        if (this.enableScrollToCell) {
+        if (this.scrollToCellEnabled) {
 
           this._notebook.scrollToCell(cell);
         }
@@ -339,11 +353,16 @@ export class MessagePlayer {
           if (message.line_index > this._editor.lastLine()) {
 
             this.createLinesTo(message.line_index);
+
+            if (this.scrollToCellEnabled) {
+
+              this._notebook.scrollToCell(cell);
+            }
           }
 
-          let duration = message.input.length ? message.duration / message.input.length : message.duration;
-
           if (message.input.length) {
+
+            let duration = message.duration / message.input.length;
 
             while (this.isPlaying && this._charIndex < message.input.length) {
 
@@ -363,8 +382,6 @@ export class MessagePlayer {
                 }
               }
 
-              let start = Date.now();
-
               let pos = {
                 line: message.line_index,
                 ch: this._charIndex
@@ -374,19 +391,28 @@ export class MessagePlayer {
 
               cell.update();
 
-              await new Promise<void>((r, j) => setTimeout(r, duration - (Date.now() - start)));
+              let dt = duration - (this._audioPlayer.currentTime * 1000 - targetTime);
+
+              dt = dt < 0 ? 0 : dt;
+
+              if (dt > 0) {
+
+                await new Promise<void>((r, j) => setTimeout(r, dt));
+              }
+
+              targetTime = targetTime + duration;
 
               this._charIndex++
             }
           }
           else {
 
-            await new Promise<void>((r, j) => setTimeout(r, duration));
+            await new Promise<void>((r, j) => setTimeout(r, message.duration));
           }
         }
         else if (message.event == "execution_finished") {
 
-          if (this._executeCell) {
+          if (this.executeCellEnabled) {
 
             let resolved = null;
 
@@ -441,7 +467,7 @@ export class MessagePlayer {
 
       await this._audioPlaybackEnded;
 
-      if (this._saveDisplayRecording) {
+      if (this.saveDisplayRecordingEnabled) {
 
         await this.saveDisplayRecording();
       }
@@ -449,8 +475,6 @@ export class MessagePlayer {
       this.isPlaying = false;
 
       this._statusIndicator.stop(this._notebookPanel);
-
-      this.reset();
     }
   }
 

@@ -18,19 +18,20 @@
   font-size: var(--jp-ui-font-size1) !important;
 }
 
-.jp-MediaControls {
+.jp-MediaControlsBoxPanel {
   border-radius: 5px;
+  margin-left: 20px;
   border: 1px solid #aaa;
   padding: 0 6px !important;
   width: 160px;
   box-sizing: border-box;
 }
 
-.jp-MediaControls div:hover {
+.jp-MediaControlsBoxPanel div:hover {
   background-color: rgba(167, 182, 194, 0.3);
 }
 
-.jp-MediaControls div {
+.jp-MediaControlsBoxPanel div {
   width:24px !important;
 }
 

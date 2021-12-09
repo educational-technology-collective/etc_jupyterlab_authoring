@@ -69,42 +69,42 @@ export class KeyBindings {
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:reset`,
-            args: { key: 'reset' },
+            args: { command: 'reset' },
             keys: [settings.get('reset').composite as string],
             selector: '.jp-Notebook'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:record`,
-            args: { key: 'record' },
+            args: { command: 'record' },
             keys: [settings.get('record').composite as string],
             selector: '.jp-Notebook'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:stop`,
-            args: { key: 'stop' },
+            args: { command: 'stop' },
             keys: [settings.get('stop').composite as string],
             selector: '.jp-Notebook'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:play`,
-            args: { key: 'play' },
+            args: { command: 'play' },
             keys: [settings.get('play').composite as string],
             selector: '.jp-Notebook'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:pause`,
-            args: { key: 'pause' },
+            args: { command: 'pause' },
             keys: [settings.get('pause').composite as string],
             selector: '.jp-Notebook'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:save`,
-            args: { key: 'save' },
+            args: { command: 'save' },
             keys: [settings.get('save').composite as string],
             selector: '.jp-Notebook'
         }));
@@ -114,7 +114,7 @@ export class KeyBindings {
 
         this._advanceKeyBindingDisposable = this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:advance`,
-            args: { key: 'advance' },
+            args: { command: 'advance' },
             keys: [this._settings.get('advance').composite as string],
             selector: '.jp-Notebook'
         });

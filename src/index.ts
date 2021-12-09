@@ -18,6 +18,7 @@ import {
   ScrollCheckbox,
   SaveDisplayRecordingCheckbox,
   ShowMediaControlsCheckbox,
+  MediaControls,
 } from './components';
 
 import {
@@ -28,11 +29,9 @@ import { IStatusBar } from "@jupyterlab/statusbar";
 import { MessageRecorder } from './message_recorder';
 import { MessagePlayer } from './message_player';
 import { AudioInputSelector } from "./audio_input_selector";
-import { Controller } from "./controller";
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { KeyBindings } from "./key_bindings";
-import { MediaControls } from "./media_controls";
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
 
@@ -100,27 +99,32 @@ const extension: JupyterFrontEndPlugin<void> = {
 
         await notebookPanel.revealed;
         await notebookPanel.sessionContext.ready;
-        
+
         let mediaControls = new MediaControls({ notebookPanel, settings, showMediaControlsCheckbox });
 
-        let messageRecorder = new MessageRecorder({
-          app,
-          notebookPanel,
-          mediaControls,
-          keyBindings,
-          audioInputSelector,
-          statusIndicator
-        });
+        if (notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
-        let messagePlayer = new MessagePlayer({
-          notebookPanel,
-          mediaControls,
-          keyBindings,
-          saveDisplayRecordingCheckbox,
-          executionCheckbox,
-          scrollCheckbox,
-          statusIndicator
-        });
+          let messagePlayer = new MessagePlayer({
+            notebookPanel,
+            mediaControls,
+            keyBindings,
+            saveDisplayRecordingCheckbox,
+            executionCheckbox,
+            scrollCheckbox,
+            statusIndicator
+          });
+        }
+        else {
+
+          let messageRecorder = new MessageRecorder({
+            app,
+            notebookPanel,
+            mediaControls,
+            keyBindings,
+            audioInputSelector,
+            statusIndicator
+          });
+        }
 
         notebookPanel.toolbar.insertAfter(
           'cellType',
