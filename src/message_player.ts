@@ -12,7 +12,7 @@ import { StatusIndicator } from './status_indicator';
 import { Widget } from "@lumino/widgets";
 import { consoleIcon } from '@jupyterlab/ui-components';
 import { KeyBindings } from './key_bindings';
-import { ExecutionCheckbox, MediaControls, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
+import { ExecutionCheckbox, MediaControls, MediaPlayer, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
 import { Signal } from '@lumino/signaling';
 
 
@@ -30,8 +30,8 @@ export class MessagePlayer {
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
   private _editor: CodeMirrorEditor;
-  private _audioPlayer: HTMLAudioElement;
-  private _audioPlaybackEnded: Promise<Event>;
+  private _mediaPlayer: MediaPlayer;
+  private _mediaPlaybackEnded: Promise<Event>;
   private _statusIndicator: StatusIndicator;
   private _mediaRecorder: MediaRecorder;
   private _displayRecording: Promise<Blob>;
@@ -72,8 +72,7 @@ export class MessagePlayer {
     executionCheckbox.checkboxChanged.connect((sender: ExecutionCheckbox, checked: boolean) => this.executeCellEnabled = checked, this);
     this.executeCellEnabled = executionCheckbox.checked;
 
-    scrollCheckbox.checkboxChanged.connect(
-      (sender: ScrollCheckbox, checked: boolean) => { this.scrollToCellEnabled = checked; console.log(this.scrollToCellEnabled); }, this);
+    scrollCheckbox.checkboxChanged.connect((sender: ScrollCheckbox, checked: boolean) => this.scrollToCellEnabled = checked, this);
     this.scrollToCellEnabled = scrollCheckbox.checked;
 
     keyBindings.keyPressed.connect(this.processCommand, this);
@@ -110,8 +109,6 @@ export class MessagePlayer {
   }
 
   private async processCommand(sender: KeyBindings | MediaControls, args: { command: string }) {
-
-    console.log('processCommand');
 
     try {
 
@@ -160,7 +157,7 @@ export class MessagePlayer {
 
     this._eventTarget.dispatchEvent(new Event('resume'));
 
-    await this._audioPlayer.play();
+    await this._mediaPlayer.mediaElement.play();
 
     this._statusIndicator.play(this._notebookPanel);
   }
@@ -178,11 +175,11 @@ export class MessagePlayer {
 
       await new Promise((r, j) => {
 
-        this._audioPlayer.addEventListener('pause', r, { once: true });
+        this._mediaPlayer.mediaElement.addEventListener('pause', r, { once: true });
 
-        this._audioPlayer.addEventListener('error', j, { once: true });
+        this._mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
 
-        this._audioPlayer.pause();
+        this._mediaPlayer.mediaElement.pause();
       });
 
       if (this.saveDisplayRecordingEnabled) {
@@ -211,13 +208,13 @@ export class MessagePlayer {
         //  The audio player of the message player is not already paused; hence, pause the audio player.
         await new Promise<Event>((r, j) => {
 
-          this._audioPlayer.addEventListener('ended', r, { once: true });
+          this._mediaPlayer.mediaElement.addEventListener('ended', r, { once: true });
 
-          this._audioPlayer.addEventListener('pause', r, { once: true });
+          this._mediaPlayer.mediaElement.addEventListener('pause', r, { once: true });
 
-          this._audioPlayer.addEventListener('error', j, { once: true });
+          this._mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
 
-          this._audioPlayer.pause();
+          this._mediaPlayer.mediaElement.pause();
         });
       }
 
@@ -227,6 +224,8 @@ export class MessagePlayer {
 
         await this.saveDisplayRecording();
       }
+
+      this._mediaPlayer.remove();
 
       this._statusIndicator.stop(this._notebookPanel);
     }
@@ -279,13 +278,11 @@ export class MessagePlayer {
     this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
     //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
 
-    await this.startAudioPlayback();
+    await this.startMediaPlayback();
 
     this._statusIndicator.play(this._notebookPanel);
 
     let startTimestamp = this.eventMessages[0].start_timestamp;
-
-    console.log(startTimestamp);
 
     while (this.isPlaying && this._messageIndex < this.eventMessages.length) {
 
@@ -360,6 +357,8 @@ export class MessagePlayer {
             }
           }
 
+          this._mediaPlayer.updatePosition(cell.node, this._editor.lineCount);
+
           if (message.input.length) {
 
             let duration = message.duration / message.input.length;
@@ -391,7 +390,7 @@ export class MessagePlayer {
 
               cell.update();
 
-              let dt = duration - (this._audioPlayer.currentTime * 1000 - targetTime);
+              let dt = duration - (this._mediaPlayer.mediaElement.currentTime * 1000 - targetTime);
 
               dt = dt < 0 ? 0 : dt;
 
@@ -435,11 +434,11 @@ export class MessagePlayer {
             if (!resolved) {
               //  This is the case where the execution is taking longer than the duration.
 
-              this._audioPlayer.pause();
+              this._mediaPlayer.mediaElement.pause();
 
               await runAndAdvance;
 
-              this._audioPlayer.play();
+              this._mediaPlayer.mediaElement.play();
             }
           }
           else {
@@ -465,7 +464,7 @@ export class MessagePlayer {
 
     if (this.isPlaying) {
 
-      await this._audioPlaybackEnded;
+      await this._mediaPlaybackEnded;
 
       if (this.saveDisplayRecordingEnabled) {
 
@@ -475,6 +474,8 @@ export class MessagePlayer {
       this.isPlaying = false;
 
       this._statusIndicator.stop(this._notebookPanel);
+
+      this._mediaPlayer.remove();
     }
   }
 
@@ -516,6 +517,8 @@ export class MessagePlayer {
           audio: true
         }));
 
+    await new Promise((r, j) => setTimeout(r, 3000));
+
     (async () => {
 
       try {
@@ -546,31 +549,33 @@ export class MessagePlayer {
     })();
   }
 
-  private async startAudioPlayback() {
+  private async startMediaPlayback() {
 
-    this._audioPlayer = new Audio();
-
-    this._audioPlayer.src = URL.createObjectURL(this.audioRecording);
+    let mediaPlayer = this._mediaPlayer = new MediaPlayer({
+      notebookPanel: this._notebookPanel,
+      blob: this.audioRecording
+    });
 
     (async () => {
 
       try {
 
-        this._audioPlaybackEnded = new Promise((r, j) => {
+        this._mediaPlaybackEnded = new Promise((r, j) => {
 
-          this._audioPlayer.addEventListener('ended', r, { once: true });
+          mediaPlayer.mediaElement.addEventListener('ended', r, { once: true });
 
-          this._audioPlayer.addEventListener('error', j, { once: true });
+          mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
         });
 
-        await this._audioPlaybackEnded;
+        await this._mediaPlaybackEnded;
       }
       catch (e) {
+
         console.error(e);
       }
     })();
 
-    return await this._audioPlayer.play();
+    await mediaPlayer.mediaElement.play();
   }
 
   private createCellsTo(index: number) {

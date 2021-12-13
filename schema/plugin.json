@@ -32,7 +32,7 @@
       "type": "string",
       "title": "Pause Keystroke",
       "description": "The keystroke for the pause command.",
-      "default": "Ctrl F11"
+      "default": "Ctrl F7"
     },
     "save": {
       "type": "string",

@@ -112,6 +112,8 @@ export class KeyBindings {
 
     public attachAdvanceKeyBinding() {
 
+        this.detachAdvanceKeyBinding();
+
         this._advanceKeyBindingDisposable = this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:advance`,
             args: { command: 'advance' },
@@ -122,7 +124,9 @@ export class KeyBindings {
 
     public detachAdvanceKeyBinding() {
 
-        this._advanceKeyBindingDisposable.dispose();
+        if (this._advanceKeyBindingDisposable) {
+            this._advanceKeyBindingDisposable.dispose();
+        }
     }
 
     get keyPressed(): ISignal<KeyBindings, { command: string }> {

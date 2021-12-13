@@ -305,14 +305,14 @@ export class MediaControls {
     private _saveButton: HTMLElement;
     private _showMediaControlsCheckbox: ShowMediaControlsCheckbox;
 
-    constructor({ 
+    constructor({
         notebookPanel,
-        settings, 
-        showMediaControlsCheckbox 
+        settings,
+        showMediaControlsCheckbox
     }: {
         notebookPanel: NotebookPanel,
-        settings: ISettingRegistry.ISettings, 
-        showMediaControlsCheckbox: ShowMediaControlsCheckbox 
+        settings: ISettingRegistry.ISettings,
+        showMediaControlsCheckbox: ShowMediaControlsCheckbox
     }) {
 
         let mediaControlsBoxPanel = this.panel = new BoxPanel({ direction: 'left-to-right', alignment: 'start' });
@@ -409,5 +409,46 @@ export class MediaControls {
 
     get buttonPressed(): ISignal<MediaControls, { command: string }> {
         return this._buttonPressed;
+    }
+}
+
+export class MediaPlayer {
+
+    private _videoElement: HTMLVideoElement;
+    private _notebookPanel: NotebookPanel;
+
+    constructor({ notebookPanel, blob }: { notebookPanel: NotebookPanel, blob: Blob }) {
+
+        this._notebookPanel = notebookPanel;
+
+        let videoElement = this._videoElement = document.createElement('video');
+
+        this._videoElement.src = URL.createObjectURL(blob);
+
+        videoElement.style.border = '5px solid white';
+        videoElement.style.position = 'absolute';
+        videoElement.style.right = '0px';
+        videoElement.style.top = '0px';
+        videoElement.style.width = '300px';
+        videoElement.style.zIndex = '9999';
+        videoElement.style.backgroundColor = 'black';
+    }
+
+    updatePosition(element: HTMLElement, lineNumber: number) {
+
+        console.log(element, lineNumber, element.offsetLeft, element.offsetTop);
+
+        // let lineHeight = parseInt(element.style.lineHeight);
+        this._videoElement.style.top = `${this._notebookPanel.content.node.scrollTop}px`;
+
+        this._notebookPanel.content.node.appendChild(this._videoElement);
+    }
+
+    remove() {
+        this._notebookPanel.content.node.removeChild(this._videoElement);
+    }
+
+    get mediaElement(): HTMLVideoElement {
+        return this._videoElement;
     }
 }

@@ -122,10 +122,12 @@ const extension: JupyterFrontEndPlugin<void> = {
 
           let messageRecorder = new MessageRecorder({
             app,
+            notebookTracker,
             notebookPanel,
             mediaControls,
             keyBindings,
             audioInputSelector,
+            videoInputSelector,
             statusIndicator
           });
         }
