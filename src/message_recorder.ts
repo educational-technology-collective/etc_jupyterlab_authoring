@@ -1,5 +1,3 @@
-/// <reference types="@types/dom-mediacapture-record" />
-
 import { INotebookTracker, Notebook, NotebookActions, NotebookPanel } from '@jupyterlab/notebook';
 import { CodeCell, Cell, ICellModel } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
@@ -11,6 +9,7 @@ import { StatusIndicator } from './status_indicator';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { KeyBindings } from './key_bindings';
 import { MediaControls } from './components';
+import { Signal } from '@lumino/signaling';
 
 export class MessageRecorder {
 
@@ -72,7 +71,8 @@ export class MessageRecorder {
     }
 
     public dispose() {
-
+        
+        Signal.disconnectAll(this);
     }
 
     private async processCommand(sender: KeyBindings | MediaControls, args: { command: string }) {

@@ -6,14 +6,12 @@ import {
 
 import {
   INotebookTracker,
-  NotebookActions,
   NotebookPanel
 } from "@jupyterlab/notebook";
 
 import {
   VideoInputSelectorContainer,
   AudioInputSelectorContainer,
-  StatusIndicatorContainer,
   AuthoringPanel,
   ExecutionCheckbox,
   ScrollCheckbox,
@@ -82,14 +80,13 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     labShell.add(authoringPanel, 'right');
 
-    let statusIndicatorContainer = new StatusIndicatorContainer();
-    let statusIndicator = new StatusIndicator({ widget: statusIndicatorContainer });
+    let statusIndicator = new StatusIndicator();
 
     let audioInputSelector = new AudioInputSelector({ node: audioInputSelectorContainer.widget.node });
     let videoInputSelector = new VideoInputSelector({ node: videoInputSelectorContainer.widget.node });
 
     statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:statusIndicator', {
-      item: statusIndicatorContainer,
+      item: statusIndicator.widget,
       align: "left",
       rank: -100
     });

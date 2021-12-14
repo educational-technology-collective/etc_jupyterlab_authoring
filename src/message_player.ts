@@ -7,10 +7,7 @@ import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { EventMessage } from "./types";
 import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
-import { MessageRecorder } from "./message_recorder";
 import { StatusIndicator } from './status_indicator';
-import { Widget } from "@lumino/widgets";
-import { consoleIcon } from '@jupyterlab/ui-components';
 import { KeyBindings } from './key_bindings';
 import { ExecutionCheckbox, MediaControls, MediaPlayer, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
 import { Signal } from '@lumino/signaling';
@@ -517,7 +514,7 @@ export class MessagePlayer {
           audio: true
         }));
 
-    await new Promise((r, j) => setTimeout(r, 3000));
+    await new Promise((r, j) => setTimeout(r, 5000));
 
     (async () => {
 

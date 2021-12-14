@@ -283,13 +283,7 @@ export class AuthoringPanel extends Panel {
     }
 }
 
-export class StatusIndicatorContainer extends Widget {
 
-    constructor() {
-        super();
-        this.addClass("jp-StatusIndicatorContainer");
-    }
-}
 
 export class MediaControls {
 
@@ -395,8 +389,6 @@ export class MediaControls {
     }
 
     private updatePanelVisibily(sender: ShowMediaControlsCheckbox, state: boolean) {
-        // console.log(state);
-        // this.panel.setHidden(!state);
 
         if (state) {
             this.panel.show();
@@ -404,7 +396,6 @@ export class MediaControls {
         else {
             this.panel.hide();
         }
-
     }
 
     get buttonPressed(): ISignal<MediaControls, { command: string }> {
@@ -436,9 +427,8 @@ export class MediaPlayer {
 
     updatePosition(element: HTMLElement, lineNumber: number) {
 
-        console.log(element, lineNumber, element.offsetLeft, element.offsetTop);
-
         // let lineHeight = parseInt(element.style.lineHeight);
+
         this._videoElement.style.top = `${this._notebookPanel.content.node.scrollTop}px`;
 
         this._notebookPanel.content.node.appendChild(this._videoElement);

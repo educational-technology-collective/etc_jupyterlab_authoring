@@ -8,18 +8,25 @@ import {
     pauseStatus,
     recordStatus
 } from './icons'
+import { Signal } from "@lumino/signaling";
 
 export class StatusIndicator {
 
+    public widget: Widget;
+
     private _map: WeakMap<NotebookPanel, string>;
     private _currentNotebookPanel: NotebookPanel;
-    private _widget: Widget;
 
-    constructor({ widget }: { widget: Widget }) {
+    constructor() {
 
-        this._widget = widget;
+        this.widget = new Widget();
 
         this._map = new WeakMap<NotebookPanel, string>();
+    }
+
+    public dispose() {
+        
+        Signal.disconnectAll(this);
     }
 
     public stop(notebookPanel: NotebookPanel) {
@@ -72,7 +79,7 @@ export class StatusIndicator {
             switch (this._map.get(this._currentNotebookPanel)) {
                 case 'stop':
                     stopStatus.element({
-                        container: this._widget.node,
+                        container: this.widget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',
                         height: '24px'
@@ -80,7 +87,7 @@ export class StatusIndicator {
                     break;
                 case 'record':
                     recordStatus.element({
-                        container: this._widget.node,
+                        container: this.widget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',
                         height: '24px'
@@ -88,7 +95,7 @@ export class StatusIndicator {
                     break;
                 case 'play':
                     playStatus.element({
-                        container: this._widget.node,
+                        container: this.widget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',
                         height: '24px'
@@ -96,7 +103,7 @@ export class StatusIndicator {
                     break;
                 case 'pause':
                     pauseStatus.element({
-                        container: this._widget.node,
+                        container: this.widget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',
                         height: '24px'

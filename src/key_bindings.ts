@@ -58,6 +58,8 @@ export class KeyBindings {
 
     public dispose() {
 
+        Signal.disconnectAll(this);
+        
         this._keyBindingDisposables.forEach((value: IDisposable) => value.dispose());
     }
 
