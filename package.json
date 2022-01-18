@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "@jupyterlab/application": "^3.1.0",
+    "@jupyterlab/apputils": "^3.1.18",
     "@jupyterlab/codeeditor": "^3.0.7",
     "@jupyterlab/codemirror": "^3.0.2",
     "@jupyterlab/completer": "^3.0.5",
@@ -59,7 +60,6 @@
     "@jupyterlab/rendermime": "^3.0.8",
     "@jupyterlab/services": "^6.1.0",
     "@jupyterlab/settingregistry": "^3.1.0",
-    "@jupyterlab/ui-components": "4.0.0-alpha.15",
     "@lumino/algorithm": "^1.7.0",
     "@lumino/commands": "^1.12.0",
     "@lumino/signaling": "^1.4.3",

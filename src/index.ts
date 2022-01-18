@@ -35,7 +35,8 @@ import { AudioInputSelector, VideoInputSelector } from "./av_input_selectors";
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { KeyBindings } from "./key_bindings";
-import { Collapser } from "@jupyterlab/ui-components/lib/components/collapser";
+import { Collapse } from '@jupyterlab/apputils';
+
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
 
@@ -59,7 +60,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry
   ) => {
 
-    console.log(`JupyterLab extension ${PLUGIN_ID} version ${'0.1.6'} is activated!`);
+    console.log(`JupyterLab extension ${PLUGIN_ID} version ${'0.1.7'} is activated!`);
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
@@ -73,9 +74,9 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     let authoringPanel = new AuthoringPanel();
 
-    authoringPanel.addWidget(new Collapser({ widget: generalPanel, collapsed: false}));
-    authoringPanel.addWidget(new Collapser({ widget: recorderPanel, collapsed: false}));
-    authoringPanel.addWidget(new Collapser({ widget: playerPanel, collapsed: false}));
+    authoringPanel.addWidget(new Collapse({ widget: generalPanel, collapsed: false}));
+    authoringPanel.addWidget(new Collapse({ widget: recorderPanel, collapsed: false}));
+    authoringPanel.addWidget(new Collapse({ widget: playerPanel, collapsed: false}));
 
     let audioInputSelectorContainer = new AudioInputSelectorContainer();
     let videoInputSelectorContainer = new VideoInputSelectorContainer();
