@@ -8,7 +8,7 @@ import { AudioInputSelector, VideoInputSelector } from './av_input_selectors';
 import { StatusIndicator } from './status_indicator';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { KeyBindings } from './key_bindings';
-import { MediaControls } from './components';
+import { MediaControls, AdvanceLineColorPicker } from './components';
 import { Signal } from '@lumino/signaling';
 
 export class MessageRecorder {
@@ -19,7 +19,7 @@ export class MessageRecorder {
     private _app: JupyterFrontEnd;
     private _notebookPanel: NotebookPanel;
     private _cellIndex: number | null;
-    private _lineIndex: number;
+    private _lineIndex: number = 0;
     private _editor: Editor;
     private _cell: Cell<ICellModel>;
     private _audioRecording: Promise<Blob>;
@@ -31,6 +31,7 @@ export class MessageRecorder {
     private _audioInputSelector: AudioInputSelector;
     private _videoInputSelector: VideoInputSelector;
     private _keyBindings: KeyBindings;
+    private _advanceLineColor: string;
 
     constructor({
         app,
@@ -40,6 +41,7 @@ export class MessageRecorder {
         keyBindings,
         audioInputSelector,
         videoInputSelector,
+        advanceLineColorPicker,
         statusIndicator
     }:
         {
@@ -50,6 +52,7 @@ export class MessageRecorder {
             keyBindings: KeyBindings,
             audioInputSelector: AudioInputSelector,
             videoInputSelector: VideoInputSelector,
+            advanceLineColorPicker: AdvanceLineColorPicker,
             statusIndicator: StatusIndicator
         }) {
 
@@ -60,9 +63,11 @@ export class MessageRecorder {
         this._audioInputSelector = audioInputSelector;
         this._videoInputSelector = videoInputSelector;
         this._keyBindings = keyBindings;
+        this._advanceLineColor = advanceLineColorPicker.color;
 
         keyBindings.keyPressed.connect(this.processCommand, this);
         mediaControls.buttonPressed.connect(this.processCommand, this);
+        advanceLineColorPicker.colorChanged.connect(this.updateAdvanceLineColor, this);
         this._notebookPanel.disposed.connect(this.dispose, this);
 
         NotebookActions.executionScheduled.connect(this.executionScheduled, this);
@@ -71,7 +76,7 @@ export class MessageRecorder {
     }
 
     public dispose() {
-        
+
         Signal.disconnectAll(this);
     }
 
@@ -209,7 +214,11 @@ export class MessageRecorder {
 
             if (this._editor) {
 
-                this._editor.removeLineClass(this._lineIndex, 'wrap', 'active-line');
+                // this._editor.removeLineClass(this._lineIndex, 'wrap', 'active-line');
+
+                let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement);
+
+                wrapper.style.backgroundColor = null;
 
                 //  The MessageRecorder may or may not have an editor when it stops; hence handle these cases separately.
                 let input = this._editor.getLine(this._lineIndex);
@@ -367,7 +376,14 @@ export class MessageRecorder {
 
     private advanceCursor() {
 
-        this._editor?.removeLineClass(this._lineIndex, 'wrap', 'active-line');
+        if (this._editor) {
+
+            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement);
+
+            wrapper.style.backgroundColor = null;
+        }
+
+        // this._editor?.removeLineClass(this._lineIndex, 'wrap', 'active-line');
 
         if (this._cellIndex === null) {
 
@@ -421,7 +437,14 @@ export class MessageRecorder {
             this._lineIndex = null;
         }
 
-        this._editor?.addLineClass(this._lineIndex, 'wrap', 'active-line');
+        // this._editor?.addLineClass(this._lineIndex, 'wrap', 'active-line');
+
+        if (this._editor) {
+
+            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement);
+
+            wrapper.style.backgroundColor = this._advanceLineColor;
+        }
     }
 
     private aggregateMessage(message: EventMessage) {
@@ -449,5 +472,10 @@ export class MessageRecorder {
         }
 
         this._eventMessages.push(message);
+    }
+
+    updateAdvanceLineColor(sender: AdvanceLineColorPicker, color: string) {
+
+        this._advanceLineColor = color;
     }
 }

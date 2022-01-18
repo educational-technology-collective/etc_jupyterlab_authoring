@@ -3,7 +3,8 @@
 .jp-AudioSelector, 
 .jp-VideoSelector, 
 .jp-SaveDisplayRecordingCheckbox,
-.jp-ShowMediaControlsCheckbox {
+.jp-ShowMediaControlsCheckbox,
+.jp-AdvanceLineColorPicker {
   font-size: var(--jp-ui-font-size1) !important;
   padding: 12px 12px 0 12px;
 }
@@ -11,8 +12,13 @@
 .jp-ExecutionCheckBox input, 
 .jp-ScrollCheckBox input, 
 .jp-SaveDisplayRecordingCheckbox input,
-.jp-ShowMediaControlsCheckbox input {
+.jp-ShowMediaControlsCheckbox input 
+.jp-AdvanceLineColorPicker input {
   vertical-align: bottom;
+}
+
+.jp-AdvanceLineColorPicker label {
+  padding-left: .25em;
 }
 
 .jp-AudioSelector select {
@@ -42,6 +48,14 @@
 
 .jp-AuthoringPanel {
   background: var(--jp-layout-color1);
+}
+
+.jp-AuthoringPanel .jp-Collapse {
+  margin: 0 0 1em 0;
+}
+
+.jp-AuthoringPanel .jp-Collapse .lm-Widget {
+  margin: 0 0 10px 0;
 }
 
 .active-line {

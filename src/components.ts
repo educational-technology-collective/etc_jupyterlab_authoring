@@ -292,7 +292,7 @@ export class GeneralPanel extends Panel {
 
         this.addClass('jp-GeneralPanel');
 
-        this.title.icon = rightPanelIcon;
+        this.title.label = "General Tools";
     }
 }
 
@@ -306,7 +306,7 @@ export class RecorderPanel extends Panel {
 
         this.addClass('jp-RecorderPanel');
 
-        this.title.icon = rightPanelIcon;
+        this.title.label = "Recording Tools";
     }
 }
 
@@ -319,7 +319,8 @@ export class PlayerPanel extends Panel {
 
         this.addClass('jp-PlayerPanel');
 
-        this.title.icon = rightPanelIcon;
+        this.title.label = "Playback Tools";
+
     }
 }
 
@@ -479,5 +480,53 @@ export class MediaPlayer {
 
     get mediaElement(): HTMLVideoElement {
         return this._videoElement;
+    }
+}
+
+
+export class AdvanceLineColorPicker {
+
+    public widget: Widget;
+
+    private _colorChanged: Signal<AdvanceLineColorPicker, string> = new Signal(this);
+
+    private _opacity = '40';
+
+    constructor() {
+
+        this.widget = new Widget();
+
+        this.widget.addClass('jp-AdvanceLineColorPicker');
+
+        let input = document.createElement('input');
+
+        input.setAttribute('type', 'color');
+
+        input.setAttribute('value', '#FFCB05');
+
+        let label = document.createElement('label');
+
+        label.innerHTML = 'Advance line color.';
+
+        this.widget.node.appendChild(input);
+
+        this.widget.node.appendChild(label);
+
+        input.addEventListener('input', this);
+    }
+
+    public handleEvent(event: Event) {
+
+        this._colorChanged.emit((event.target as HTMLInputElement).value + this._opacity)
+    }
+
+    get color(): string {
+
+        return this.widget.node.querySelector('input').value + this._opacity;
+    }
+
+    get colorChanged(): ISignal<AdvanceLineColorPicker, string> {
+
+        return this._colorChanged;
     }
 }

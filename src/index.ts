@@ -21,6 +21,7 @@ import {
   RecorderPanel,
   PlayerPanel,
   GeneralPanel,
+  AdvanceLineColorPicker
 } from './components';
 
 import {
@@ -34,6 +35,7 @@ import { AudioInputSelector, VideoInputSelector } from "./av_input_selectors";
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { KeyBindings } from "./key_bindings";
+import { Collapser } from "@jupyterlab/ui-components/lib/components/collapser";
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
 
@@ -71,9 +73,9 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     let authoringPanel = new AuthoringPanel();
 
-    authoringPanel.addWidget(generalPanel);
-    authoringPanel.addWidget(recorderPanel);
-    authoringPanel.addWidget(playerPanel);
+    authoringPanel.addWidget(new Collapser({ widget: generalPanel, collapsed: false}));
+    authoringPanel.addWidget(new Collapser({ widget: recorderPanel, collapsed: false}));
+    authoringPanel.addWidget(new Collapser({ widget: playerPanel, collapsed: false}));
 
     let audioInputSelectorContainer = new AudioInputSelectorContainer();
     let videoInputSelectorContainer = new VideoInputSelectorContainer();
@@ -81,11 +83,14 @@ const extension: JupyterFrontEndPlugin<void> = {
     let scrollCheckbox = new ScrollCheckbox();
     let saveDisplayRecordingCheckbox = new SaveDisplayRecordingCheckbox();
     let showMediaControlsCheckbox = new ShowMediaControlsCheckbox();
+    let advanceLineColorPicker = new AdvanceLineColorPicker();
 
     generalPanel.addWidget(showMediaControlsCheckbox.widget);
 
     recorderPanel.addWidget(audioInputSelectorContainer.widget);
     recorderPanel.addWidget(videoInputSelectorContainer.widget);
+    recorderPanel.addWidget(advanceLineColorPicker.widget);
+    
     playerPanel.addWidget(executionCheckbox.widget);
     playerPanel.addWidget(scrollCheckbox.widget);
     playerPanel.addWidget(saveDisplayRecordingCheckbox.widget);
@@ -137,6 +142,7 @@ const extension: JupyterFrontEndPlugin<void> = {
             keyBindings,
             audioInputSelector,
             videoInputSelector,
+            advanceLineColorPicker,
             statusIndicator
           });
         }
