@@ -283,7 +283,45 @@ export class AuthoringPanel extends Panel {
     }
 }
 
+export class GeneralPanel extends Panel {
 
+    constructor() {
+        super();
+
+        this.id = UUID.uuid4();
+
+        this.addClass('jp-GeneralPanel');
+
+        this.title.icon = rightPanelIcon;
+    }
+}
+
+
+export class RecorderPanel extends Panel {
+
+    constructor() {
+        super();
+
+        this.id = UUID.uuid4();
+
+        this.addClass('jp-RecorderPanel');
+
+        this.title.icon = rightPanelIcon;
+    }
+}
+
+export class PlayerPanel extends Panel {
+
+    constructor() {
+        super();
+
+        this.id = UUID.uuid4();
+
+        this.addClass('jp-PlayerPanel');
+
+        this.title.icon = rightPanelIcon;
+    }
+}
 
 export class MediaControls {
 
@@ -423,6 +461,7 @@ export class MediaPlayer {
         videoElement.style.width = '300px';
         videoElement.style.zIndex = '9999';
         videoElement.style.backgroundColor = 'black';
+        videoElement.style.opacity = '0';
     }
 
     updatePosition(element: HTMLElement, lineNumber: number) {
@@ -435,7 +474,7 @@ export class MediaPlayer {
     }
 
     remove() {
-        this._notebookPanel.content.node.removeChild(this._videoElement);
+        //this._notebookPanel.content.node.removeChild(this._videoElement);
     }
 
     get mediaElement(): HTMLVideoElement {

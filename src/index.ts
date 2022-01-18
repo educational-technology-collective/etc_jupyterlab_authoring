@@ -18,6 +18,9 @@ import {
   SaveDisplayRecordingCheckbox,
   ShowMediaControlsCheckbox,
   MediaControls,
+  RecorderPanel,
+  PlayerPanel,
+  GeneralPanel,
 } from './components';
 
 import {
@@ -54,7 +57,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry
   ) => {
 
-    console.log(`JupyterLab extension ${PLUGIN_ID} is activated!`);
+    console.log(`JupyterLab extension ${PLUGIN_ID} version ${'0.1.6'} is activated!`);
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
@@ -62,7 +65,15 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     let keyBindings = new KeyBindings({ commandRegistry: app.commands, settings: settings });
 
+    let generalPanel = new GeneralPanel();
+    let recorderPanel = new RecorderPanel();
+    let playerPanel = new PlayerPanel();
+
     let authoringPanel = new AuthoringPanel();
+
+    authoringPanel.addWidget(generalPanel);
+    authoringPanel.addWidget(recorderPanel);
+    authoringPanel.addWidget(playerPanel);
 
     let audioInputSelectorContainer = new AudioInputSelectorContainer();
     let videoInputSelectorContainer = new VideoInputSelectorContainer();
@@ -71,12 +82,13 @@ const extension: JupyterFrontEndPlugin<void> = {
     let saveDisplayRecordingCheckbox = new SaveDisplayRecordingCheckbox();
     let showMediaControlsCheckbox = new ShowMediaControlsCheckbox();
 
-    authoringPanel.addWidget(audioInputSelectorContainer.widget);
-    authoringPanel.addWidget(videoInputSelectorContainer.widget);
-    authoringPanel.addWidget(executionCheckbox.widget);
-    authoringPanel.addWidget(scrollCheckbox.widget);
-    authoringPanel.addWidget(saveDisplayRecordingCheckbox.widget);
-    authoringPanel.addWidget(showMediaControlsCheckbox.widget);
+    generalPanel.addWidget(showMediaControlsCheckbox.widget);
+
+    recorderPanel.addWidget(audioInputSelectorContainer.widget);
+    recorderPanel.addWidget(videoInputSelectorContainer.widget);
+    playerPanel.addWidget(executionCheckbox.widget);
+    playerPanel.addWidget(scrollCheckbox.widget);
+    playerPanel.addWidget(saveDisplayRecordingCheckbox.widget);
 
     labShell.add(authoringPanel, 'right');
 

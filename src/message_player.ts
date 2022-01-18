@@ -87,6 +87,7 @@ export class MessagePlayer {
       (async () => {
 
         try {
+          let url = new URL(data.audio);
 
           let result = await fetch(data.audio);
 
@@ -95,6 +96,8 @@ export class MessagePlayer {
         catch (e) {
 
           console.error(e);
+
+          this.audioRecording = null;
         }
       })();
     }
@@ -154,7 +157,7 @@ export class MessagePlayer {
 
     this._eventTarget.dispatchEvent(new Event('resume'));
 
-    await this._mediaPlayer.mediaElement.play();
+    await this._mediaPlayer?.mediaElement.play();
 
     this._statusIndicator.play(this._notebookPanel);
   }
@@ -170,14 +173,17 @@ export class MessagePlayer {
         this._eventTarget.addEventListener('paused', r, { once: true });
       });
 
-      await new Promise((r, j) => {
+      if (this._mediaRecorder) {
 
-        this._mediaPlayer.mediaElement.addEventListener('pause', r, { once: true });
+        await new Promise((r, j) => {
 
-        this._mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
+          this._mediaPlayer.mediaElement.addEventListener('pause', r, { once: true });
 
-        this._mediaPlayer.mediaElement.pause();
-      });
+          this._mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
+
+          this._mediaPlayer.mediaElement.pause();
+        });
+      }
 
       if (this.saveDisplayRecordingEnabled) {
 
@@ -200,7 +206,7 @@ export class MessagePlayer {
 
         this._eventTarget.dispatchEvent(new Event('stop'));
       }
-      else {
+      else if (this._mediaPlayer) {
 
         //  The audio player of the message player is not already paused; hence, pause the audio player.
         await new Promise<Event>((r, j) => {
@@ -222,7 +228,7 @@ export class MessagePlayer {
         await this.saveDisplayRecording();
       }
 
-      this._mediaPlayer.remove();
+      this._mediaPlayer?.remove();
 
       this._statusIndicator.stop(this._notebookPanel);
     }
@@ -240,7 +246,7 @@ export class MessagePlayer {
 
   public async play() {
 
-    if (this.audioRecording && !this.isPaused && !this.isPlaying) {
+    if (!this.isPaused && !this.isPlaying) {
 
       await (this._player = this.playMessages());
     }
@@ -275,7 +281,10 @@ export class MessagePlayer {
     this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
     //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
 
-    await this.startMediaPlayback();
+    if (this.audioRecording) {
+
+      await this.startMediaPlayback();
+    }
 
     this._statusIndicator.play(this._notebookPanel);
 
@@ -354,7 +363,7 @@ export class MessagePlayer {
             }
           }
 
-          this._mediaPlayer.updatePosition(cell.node, this._editor.lineCount);
+          // this._mediaPlayer.updatePosition(cell.node, this._editor.lineCount);
 
           if (message.input.length) {
 
@@ -386,17 +395,23 @@ export class MessagePlayer {
               this._editor.doc.replaceRange(message.input[this._charIndex], pos);
 
               cell.update();
+              
+              if (this._mediaPlayer) {
 
-              let dt = duration - (this._mediaPlayer.mediaElement.currentTime * 1000 - targetTime);
+                let dt = duration - (this._mediaPlayer.mediaElement.currentTime * 1000 - targetTime);
 
-              dt = dt < 0 ? 0 : dt;
-
-              if (dt > 0) {
-
-                await new Promise<void>((r, j) => setTimeout(r, dt));
+                dt = dt < 0 ? 0 : dt;
+  
+                if (dt > 0) {
+  
+                  await new Promise<void>((r, j) => setTimeout(r, dt));
+                }
+  
+                targetTime = targetTime + duration;
               }
-
-              targetTime = targetTime + duration;
+              else {
+                await new Promise<void>((r, j) => setTimeout(r, duration));
+              }
 
               this._charIndex++
             }
@@ -431,11 +446,11 @@ export class MessagePlayer {
             if (!resolved) {
               //  This is the case where the execution is taking longer than the duration.
 
-              this._mediaPlayer.mediaElement.pause();
+              this._mediaPlayer?.mediaElement.pause();
 
               await runAndAdvance;
 
-              this._mediaPlayer.mediaElement.play();
+              this._mediaPlayer?.mediaElement.play();
             }
           }
           else {
@@ -472,7 +487,7 @@ export class MessagePlayer {
 
       this._statusIndicator.stop(this._notebookPanel);
 
-      this._mediaPlayer.remove();
+      this._mediaPlayer?.remove();
     }
   }
 
@@ -548,31 +563,38 @@ export class MessagePlayer {
 
   private async startMediaPlayback() {
 
-    let mediaPlayer = this._mediaPlayer = new MediaPlayer({
-      notebookPanel: this._notebookPanel,
-      blob: this.audioRecording
-    });
+    if (this.audioRecording) {
 
-    (async () => {
+      let mediaPlayer = this._mediaPlayer = new MediaPlayer({
+        notebookPanel: this._notebookPanel,
+        blob: this.audioRecording
+      });
 
-      try {
+      (async () => {
 
-        this._mediaPlaybackEnded = new Promise((r, j) => {
+        try {
 
-          mediaPlayer.mediaElement.addEventListener('ended', r, { once: true });
+          this._mediaPlaybackEnded = new Promise((r, j) => {
 
-          mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
-        });
+            mediaPlayer.mediaElement.addEventListener('ended', r, { once: true });
 
-        await this._mediaPlaybackEnded;
-      }
-      catch (e) {
+            mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
+          });
 
-        console.error(e);
-      }
-    })();
+          await this._mediaPlaybackEnded;
+        }
+        catch (e) {
 
-    await mediaPlayer.mediaElement.play();
+          console.error(e);
+        }
+      })();
+
+      await mediaPlayer.mediaElement.play();
+    }
+    else {
+
+      this._mediaPlayer = null;
+    }
   }
 
   private createCellsTo(index: number) {
