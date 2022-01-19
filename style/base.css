@@ -4,7 +4,8 @@
 .jp-VideoSelector, 
 .jp-SaveDisplayRecordingCheckbox,
 .jp-ShowMediaControlsCheckbox,
-.jp-AdvanceLineColorPicker {
+.jp-AdvanceLineColorPicker,
+.jp-RecordVideoCheckbox {
   font-size: var(--jp-ui-font-size1) !important;
   padding: 12px 12px 0 12px;
 }
@@ -13,7 +14,8 @@
 .jp-ScrollCheckBox input, 
 .jp-SaveDisplayRecordingCheckbox input,
 .jp-ShowMediaControlsCheckbox input 
-.jp-AdvanceLineColorPicker input {
+.jp-AdvanceLineColorPicker input
+.jp-RecordVideoCheckbox input {
   vertical-align: bottom;
 }
 
@@ -61,3 +63,17 @@
 .active-line {
   background:lightcyan;
 }
+
+.jp-AuthoringPanel .enabled {
+  opacity: 1;
+}
+
+.jp-AuthoringPanel .disabled {
+  opacity: .25;
+  background: var(--jp-layout-color1);
+}
+
+.jp-AuthoringPanel .disabled:hover {
+  background: var(--jp-layout-color1);
+}
+

@@ -21,7 +21,8 @@ import {
   RecorderPanel,
   PlayerPanel,
   GeneralPanel,
-  AdvanceLineColorPicker
+  AdvanceLineColorPicker,
+  RecordVideoCheckbox
 } from './components';
 
 import {
@@ -60,7 +61,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry
   ) => {
 
-    console.log(`JupyterLab extension ${PLUGIN_ID} version ${'0.1.7'} is activated!`);
+    console.log(`JupyterLab extension ${PLUGIN_ID} version ${'0.1.8'} is activated!`);
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
@@ -74,12 +75,16 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     let authoringPanel = new AuthoringPanel();
 
-    authoringPanel.addWidget(new Collapse({ widget: generalPanel, collapsed: false}));
-    authoringPanel.addWidget(new Collapse({ widget: recorderPanel, collapsed: false}));
-    authoringPanel.addWidget(new Collapse({ widget: playerPanel, collapsed: false}));
+    authoringPanel.addWidget(new Collapse({ widget: generalPanel, collapsed: false }));
+    authoringPanel.addWidget(new Collapse({ widget: recorderPanel, collapsed: false }));
+    authoringPanel.addWidget(new Collapse({ widget: playerPanel, collapsed: false }));
 
     let audioInputSelectorContainer = new AudioInputSelectorContainer();
     let videoInputSelectorContainer = new VideoInputSelectorContainer();
+    let audioInputSelector = new AudioInputSelector({ node: audioInputSelectorContainer.widget.node });
+    let videoInputSelector = new VideoInputSelector({ node: videoInputSelectorContainer.widget.node });
+
+    let recordVideoCheckbox = new RecordVideoCheckbox({ videoInputSelector });
     let executionCheckbox = new ExecutionCheckbox();
     let scrollCheckbox = new ScrollCheckbox();
     let saveDisplayRecordingCheckbox = new SaveDisplayRecordingCheckbox();
@@ -87,11 +92,12 @@ const extension: JupyterFrontEndPlugin<void> = {
     let advanceLineColorPicker = new AdvanceLineColorPicker();
 
     generalPanel.addWidget(showMediaControlsCheckbox.widget);
+    generalPanel.addWidget(recordVideoCheckbox.widget);
 
     recorderPanel.addWidget(audioInputSelectorContainer.widget);
     recorderPanel.addWidget(videoInputSelectorContainer.widget);
     recorderPanel.addWidget(advanceLineColorPicker.widget);
-    
+
     playerPanel.addWidget(executionCheckbox.widget);
     playerPanel.addWidget(scrollCheckbox.widget);
     playerPanel.addWidget(saveDisplayRecordingCheckbox.widget);
@@ -99,9 +105,6 @@ const extension: JupyterFrontEndPlugin<void> = {
     labShell.add(authoringPanel, 'right');
 
     let statusIndicator = new StatusIndicator();
-
-    let audioInputSelector = new AudioInputSelector({ node: audioInputSelectorContainer.widget.node });
-    let videoInputSelector = new VideoInputSelector({ node: videoInputSelectorContainer.widget.node });
 
     statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:statusIndicator', {
       item: statusIndicator.widget,

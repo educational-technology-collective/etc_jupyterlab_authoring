@@ -99,6 +99,7 @@ export class VideoInputSelector {
     public deviceId: string;
     public eventTarget: EventTarget;
     private _select: HTMLSelectElement;
+    private _enabled: boolean = false;
 
     constructor({ node }: { node: HTMLElement }) {
 
@@ -109,20 +110,46 @@ export class VideoInputSelector {
         this.deviceId = 'default';
 
         let option = document.createElement('option');
+
         option.setAttribute('value', 'default');
+
         option.setAttribute('label', 'Default');
+        
         this._select.appendChild(option);
 
-        node.addEventListener('change', this);
+        this._select.addEventListener('mousedown', this, true);
+    }
+
+    enable() {
+
+        this._enabled = true;
+        this._select.classList.add('enabled');
+        this._select.classList.remove('disabled');
+        this._select.addEventListener('change', this);
         navigator.mediaDevices.addEventListener('devicechange', this);
-        node.addEventListener('mousedown', this, true);
+    }
+
+    disable() {
+
+        this._enabled = false;
+        this._select.classList.add('disabled');
+        this._select.classList.remove('enabled');
+        this._select.removeEventListener('change', this);
+        navigator.mediaDevices.removeEventListener('devicechange', this);
     }
 
     public async handleEvent(event: Event) {
 
         switch(event.type) {
             case 'mousedown':
-                this.populate();
+                if (this._enabled) {
+
+                    this.populate();
+                }
+                else {
+
+                    event.preventDefault();
+                }
                 break;
             case 'change':
                 this.setDeviceId((event.target as HTMLSelectElement).value);

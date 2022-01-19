@@ -16,6 +16,72 @@ import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
 import { ISettingRegistry } from "@jupyterlab/settingregistry";
 import { ISignal, Signal } from "@lumino/signaling";
 import { NotebookPanel } from "@jupyterlab/notebook";
+import { VideoInputSelector } from "./av_input_selectors";
+
+export class RecordVideoCheckbox {
+
+    public widget: Widget;
+
+    private _checkboxChanged: Signal<RecordVideoCheckbox, boolean> = new Signal(this);
+    private _videoInputSelector: VideoInputSelector;
+
+    constructor({ videoInputSelector }: { videoInputSelector: VideoInputSelector }) {
+
+        this._videoInputSelector = videoInputSelector;
+
+        this.widget = new Widget();
+
+        this.widget.addClass('jp-RecordVideoCheckbox');
+
+        let input = document.createElement('input');
+
+        input.setAttribute('type', 'checkbox');
+
+        input.setAttribute('name', 'video');
+
+        input.classList.add('jp-mod-styled');
+
+        let label = document.createElement('label');
+
+        label.setAttribute('for', 'record');
+
+        label.innerHTML = 'Record video.';
+
+        this.widget.node.appendChild(input);
+
+        this.widget.node.appendChild(label);
+
+        input.addEventListener('click', this);
+
+        this._videoInputSelector.disable();
+    }
+
+    public handleEvent(event: Event) {
+
+        let checked = (event.target as HTMLInputElement).checked;
+
+        this._checkboxChanged.emit(checked);
+
+        if (checked) {
+
+            this._videoInputSelector.enable();
+        }
+        else {
+
+            this._videoInputSelector.disable();
+        }
+    }
+
+    get checked(): boolean {
+
+        return this.widget.node.querySelector('input').checked
+    }
+
+    get checkboxChanged(): ISignal<RecordVideoCheckbox, boolean> {
+        
+        return this._checkboxChanged;
+    }
+}
 
 export class SaveDisplayRecordingCheckbox {
 
@@ -329,14 +395,6 @@ export class MediaControls {
     public panel: BoxPanel;
 
     private _buttonPressed: Signal<MediaControls, { command: string }> = new Signal<MediaControls, { command: string }>(this);
-
-    private _resetButton: HTMLElement;
-    private _recordButton: HTMLElement;
-    private _stopButton: HTMLElement;
-    private _playButton: HTMLElement;
-    private _pauseButton: HTMLElement;
-    private _saveButton: HTMLElement;
-    private _showMediaControlsCheckbox: ShowMediaControlsCheckbox;
 
     constructor({
         notebookPanel,

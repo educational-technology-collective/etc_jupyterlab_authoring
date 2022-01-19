@@ -248,6 +248,8 @@ export class MessagePlayer {
 
     if (!this.isPaused && !this.isPlaying) {
 
+      this._notebook.node.focus();
+
       await (this._player = this.playMessages());
     }
     else if (this.isPaused) {
