@@ -11,7 +11,7 @@ import { StatusIndicator } from './status_indicator';
 import { KeyBindings } from './key_bindings';
 import { ExecutionCheckbox, MediaControls, MediaPlayer, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
 import { Signal } from '@lumino/signaling';
-
+import { ElementExt } from '@lumino/domutils';
 
 export class MessagePlayer {
 
@@ -325,10 +325,6 @@ export class MessagePlayer {
 
         let cell: Cell<ICellModel> = this._notebook.widgets[message.cell_index];
 
-        if (this.scrollToCellEnabled) {
-
-          this._notebook.scrollToCell(cell);
-        }
 
         if (message.event == "line_finished" || message.event == "record_stopped") {
 
@@ -359,13 +355,7 @@ export class MessagePlayer {
 
             this.createLinesTo(message.line_index);
 
-            if (this.scrollToCellEnabled) {
-
-              this._notebook.scrollToCell(cell);
-            }
           }
-
-          // this._mediaPlayer.updatePosition(cell.node, this._editor.lineCount);
 
           if (message.input.length) {
 
@@ -396,19 +386,26 @@ export class MessagePlayer {
 
               this._editor.doc.replaceRange(message.input[this._charIndex], pos);
 
+              if (this.scrollToCellEnabled) {
+
+                let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight;
+  
+                this._notebook.node.scrollTop = scrollTo;
+              }
+
               cell.update();
-              
+
               if (this._mediaPlayer) {
 
                 let dt = duration - (this._mediaPlayer.mediaElement.currentTime * 1000 - targetTime);
 
                 dt = dt < 0 ? 0 : dt;
-  
+
                 if (dt > 0) {
-  
+
                   await new Promise<void>((r, j) => setTimeout(r, dt));
                 }
-  
+
                 targetTime = targetTime + duration;
               }
               else {
@@ -464,6 +461,13 @@ export class MessagePlayer {
               setTimeout(r, message.duration);
             });
           }
+        }
+
+        if (this.scrollToCellEnabled) {
+
+          let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight;
+  
+          this._notebook.node.scrollTop = scrollTo;
         }
       }
       else {
