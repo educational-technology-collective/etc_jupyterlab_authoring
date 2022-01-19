@@ -61,7 +61,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry
   ) => {
 
-    console.log(`JupyterLab extension ${PLUGIN_ID} version ${'0.1.8'} is activated!`);
+    console.log(`JupyterLab extension ${PLUGIN_ID} version ${'0.1.9'} is activated!`);
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
