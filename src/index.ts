@@ -22,7 +22,8 @@ import {
   PlayerPanel,
   GeneralPanel,
   AdvanceLineColorPicker,
-  RecordVideoCheckbox
+  RecordVideoCheckbox,
+  ExecuteOnLastLineAdvance
 } from './components';
 
 import {
@@ -90,12 +91,14 @@ const extension: JupyterFrontEndPlugin<void> = {
     let saveDisplayRecordingCheckbox = new SaveDisplayRecordingCheckbox();
     let showMediaControlsCheckbox = new ShowMediaControlsCheckbox();
     let advanceLineColorPicker = new AdvanceLineColorPicker();
+    let executeOnLastLineAdvance = new ExecuteOnLastLineAdvance();
 
     generalPanel.addWidget(showMediaControlsCheckbox.widget);
     generalPanel.addWidget(recordVideoCheckbox.widget);
 
     recorderPanel.addWidget(audioInputSelectorContainer.widget);
     recorderPanel.addWidget(videoInputSelectorContainer.widget);
+    recorderPanel.addWidget(executeOnLastLineAdvance.widget);
     recorderPanel.addWidget(advanceLineColorPicker.widget);
 
     playerPanel.addWidget(executionCheckbox.widget);
@@ -147,6 +150,8 @@ const extension: JupyterFrontEndPlugin<void> = {
             audioInputSelector,
             videoInputSelector,
             advanceLineColorPicker,
+            recordVideoCheckbox,
+            executeOnLastLineAdvance,
             statusIndicator
           });
         }

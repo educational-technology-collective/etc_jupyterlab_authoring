@@ -5,7 +5,8 @@
 .jp-SaveDisplayRecordingCheckbox,
 .jp-ShowMediaControlsCheckbox,
 .jp-AdvanceLineColorPicker,
-.jp-RecordVideoCheckbox {
+.jp-RecordVideoCheckbox,
+.jp-ExecuteOnLastLineAdvance {
   font-size: var(--jp-ui-font-size1) !important;
   padding: 12px 12px 0 12px;
 }
@@ -15,7 +16,8 @@
 .jp-SaveDisplayRecordingCheckbox input,
 .jp-ShowMediaControlsCheckbox input 
 .jp-AdvanceLineColorPicker input
-.jp-RecordVideoCheckbox input {
+.jp-RecordVideoCheckbox input,
+.jp-ExecuteOnLastLineAdvance input {
   vertical-align: bottom;
 }
 
@@ -54,6 +56,10 @@
 
 .jp-AuthoringPanel .jp-Collapse {
   margin: 0 0 1em 0;
+}
+
+.jp-AuthoringPanel .jp-Collapse .jp-Collapse-header {
+  user-select: none;
 }
 
 .jp-AuthoringPanel .jp-Collapse .lm-Widget {

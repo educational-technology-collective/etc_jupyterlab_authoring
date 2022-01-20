@@ -8,7 +8,7 @@ import { AudioInputSelector, VideoInputSelector } from './av_input_selectors';
 import { StatusIndicator } from './status_indicator';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { KeyBindings } from './key_bindings';
-import { MediaControls, AdvanceLineColorPicker } from './components';
+import { MediaControls, AdvanceLineColorPicker, RecordVideoCheckbox, ExecuteOnLastLineAdvance } from './components';
 import { Signal } from '@lumino/signaling';
 
 export class MessageRecorder {
@@ -17,6 +17,7 @@ export class MessageRecorder {
     public isPaused: boolean = false;
 
     private _app: JupyterFrontEnd;
+    private _isExecuting: boolean;
     private _notebookPanel: NotebookPanel;
     private _cellIndex: number | null;
     private _lineIndex: number = 0;
@@ -32,6 +33,8 @@ export class MessageRecorder {
     private _videoInputSelector: VideoInputSelector;
     private _keyBindings: KeyBindings;
     private _advanceLineColor: string;
+    private _recordVideoCheckbox: RecordVideoCheckbox;
+    private _executeOnLastLineAdvance: ExecuteOnLastLineAdvance;
 
     constructor({
         app,
@@ -42,6 +45,8 @@ export class MessageRecorder {
         audioInputSelector,
         videoInputSelector,
         advanceLineColorPicker,
+        recordVideoCheckbox,
+        executeOnLastLineAdvance,
         statusIndicator
     }:
         {
@@ -53,6 +58,8 @@ export class MessageRecorder {
             audioInputSelector: AudioInputSelector,
             videoInputSelector: VideoInputSelector,
             advanceLineColorPicker: AdvanceLineColorPicker,
+            recordVideoCheckbox: RecordVideoCheckbox,
+            executeOnLastLineAdvance: ExecuteOnLastLineAdvance,
             statusIndicator: StatusIndicator
         }) {
 
@@ -64,6 +71,8 @@ export class MessageRecorder {
         this._videoInputSelector = videoInputSelector;
         this._keyBindings = keyBindings;
         this._advanceLineColor = advanceLineColorPicker.color;
+        this._recordVideoCheckbox = recordVideoCheckbox;
+        this._executeOnLastLineAdvance = executeOnLastLineAdvance;
 
         keyBindings.keyPressed.connect(this.processCommand, this);
         mediaControls.buttonPressed.connect(this.processCommand, this);
@@ -163,17 +172,35 @@ export class MessageRecorder {
 
     private async startMediaRecorder() {
 
-        this._mediaStream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                deviceId: this._audioInputSelector.deviceId
-            },
-            video: {
-                deviceId: this._videoInputSelector.deviceId
-            }
-        });
+        let mimeType: string;
+
+        if (this._recordVideoCheckbox.checked) {
+
+            this._mediaStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    deviceId: this._audioInputSelector.deviceId
+                },
+                video: {
+                    deviceId: this._videoInputSelector.deviceId
+                }
+            });
+
+            mimeType = 'video/webm; codecs="vp8, opus"';
+        }
+        else {
+
+            this._mediaStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    deviceId: this._audioInputSelector.deviceId
+                }
+            });
+
+            mimeType = 'audio/webm; codecs=opus'
+        }
+
 
         this._mediaRecorder = new MediaRecorder(this._mediaStream, {
-            mimeType: 'video/webm'
+            mimeType: mimeType
         });
 
         (async () => {
@@ -191,7 +218,7 @@ export class MessageRecorder {
 
                     this._mediaRecorder.addEventListener('stop', () => {
 
-                        r(new Blob(recordings, { 'type': 'video/webm' }));
+                        r(new Blob(recordings, { 'type': mimeType }));
                     });
 
                     this._mediaRecorder.addEventListener('error', j);
@@ -213,14 +240,12 @@ export class MessageRecorder {
             this._keyBindings.detachAdvanceKeyBinding();
 
             if (this._editor) {
-
-                // this._editor.removeLineClass(this._lineIndex, 'wrap', 'active-line');
+                //  The MessageRecorder may or may not have an editor when it stops; hence handle these cases separately.
 
                 let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement);
 
                 wrapper.style.backgroundColor = null;
 
-                //  The MessageRecorder may or may not have an editor when it stops; hence handle these cases separately.
                 let input = this._editor.getLine(this._lineIndex);
 
                 this.aggregateMessage({
@@ -286,7 +311,7 @@ export class MessageRecorder {
 
             let value = {
                 eventMessages: this._eventMessages,
-                audio: event.target.result
+                media: event.target.result
             }
 
             let notebookPanel: NotebookPanel = await this._app.commands.execute('notebook:create-new');
@@ -298,13 +323,17 @@ export class MessageRecorder {
                 JSON.stringify(value)
             );
 
+            let name = `${notebookPanel.title.label.replace(/\..+$/, '')}_recorded_${Date.now().toString()}.ipynb`;
+
+            await notebookPanel.context.rename(name);
+
             await notebookPanel.context.saveAs();
         }
     }
 
-    public advanceLine() {
+    public async advanceLine() {
 
-        if (this.isRecording) {
+        if (this.isRecording && !this._isExecuting) {
 
             if (this._cellIndex === null) {
 
@@ -312,6 +341,20 @@ export class MessageRecorder {
                     event: 'cell_started',
                     notebook_id: this._notebookPanel.content.id
                 });
+
+                this.advanceCursor();
+            }
+            else if (
+                this._executeOnLastLineAdvance.checked &&
+                this._cell.model.type == 'code' &&
+                this._lineIndex == this._editor.lastLine()
+            ) {
+
+                this._isExecuting = true;
+
+                await NotebookActions.runAndAdvance(this._notebookPanel.content, this._notebookPanel.sessionContext);
+                
+                this._isExecuting = false;
             }
             else {
 
@@ -326,15 +369,17 @@ export class MessageRecorder {
                     line_index: this._lineIndex,
                     input: line
                 });
-            }
 
-            this.advanceCursor();
+                this.advanceCursor();
+            }
         }
     }
 
     private executionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
         if (this.isRecording && args.notebook.isVisible) {
+
+            this._isExecuting = true;
 
             let line = this._editor.getLine(this._lineIndex);
 
@@ -369,6 +414,8 @@ export class MessageRecorder {
                 cell_type: this._cell.model.type,
                 outputs: outputs
             });
+
+            this._isExecuting = false;
 
             this.advanceCursor();
         }
@@ -448,6 +495,8 @@ export class MessageRecorder {
     }
 
     private aggregateMessage(message: EventMessage) {
+
+        console.log(message);
 
         let now = Date.now();
 

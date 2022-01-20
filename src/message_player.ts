@@ -9,13 +9,12 @@ import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { StatusIndicator } from './status_indicator';
 import { KeyBindings } from './key_bindings';
-import { ExecutionCheckbox, MediaControls, MediaPlayer, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
+import { ExecutionCheckbox, MediaControls, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
 import { Signal } from '@lumino/signaling';
-import { ElementExt } from '@lumino/domutils';
 
 export class MessagePlayer {
 
-  public audioRecording: Blob;
+  public mediaRecording: Promise<Blob>;
   public eventMessages: Array<EventMessage>;
   public isPaused: boolean = false;
   public isPlaying: boolean = false;
@@ -82,23 +81,28 @@ export class MessagePlayer {
       this.eventMessages = data.eventMessages;
 
       this._contentModel = notebookPanel.content.model.toJSON();
-      //  The Notebook needs to be saved so that it can be reset; hence freeze the Notebook.
+      //  The Notebook needs to be saved so that it can be reset; hence, freeze the Notebook.
 
-      (async () => {
+      this.mediaRecording = (async () => {
 
         try {
-          let url = new URL(data.audio);
 
-          let result = await fetch(data.audio);
+          let media = data.audio ? data.audio : data.media;
+          // Previous implementation provided an audio property; hence, use it in place of the media property if it is available.
 
-          this.audioRecording = await result.blob();
+          new URL(media);
+          //  Check that the URL is valid; hence, throw if it isn't.
+
+          let result = await fetch(media);
+
+          return await result.blob();
         }
         catch (e) {
 
           console.error(e);
-
-          this.audioRecording = null;
         }
+
+        return null;
       })();
     }
   }
@@ -173,7 +177,7 @@ export class MessagePlayer {
         this._eventTarget.addEventListener('paused', r, { once: true });
       });
 
-      if (this._mediaRecorder) {
+      if (this._mediaPlayer) {
 
         await new Promise((r, j) => {
 
@@ -228,8 +232,6 @@ export class MessagePlayer {
         await this.saveDisplayRecording();
       }
 
-      this._mediaPlayer?.remove();
-
       this._statusIndicator.stop(this._notebookPanel);
     }
   }
@@ -283,10 +285,8 @@ export class MessagePlayer {
     this._notebookPanel.content.model.cells.removeRange(1, this._notebookPanel.content.model.cells.length);
     //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
 
-    if (this.audioRecording) {
-
-      await this.startMediaPlayback();
-    }
+    await this.startMediaPlayback();
+    //  This method handles the case where the mediaRecording isn't available; hence, call it without checking.
 
     this._statusIndicator.play(this._notebookPanel);
 
@@ -389,7 +389,7 @@ export class MessagePlayer {
               if (this.scrollToCellEnabled) {
 
                 let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight;
-  
+
                 this._notebook.node.scrollTop = scrollTo;
               }
 
@@ -409,6 +409,7 @@ export class MessagePlayer {
                 targetTime = targetTime + duration;
               }
               else {
+
                 await new Promise<void>((r, j) => setTimeout(r, duration));
               }
 
@@ -466,7 +467,7 @@ export class MessagePlayer {
         if (this.scrollToCellEnabled) {
 
           let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight;
-  
+
           this._notebook.node.scrollTop = scrollTo;
         }
       }
@@ -493,7 +494,6 @@ export class MessagePlayer {
 
       this._statusIndicator.stop(this._notebookPanel);
 
-      this._mediaPlayer?.remove();
     }
   }
 
@@ -569,11 +569,11 @@ export class MessagePlayer {
 
   private async startMediaPlayback() {
 
-    if (this.audioRecording) {
+    if (await this.mediaRecording) {
 
       let mediaPlayer = this._mediaPlayer = new MediaPlayer({
         notebookPanel: this._notebookPanel,
-        blob: this.audioRecording
+        blob: await this.mediaRecording
       });
 
       (async () => {
@@ -639,5 +639,36 @@ export class MessagePlayer {
 
       this._eventTarget.addEventListener('error', j, { once: true });
     });
+  }
+}
+
+
+
+export class MediaPlayer {
+
+  private _videoElement: HTMLVideoElement;
+  private _notebookPanel: NotebookPanel;
+
+  constructor({ notebookPanel, blob }: { notebookPanel: NotebookPanel, blob: Blob }) {
+
+      this._notebookPanel = notebookPanel;
+
+      let videoElement = this._videoElement = document.createElement('video');
+
+      this._videoElement.src = URL.createObjectURL(blob);
+
+      videoElement.style.border = '5px solid white';
+      videoElement.style.position = 'absolute';
+      videoElement.style.right = '0px';
+      videoElement.style.top = '0px';
+      videoElement.style.width = '300px';
+      videoElement.style.zIndex = '9999';
+      videoElement.style.backgroundColor = 'black';
+      videoElement.style.opacity = '0';
+  }
+
+  get mediaElement(): HTMLVideoElement {
+
+      return this._videoElement;
   }
 }

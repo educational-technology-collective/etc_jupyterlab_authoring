@@ -18,6 +18,57 @@ import { ISignal, Signal } from "@lumino/signaling";
 import { NotebookPanel } from "@jupyterlab/notebook";
 import { VideoInputSelector } from "./av_input_selectors";
 
+
+export class ExecuteOnLastLineAdvance {
+
+    public widget: Widget;
+
+    private _checkboxChanged: Signal<ExecuteOnLastLineAdvance, boolean> = new Signal(this);
+
+    constructor() {
+
+        this.widget = new Widget();
+
+        this.widget.addClass('jp-ExecuteOnLastLineAdvance');
+
+        let input = document.createElement('input');
+
+        input.setAttribute('type', 'checkbox');
+
+        input.setAttribute('name', 'save');
+
+        input.classList.add('jp-mod-styled');
+
+        let label = document.createElement('label');
+
+        label.setAttribute('for', 'save');
+
+        label.innerHTML = 'Execute on advance.';
+
+        this.widget.node.appendChild(input);
+
+        this.widget.node.appendChild(label);
+
+        input.addEventListener('click', this);
+    }
+
+    public handleEvent(event: Event) {
+
+        this._checkboxChanged.emit((event.target as HTMLInputElement).checked)
+    }
+
+    get checked(): boolean {
+
+        return this.widget.node.querySelector('input').checked
+    }
+
+    get checkboxChanged(): ISignal<ExecuteOnLastLineAdvance, boolean> {
+
+        return this._checkboxChanged;
+    }
+}
+
+
 export class RecordVideoCheckbox {
 
     public widget: Widget;
@@ -78,7 +129,7 @@ export class RecordVideoCheckbox {
     }
 
     get checkboxChanged(): ISignal<RecordVideoCheckbox, boolean> {
-        
+
         return this._checkboxChanged;
     }
 }
@@ -499,48 +550,6 @@ export class MediaControls {
         return this._buttonPressed;
     }
 }
-
-export class MediaPlayer {
-
-    private _videoElement: HTMLVideoElement;
-    private _notebookPanel: NotebookPanel;
-
-    constructor({ notebookPanel, blob }: { notebookPanel: NotebookPanel, blob: Blob }) {
-
-        this._notebookPanel = notebookPanel;
-
-        let videoElement = this._videoElement = document.createElement('video');
-
-        this._videoElement.src = URL.createObjectURL(blob);
-
-        videoElement.style.border = '5px solid white';
-        videoElement.style.position = 'absolute';
-        videoElement.style.right = '0px';
-        videoElement.style.top = '0px';
-        videoElement.style.width = '300px';
-        videoElement.style.zIndex = '9999';
-        videoElement.style.backgroundColor = 'black';
-        videoElement.style.opacity = '0';
-    }
-
-    updatePosition(element: HTMLElement, lineNumber: number) {
-
-        // let lineHeight = parseInt(element.style.lineHeight);
-
-        this._videoElement.style.top = `${this._notebookPanel.content.node.scrollTop}px`;
-
-        this._notebookPanel.content.node.appendChild(this._videoElement);
-    }
-
-    remove() {
-        //this._notebookPanel.content.node.removeChild(this._videoElement);
-    }
-
-    get mediaElement(): HTMLVideoElement {
-        return this._videoElement;
-    }
-}
-
 
 export class AdvanceLineColorPicker {
 
