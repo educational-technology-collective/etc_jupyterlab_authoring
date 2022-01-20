@@ -140,16 +140,6 @@ export class MessageRecorder {
 
             await this.startMediaRecorder();
 
-            await new Promise((r, j) => setTimeout(r, 2000));
-
-            await new Promise((r, j) => {
-
-                this._mediaRecorder.addEventListener('start', r, { once: true });
-
-                this._mediaRecorder.start();
-
-            });
-
             this.isRecording = true;
 
             this._statusIndicator.record(this._notebookPanel);
@@ -231,6 +221,16 @@ export class MessageRecorder {
                 console.error(e);
             }
         })();
+
+        await new Promise((r, j) => setTimeout(r, 2000));
+
+        await new Promise((r, j) => {
+
+            this._mediaRecorder.addEventListener('start', r, { once: true });
+
+            this._mediaRecorder.start();
+
+        });
     }
 
     public async stop() {
