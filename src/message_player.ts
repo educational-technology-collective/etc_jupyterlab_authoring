@@ -7,7 +7,7 @@ import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
 import { EventMessage } from "./types";
 import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
-import { StatusIndicator } from './status_indicator';
+import { AuthoringStatus } from './authoring_status';
 import { KeyBindings } from './key_bindings';
 import { ExecutionCheckbox, MediaControls, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
 import { Signal } from '@lumino/signaling';
@@ -28,7 +28,7 @@ export class MessagePlayer {
   private _editor: CodeMirrorEditor;
   private _mediaPlayer: MediaPlayer;
   private _mediaPlaybackEnded: Promise<Event>;
-  private _statusIndicator: StatusIndicator;
+  private _authoringStatus: AuthoringStatus;
   private _mediaRecorder: MediaRecorder;
   private _displayRecording: Promise<Blob>;
   private _charIndex: number;
@@ -43,12 +43,12 @@ export class MessagePlayer {
     saveDisplayRecordingCheckbox,
     executionCheckbox,
     scrollCheckbox,
-    statusIndicator
+    authoringStatus
   }: {
     notebookPanel: NotebookPanel,
     mediaControls: MediaControls,
     keyBindings: KeyBindings,
-    statusIndicator: StatusIndicator,
+    authoringStatus: AuthoringStatus,
     executionCheckbox: ExecutionCheckbox,
     scrollCheckbox: ScrollCheckbox,
     saveDisplayRecordingCheckbox: SaveDisplayRecordingCheckbox
@@ -58,7 +58,7 @@ export class MessagePlayer {
 
     this._notebookPanel = notebookPanel;
     this._notebook = notebookPanel.content;
-    this._statusIndicator = statusIndicator;
+    this._authoringStatus = authoringStatus;
 
     notebookPanel.disposed.connect(this.dispose, this);
 
@@ -163,7 +163,7 @@ export class MessagePlayer {
 
     await this._mediaPlayer?.mediaElement.play();
 
-    this._statusIndicator.play(this._notebookPanel);
+    this._authoringStatus.setState(this._notebookPanel, 'play');
   }
 
   public async pause() {
@@ -194,7 +194,7 @@ export class MessagePlayer {
         this._mediaRecorder.pause();
       }
 
-      this._statusIndicator.pause(this._notebookPanel);
+      this._authoringStatus.setState(this._notebookPanel, 'pause');
     }
   }
 
@@ -211,6 +211,8 @@ export class MessagePlayer {
         this._eventTarget.dispatchEvent(new Event('stop'));
       }
       else if (this._mediaPlayer) {
+
+        this._authoringStatus.setSeconds(this._notebookPanel, 0);
 
         //  The audio player of the message player is not already paused; hence, pause the audio player.
         await new Promise<Event>((r, j) => {
@@ -232,7 +234,7 @@ export class MessagePlayer {
         await this.saveDisplayRecording();
       }
 
-      this._statusIndicator.stop(this._notebookPanel);
+      this._authoringStatus.setState(this._notebookPanel, 'stop');
     }
   }
 
@@ -288,7 +290,7 @@ export class MessagePlayer {
     await this.startMediaPlayback();
     //  This method handles the case where the mediaRecording isn't available; hence, call it without checking.
 
-    this._statusIndicator.play(this._notebookPanel);
+    this._authoringStatus.setState(this._notebookPanel, 'play');
 
     let startTimestamp = this.eventMessages[0].start_timestamp;
 
@@ -397,6 +399,8 @@ export class MessagePlayer {
 
               if (this._mediaPlayer) {
 
+                this._authoringStatus.setSeconds(this._notebookPanel, Math.round(this._mediaPlayer.mediaElement.currentTime));
+
                 let dt = duration - (this._mediaPlayer.mediaElement.currentTime * 1000 - targetTime);
 
                 dt = dt < 0 ? 0 : dt;
@@ -492,7 +496,7 @@ export class MessagePlayer {
 
       this.isPlaying = false;
 
-      this._statusIndicator.stop(this._notebookPanel);
+      this._authoringStatus.setState(this._notebookPanel, 'stop');
 
     }
   }
@@ -596,6 +600,8 @@ export class MessagePlayer {
       })();
 
       await mediaPlayer.mediaElement.play();
+
+      this._authoringStatus.setSeconds(this._notebookPanel, 0);
     }
     else {
 

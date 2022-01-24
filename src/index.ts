@@ -23,12 +23,13 @@ import {
   GeneralPanel,
   AdvanceLineColorPicker,
   RecordVideoCheckbox,
-  ExecuteOnLastLineAdvance
+  ExecuteOnLastLineAdvance,
+  PositionAdvanceLine
 } from './components';
 
 import {
-  StatusIndicator
-} from './status_indicator';
+  AuthoringStatus
+} from './authoring_status';
 
 import { IStatusBar } from "@jupyterlab/statusbar";
 import { MessageRecorder } from './message_recorder';
@@ -92,6 +93,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     let showMediaControlsCheckbox = new ShowMediaControlsCheckbox();
     let advanceLineColorPicker = new AdvanceLineColorPicker();
     let executeOnLastLineAdvance = new ExecuteOnLastLineAdvance();
+    let positionAdvanceLine = new PositionAdvanceLine();
 
     generalPanel.addWidget(showMediaControlsCheckbox.widget);
     generalPanel.addWidget(recordVideoCheckbox.widget);
@@ -99,6 +101,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     recorderPanel.addWidget(audioInputSelectorContainer.widget);
     recorderPanel.addWidget(videoInputSelectorContainer.widget);
     recorderPanel.addWidget(executeOnLastLineAdvance.widget);
+    recorderPanel.addWidget(positionAdvanceLine.widget);
     recorderPanel.addWidget(advanceLineColorPicker.widget);
 
     playerPanel.addWidget(executionCheckbox.widget);
@@ -107,15 +110,17 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     labShell.add(authoringPanel, 'right');
 
-    let statusIndicator = new StatusIndicator();
+    let authoringStatus = new AuthoringStatus();
 
-    statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:statusIndicator', {
-      item: statusIndicator.widget,
+    statusBar.registerStatusItem('etc_jupyterlab_authoring:plugin:authoring_status', {
+      item: authoringStatus.panel,
       align: "left",
       rank: -100
     });
 
-    notebookTracker.currentChanged.connect(statusIndicator.onCurrentChanged, statusIndicator);
+    notebookTracker.currentChanged.connect((sender: INotebookTracker, value: NotebookPanel) => {
+      authoringStatus.updateCurrentNotebookPanel(value);
+    });
     //  There is one status indicator for all Notebooks; hence notify the status indicator whenever the user changes Notebooks.
 
     notebookTracker.widgetAdded.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
@@ -136,7 +141,7 @@ const extension: JupyterFrontEndPlugin<void> = {
             saveDisplayRecordingCheckbox,
             executionCheckbox,
             scrollCheckbox,
-            statusIndicator
+            authoringStatus
           });
         }
         else {
@@ -152,7 +157,8 @@ const extension: JupyterFrontEndPlugin<void> = {
             advanceLineColorPicker,
             recordVideoCheckbox,
             executeOnLastLineAdvance,
-            statusIndicator
+            positionAdvanceLine,
+            authoringStatus
           });
         }
 

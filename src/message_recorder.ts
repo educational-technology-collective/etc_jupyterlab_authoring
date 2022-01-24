@@ -5,10 +5,10 @@ import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import * as nbformat from '@jupyterlab/nbformat';
 import { EventMessage } from './types';
 import { AudioInputSelector, VideoInputSelector } from './av_input_selectors';
-import { StatusIndicator } from './status_indicator';
+import { AuthoringStatus } from './authoring_status';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { KeyBindings } from './key_bindings';
-import { MediaControls, AdvanceLineColorPicker, RecordVideoCheckbox, ExecuteOnLastLineAdvance } from './components';
+import { MediaControls, AdvanceLineColorPicker, RecordVideoCheckbox, ExecuteOnLastLineAdvance, PositionAdvanceLine } from './components';
 import { Signal } from '@lumino/signaling';
 
 export class MessageRecorder {
@@ -28,13 +28,14 @@ export class MessageRecorder {
     private _mediaRecorder: MediaRecorder;
     private _eventMessages: Array<EventMessage> = [];
     private _lastTimestamp: number;
-    private _statusIndicator: StatusIndicator;
+    private _authoringStatus: AuthoringStatus;
     private _audioInputSelector: AudioInputSelector;
     private _videoInputSelector: VideoInputSelector;
     private _keyBindings: KeyBindings;
     private _advanceLineColor: string;
     private _recordVideoCheckbox: RecordVideoCheckbox;
     private _executeOnLastLineAdvance: ExecuteOnLastLineAdvance;
+    private _positionAdvanceLine: PositionAdvanceLine;
 
     constructor({
         app,
@@ -47,7 +48,8 @@ export class MessageRecorder {
         advanceLineColorPicker,
         recordVideoCheckbox,
         executeOnLastLineAdvance,
-        statusIndicator
+        positionAdvanceLine,
+        authoringStatus
     }:
         {
             app: JupyterFrontEnd,
@@ -60,19 +62,21 @@ export class MessageRecorder {
             advanceLineColorPicker: AdvanceLineColorPicker,
             recordVideoCheckbox: RecordVideoCheckbox,
             executeOnLastLineAdvance: ExecuteOnLastLineAdvance,
-            statusIndicator: StatusIndicator
+            positionAdvanceLine: PositionAdvanceLine,
+            authoringStatus: AuthoringStatus
         }) {
 
         this._app = app;
         this._notebookPanel = notebookPanel;
         this._cellIndex = null;
-        this._statusIndicator = statusIndicator;
+        this._authoringStatus = authoringStatus;
         this._audioInputSelector = audioInputSelector;
         this._videoInputSelector = videoInputSelector;
         this._keyBindings = keyBindings;
         this._advanceLineColor = advanceLineColorPicker.color;
         this._recordVideoCheckbox = recordVideoCheckbox;
         this._executeOnLastLineAdvance = executeOnLastLineAdvance;
+        this._positionAdvanceLine = positionAdvanceLine;
 
         keyBindings.keyPressed.connect(this.processCommand, this);
         mediaControls.buttonPressed.connect(this.processCommand, this);
@@ -142,7 +146,9 @@ export class MessageRecorder {
 
             this.isRecording = true;
 
-            this._statusIndicator.record(this._notebookPanel);
+            this._authoringStatus.setState(this._notebookPanel, 'record');
+
+            this._authoringStatus.setSeconds(this._notebookPanel, 0);
 
             this._eventMessages = [];
 
@@ -201,9 +207,15 @@ export class MessageRecorder {
 
                     let recordings: Array<Blob> = [];
 
+                    let seconds = 0;
+
                     this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
 
                         recordings.push(event.data);
+
+                        seconds = seconds + 1;
+
+                        this._authoringStatus.setSeconds(this._notebookPanel, seconds);
                     });
 
                     this._mediaRecorder.addEventListener('stop', () => {
@@ -228,7 +240,7 @@ export class MessageRecorder {
 
             this._mediaRecorder.addEventListener('start', r, { once: true });
 
-            this._mediaRecorder.start();
+            this._mediaRecorder.start(1000);
 
         });
     }
@@ -288,7 +300,7 @@ export class MessageRecorder {
             this._notebookPanel.content.widgets[0].editorWidget.editor.blur();
             this._notebookPanel.content.node.focus();
 
-            this._statusIndicator.stop(this._notebookPanel);
+            this._authoringStatus.setState(this._notebookPanel, 'stop');
         }
     }
 
@@ -490,9 +502,10 @@ export class MessageRecorder {
 
             wrapper.style.backgroundColor = this._advanceLineColor;
 
-            let scrollTo = this._cell.node.offsetTop + wrapper.offsetTop - this._notebookPanel.content.node.offsetHeight * (2/3);
-
+            let scrollTo = this._cell.node.offsetTop + wrapper.offsetTop - this._notebookPanel.content.node.offsetHeight * (this._positionAdvanceLine.value / 100);
+            
             this._notebookPanel.content.node.scrollTop = scrollTo;
+            //  We want to position the advance line for the user; hence, scroll to specified position of the Notebook window.
         }
     }
 

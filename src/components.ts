@@ -19,6 +19,76 @@ import { NotebookPanel } from "@jupyterlab/notebook";
 import { VideoInputSelector } from "./av_input_selectors";
 
 
+export class PositionAdvanceLine {
+
+    public widget: Widget;
+
+    private _inputChanged: Signal<PositionAdvanceLine, number> = new Signal(this);
+    private _input: HTMLInputElement;
+
+    constructor() {
+
+        this.widget = new Widget();
+
+        this.widget.addClass('jp-PositionAdvanceLine');
+
+        this.widget.addClass('component');
+
+        this._input = document.createElement('input');
+
+        this._input.setAttribute('type', 'text');
+
+        this._input.setAttribute('name', 'pal');
+
+        this._input.setAttribute('value', '66');
+
+        this._input.classList.add('jp-mod-styled');
+
+        let label = document.createElement('label');
+
+        label.setAttribute('for', 'pal');
+
+        label.innerHTML = '% Position advance line.';
+
+        this.widget.node.appendChild(this._input);
+
+        this.widget.node.appendChild(label);
+
+        this._input.addEventListener('change', this);
+    }
+
+    public handleEvent(event: Event) {
+
+        let number = parseFloat(this._input.value)
+
+        if (number) {
+
+            this._inputChanged.emit(number);
+
+            console.log(number);
+        }
+    }
+
+    get value(): number {
+
+        let number = parseFloat(this._input.value)
+
+        if (number) {
+
+            return number;
+        }
+        else {
+            return parseFloat(this._input.defaultValue);
+        }
+    }
+
+    get inputChanged(): ISignal<PositionAdvanceLine, number> {
+
+        return this._inputChanged;
+    }
+}
+
+
 export class ExecuteOnLastLineAdvance {
 
     public widget: Widget;
@@ -30,6 +100,8 @@ export class ExecuteOnLastLineAdvance {
         this.widget = new Widget();
 
         this.widget.addClass('jp-ExecuteOnLastLineAdvance');
+
+        this.widget.addClass('component');
 
         let input = document.createElement('input');
 
@@ -83,6 +155,8 @@ export class RecordVideoCheckbox {
         this.widget = new Widget();
 
         this.widget.addClass('jp-RecordVideoCheckbox');
+
+        this.widget.addClass('component');
 
         let input = document.createElement('input');
 
@@ -146,6 +220,8 @@ export class SaveDisplayRecordingCheckbox {
 
         this.widget.addClass('jp-SaveDisplayRecordingCheckbox');
 
+        this.widget.addClass('component');
+
         let input = document.createElement('input');
 
         input.setAttribute('type', 'checkbox');
@@ -193,6 +269,8 @@ export class ScrollCheckbox {
         this.widget = new Widget();
 
         this.widget.addClass('jp-ScrollCheckBox');
+
+        this.widget.addClass('component');
 
         let input = document.createElement('input');
 
@@ -242,6 +320,8 @@ export class ShowMediaControlsCheckbox {
 
         this.widget.addClass('jp-ShowMediaControlsCheckbox');
 
+        this.widget.addClass('component');
+
         let input = document.createElement('input');
 
         input.setAttribute('type', 'checkbox');
@@ -289,6 +369,8 @@ export class ExecutionCheckbox {
         this.widget = new Widget();
 
         this.widget.addClass('jp-ExecutionCheckBox');
+
+        this.widget.addClass('component');
 
         let input = document.createElement('input');
 
@@ -564,6 +646,8 @@ export class AdvanceLineColorPicker {
         this.widget = new Widget();
 
         this.widget.addClass('jp-AdvanceLineColorPicker');
+
+        this.widget.addClass('component');
 
         let input = document.createElement('input');
 

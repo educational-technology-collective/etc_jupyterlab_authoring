@@ -1,27 +1,21 @@
-.jp-ExecutionCheckBox, 
-.jp-ScrollCheckBox, 
-.jp-AudioSelector, 
-.jp-VideoSelector, 
-.jp-SaveDisplayRecordingCheckbox,
-.jp-ShowMediaControlsCheckbox,
-.jp-AdvanceLineColorPicker,
-.jp-RecordVideoCheckbox,
-.jp-ExecuteOnLastLineAdvance {
+.jp-AuthoringPanel .component {
   font-size: var(--jp-ui-font-size1) !important;
-  padding: 12px 12px 0 12px;
+  padding: 2px 0px 0px 6px;
 }
 
-.jp-ExecutionCheckBox input, 
-.jp-ScrollCheckBox input, 
-.jp-SaveDisplayRecordingCheckbox input,
-.jp-ShowMediaControlsCheckbox input 
-.jp-AdvanceLineColorPicker input
-.jp-RecordVideoCheckbox input,
-.jp-ExecuteOnLastLineAdvance input {
-  vertical-align: bottom;
+.jp-AuthoringPanel .component label{
+  vertical-align: middle;
 }
 
-.jp-AdvanceLineColorPicker label {
+.jp-AuthoringPanel .component input{
+  vertical-align: middle;
+}
+
+.jp-PositionAdvanceLine input {
+  width: 3em;
+}
+
+.jp-AuthoringPanel label {
   padding-left: .25em;
 }
 
@@ -83,3 +77,19 @@
   background: var(--jp-layout-color1);
 }
 
+.jp-AuhtoringStatus {
+  display: flex;
+  flex-direction: row;
+  border-radius: 5px;
+  border: 1px solid white;
+}
+
+.jp-AuhtoringStatus > div {
+  height: 22px;
+  line-height: 22px;
+  padding: 0 1em 0 1em;
+}
+
+.jp-AuhtoringStatus > div:first-child {
+  padding: 0 0 0 1em;
+}
