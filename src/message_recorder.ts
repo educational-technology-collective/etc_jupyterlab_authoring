@@ -424,13 +424,12 @@ export class MessageRecorder {
     private advanceCursor() {
 
         if (this._editor) {
+            //  The background color needs to advance with the cursor; hence, remove the background color from the current line before advancing.
 
-            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement);
+            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement).parentElement;
 
             wrapper.style.backgroundColor = null;
         }
-
-        // this._editor?.removeLineClass(this._lineIndex, 'wrap', 'active-line');
 
         if (this._cellIndex === null) {
 
@@ -484,13 +483,16 @@ export class MessageRecorder {
             this._lineIndex = null;
         }
 
-        // this._editor?.addLineClass(this._lineIndex, 'wrap', 'active-line');
-
         if (this._editor) {
 
-            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement);
+            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement).parentElement;
+            //  The new line has been set; hence, set the background color.
 
             wrapper.style.backgroundColor = this._advanceLineColor;
+
+            let scrollTo = this._cell.node.offsetTop + wrapper.offsetTop - this._notebookPanel.content.node.offsetHeight * (2/3);
+
+            this._notebookPanel.content.node.scrollTop = scrollTo;
         }
     }
 
