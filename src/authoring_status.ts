@@ -46,7 +46,15 @@ export class AuthoringStatus {
         }
     }
 
-    public setSeconds(notebookPanel: NotebookPanel, value: number) {
+    public disableTime() {
+        this.secondsWidget.hide();
+    }
+
+    public enableTime() {
+        this.secondsWidget.show();
+    }
+
+    public setTime(notebookPanel: NotebookPanel, value: number) {
 
         this.secondsMap.set(notebookPanel, value);
 
@@ -64,13 +72,21 @@ export class AuthoringStatus {
 
         if (this.currentNotebookPanel.isVisible) {
 
+            if(this.currentNotebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
-            if (!this.secondsMap.has(this.currentNotebookPanel)) {
-
-                this.secondsMap.set(this.currentNotebookPanel, 0);
+                this.disableTime();
             }
+            else {
 
-            this.secondsWidget.node.innerHTML = `${this.secondsMap.get(this.currentNotebookPanel)} seconds`;
+                this.enableTime();
+
+                if (!this.secondsMap.has(this.currentNotebookPanel)) {
+
+                    this.secondsMap.set(this.currentNotebookPanel, 0);
+                }
+    
+                this.secondsWidget.node.innerHTML = `${this.secondsMap.get(this.currentNotebookPanel)} seconds`;
+            }
         }
     }
 
@@ -121,3 +137,4 @@ export class AuthoringStatus {
         }
     }
 }
+

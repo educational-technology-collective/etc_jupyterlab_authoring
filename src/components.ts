@@ -18,6 +18,72 @@ import { ISignal, Signal } from "@lumino/signaling";
 import { NotebookPanel } from "@jupyterlab/notebook";
 import { VideoInputSelector } from "./av_input_selectors";
 
+export class PositionPlaybackCell {
+
+    public widget: Widget;
+
+    private _inputChanged: Signal<PositionPlaybackCell, number> = new Signal(this);
+    private _input: HTMLInputElement;
+
+    constructor() {
+
+        this.widget = new Widget();
+
+        this.widget.addClass('jp-PositionPlaybackCell');
+
+        this.widget.addClass('component');
+
+        this._input = document.createElement('input');
+
+        this._input.setAttribute('type', 'text');
+
+        this._input.setAttribute('name', 'pal');
+
+        this._input.setAttribute('value', '80');
+
+        this._input.classList.add('jp-mod-styled');
+
+        let label = document.createElement('label');
+
+        label.setAttribute('for', 'pal');
+
+        label.innerHTML = '% Position scroll to cell.';
+
+        this.widget.node.appendChild(this._input);
+
+        this.widget.node.appendChild(label);
+
+        this._input.addEventListener('change', this);
+    }
+
+    public handleEvent(event: Event) {
+
+        let number = parseFloat(this._input.value)
+
+        if (number) {
+
+            this._inputChanged.emit(number);
+        }
+    }
+
+    get value(): number {
+
+        let number = parseFloat(this._input.value)
+
+        if (number) {
+
+            return number;
+        }
+        else {
+            return parseFloat(this._input.defaultValue);
+        }
+    }
+
+    get inputChanged(): ISignal<PositionPlaybackCell, number> {
+
+        return this._inputChanged;
+    }
+}
 
 export class PositionAdvanceLine {
 
@@ -64,8 +130,6 @@ export class PositionAdvanceLine {
         if (number) {
 
             this._inputChanged.emit(number);
-
-            console.log(number);
         }
     }
 
@@ -308,6 +372,54 @@ export class ScrollCheckbox {
     }
 }
 
+export class ShowToolbarStatusCheckbox {
+
+    public widget: Widget;
+
+    private _checkboxChanged: Signal<ShowToolbarStatusCheckbox, boolean> = new Signal(this);
+
+    constructor() {
+
+        this.widget = new Widget();
+
+        this.widget.addClass('jp-ShowToolbarStatusCheckbox');
+
+        this.widget.addClass('component');
+
+        let input = document.createElement('input');
+
+        input.setAttribute('type', 'checkbox');
+
+        input.classList.add('jp-mod-styled');
+
+        input.setAttribute('checked', 'true');
+
+        let label = document.createElement('label');
+
+        label.innerHTML = 'Show status in toolbar.';
+
+        this.widget.node.appendChild(input);
+
+        this.widget.node.appendChild(label);
+
+        input.addEventListener('click', this);
+    }
+
+    public handleEvent(event: Event) {
+
+        this._checkboxChanged.emit((event.target as HTMLInputElement).checked)
+    }
+
+    get checked(): boolean {
+
+        return this.widget.node.querySelector('input').checked
+    }
+
+    get checkboxChanged(): ISignal<ShowToolbarStatusCheckbox, boolean> {
+        return this._checkboxChanged;
+    }
+}
+
 export class ShowMediaControlsCheckbox {
 
     public widget: Widget;
@@ -326,13 +438,11 @@ export class ShowMediaControlsCheckbox {
 
         input.setAttribute('type', 'checkbox');
 
-        input.setAttribute('name', 'execution');
-
         input.classList.add('jp-mod-styled');
 
-        let label = document.createElement('label');
+        input.setAttribute('checked', 'true');
 
-        label.setAttribute('for', 'execution');
+        let label = document.createElement('label');
 
         label.innerHTML = 'Show media controls in toolbar.';
 
@@ -438,7 +548,6 @@ export class AudioInputSelectorContainer {
     }
 }
 
-
 export class VideoInputSelectorContainer {
 
     public widget: Widget;
@@ -519,7 +628,6 @@ export class PlayerPanel extends Panel {
         this.addClass('jp-PlayerPanel');
 
         this.title.label = "Playback Tools";
-
     }
 }
 
@@ -679,5 +787,65 @@ export class AdvanceLineColorPicker {
     get colorChanged(): ISignal<AdvanceLineColorPicker, string> {
 
         return this._colorChanged;
+    }
+}
+
+export class AuthoringToolbarStatus {
+
+    public panel: Panel;
+    private content: HTMLElement;
+
+    constructor({
+        showToolbarStatusCheckbox
+    }: {
+        showToolbarStatusCheckbox: ShowToolbarStatusCheckbox
+    }) {
+
+        this.panel = new Panel();
+
+        this.panel.addClass('jp-AuthoringToolbarStatus');
+
+        let leftSpan = document.createElement('span');
+        leftSpan.classList.add('left');
+        leftSpan.innerHTML = '['
+
+        let rightSpan = document.createElement('span');
+        rightSpan.classList.add('right');
+        rightSpan.innerHTML = ']'
+
+        this.content = document.createElement('span');
+        this.content.classList.add('content');
+
+        this.panel.node.appendChild(leftSpan);
+        this.panel.node.appendChild(this.content);
+        this.panel.node.appendChild(rightSpan);
+
+        this.reset();
+
+        showToolbarStatusCheckbox.checkboxChanged.connect(this.updatePanelVisbility, this);
+
+        this.updatePanelVisbility(showToolbarStatusCheckbox, showToolbarStatusCheckbox.checked)
+    }
+
+    private updatePanelVisbility(sender: ShowToolbarStatusCheckbox, checked: boolean) {
+
+        if (checked) {
+
+            this.panel.show();
+        }
+        else {
+
+            this.panel.hide();
+        }
+    }
+
+    public setStatus(status: string) {
+
+        this.content.innerHTML = status;
+    }
+
+    public reset() {
+        
+        this.content.innerHTML = '';
     }
 }

@@ -1,6 +1,6 @@
 .jp-AuthoringPanel .component {
   font-size: var(--jp-ui-font-size1) !important;
-  padding: 2px 0px 0px 6px;
+  padding: 0px 0px 0px 6px;
 }
 
 .jp-AuthoringPanel .component label{
@@ -12,7 +12,11 @@
 }
 
 .jp-PositionAdvanceLine input {
-  width: 3em;
+  width: 2.5em;
+}
+
+.jp-PositionPlaybackCell input {
+  width: 2.5em;
 }
 
 .jp-AuthoringPanel label {
@@ -80,16 +84,37 @@
 .jp-AuhtoringStatus {
   display: flex;
   flex-direction: row;
-  border-radius: 5px;
+  border-radius: 15px;
   border: 1px solid white;
 }
 
 .jp-AuhtoringStatus > div {
   height: 22px;
   line-height: 22px;
-  padding: 0 1em 0 1em;
+  padding: 0 .25em 0 .25em;
 }
 
-.jp-AuhtoringStatus > div:first-child {
-  padding: 0 0 0 1em;
+.jp-AuthoringToolbarStatus {
+  padding: 0 1em 0 1em !important;
+  overflow: hidden;
+  max-width: 30em;
+}
+
+.jp-AuthoringToolbarStatus span {
+  line-height: 24px !important;
+  font-weight: bold;
+}
+
+.jp-AuthoringToolbarStatus span.left {
+  font-size: larger;
+  padding: 0 .5em 0 0;
+}
+
+.jp-AuthoringToolbarStatus span.right {
+  font-size: larger;
+  padding: 0 0 0 .5em;
+}
+
+.jp-AuthoringToolbarStatus span.content {
+  font-size: 12px;
 }

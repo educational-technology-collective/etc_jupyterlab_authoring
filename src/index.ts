@@ -24,7 +24,10 @@ import {
   AdvanceLineColorPicker,
   RecordVideoCheckbox,
   ExecuteOnLastLineAdvance,
-  PositionAdvanceLine
+  PositionAdvanceLine,
+  AuthoringToolbarStatus,
+  PositionPlaybackCell,
+  ShowToolbarStatusCheckbox
 } from './components';
 
 import {
@@ -67,8 +70,6 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
-    // app.commands.commandExecuted.connect((sender: any, args: any) => { console.log(args) });
-
     let keyBindings = new KeyBindings({ commandRegistry: app.commands, settings: settings });
 
     let generalPanel = new GeneralPanel();
@@ -91,11 +92,14 @@ const extension: JupyterFrontEndPlugin<void> = {
     let scrollCheckbox = new ScrollCheckbox();
     let saveDisplayRecordingCheckbox = new SaveDisplayRecordingCheckbox();
     let showMediaControlsCheckbox = new ShowMediaControlsCheckbox();
+    let showToolbarStatusCheckbox = new ShowToolbarStatusCheckbox();
     let advanceLineColorPicker = new AdvanceLineColorPicker();
     let executeOnLastLineAdvance = new ExecuteOnLastLineAdvance();
     let positionAdvanceLine = new PositionAdvanceLine();
+    let positionPlaybackCell = new PositionPlaybackCell();
 
     generalPanel.addWidget(showMediaControlsCheckbox.widget);
+    generalPanel.addWidget(showToolbarStatusCheckbox.widget);
     generalPanel.addWidget(recordVideoCheckbox.widget);
 
     recorderPanel.addWidget(audioInputSelectorContainer.widget);
@@ -106,7 +110,9 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     playerPanel.addWidget(executionCheckbox.widget);
     playerPanel.addWidget(scrollCheckbox.widget);
+    playerPanel.addWidget(positionPlaybackCell.widget);
     playerPanel.addWidget(saveDisplayRecordingCheckbox.widget);
+    
 
     labShell.add(authoringPanel, 'right');
 
@@ -118,8 +124,12 @@ const extension: JupyterFrontEndPlugin<void> = {
       rank: -100
     });
 
-    notebookTracker.currentChanged.connect((sender: INotebookTracker, value: NotebookPanel) => {
-      authoringStatus.updateCurrentNotebookPanel(value);
+    notebookTracker.currentChanged.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
+
+      await notebookPanel.revealed;
+      await notebookPanel.sessionContext.ready;
+
+      authoringStatus.updateCurrentNotebookPanel(notebookPanel);
     });
     //  There is one status indicator for all Notebooks; hence notify the status indicator whenever the user changes Notebooks.
 
@@ -129,6 +139,8 @@ const extension: JupyterFrontEndPlugin<void> = {
 
         await notebookPanel.revealed;
         await notebookPanel.sessionContext.ready;
+
+        let authoringToolbarStatus = new AuthoringToolbarStatus({ showToolbarStatusCheckbox });
 
         let mediaControls = new MediaControls({ notebookPanel, settings, showMediaControlsCheckbox });
 
@@ -141,7 +153,9 @@ const extension: JupyterFrontEndPlugin<void> = {
             saveDisplayRecordingCheckbox,
             executionCheckbox,
             scrollCheckbox,
-            authoringStatus
+            positionPlaybackCell,
+            authoringStatus,
+            authoringToolbarStatus
           });
         }
         else {
@@ -158,9 +172,16 @@ const extension: JupyterFrontEndPlugin<void> = {
             recordVideoCheckbox,
             executeOnLastLineAdvance,
             positionAdvanceLine,
-            authoringStatus
+            authoringStatus,
+            authoringToolbarStatus
           });
         }
+
+        notebookPanel.toolbar.insertAfter(
+          'cellType',
+          `${PLUGIN_ID}:authoring_toolbar_status`,
+          authoringToolbarStatus.panel
+        );
 
         notebookPanel.toolbar.insertAfter(
           'cellType',

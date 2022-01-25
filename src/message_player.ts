@@ -9,7 +9,7 @@ import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { AuthoringStatus } from './authoring_status';
 import { KeyBindings } from './key_bindings';
-import { ExecutionCheckbox, MediaControls, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
+import { AuthoringToolbarStatus, ExecutionCheckbox, MediaControls, PositionPlaybackCell, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
 import { Signal } from '@lumino/signaling';
 
 export class MessagePlayer {
@@ -29,12 +29,14 @@ export class MessagePlayer {
   private _mediaPlayer: MediaPlayer;
   private _mediaPlaybackEnded: Promise<Event>;
   private _authoringStatus: AuthoringStatus;
+  private _authoringToolbarStatus: AuthoringToolbarStatus;
   private _mediaRecorder: MediaRecorder;
   private _displayRecording: Promise<Blob>;
   private _charIndex: number;
   private _messageIndex: number;
   private _eventTarget: EventTarget;
   private _player: Promise<void>;
+  private _positionPlaybackCellPercent: number;
 
   constructor({
     notebookPanel,
@@ -43,15 +45,19 @@ export class MessagePlayer {
     saveDisplayRecordingCheckbox,
     executionCheckbox,
     scrollCheckbox,
-    authoringStatus
+    positionPlaybackCell,
+    authoringStatus,
+    authoringToolbarStatus
   }: {
     notebookPanel: NotebookPanel,
     mediaControls: MediaControls,
     keyBindings: KeyBindings,
-    authoringStatus: AuthoringStatus,
+    saveDisplayRecordingCheckbox: SaveDisplayRecordingCheckbox,
     executionCheckbox: ExecutionCheckbox,
     scrollCheckbox: ScrollCheckbox,
-    saveDisplayRecordingCheckbox: SaveDisplayRecordingCheckbox
+    positionPlaybackCell: PositionPlaybackCell,
+    authoringStatus: AuthoringStatus,
+    authoringToolbarStatus: AuthoringToolbarStatus
   }) {
 
     this._eventTarget = new EventTarget();
@@ -59,6 +65,7 @@ export class MessagePlayer {
     this._notebookPanel = notebookPanel;
     this._notebook = notebookPanel.content;
     this._authoringStatus = authoringStatus;
+    this._authoringToolbarStatus = authoringToolbarStatus;
 
     notebookPanel.disposed.connect(this.dispose, this);
 
@@ -70,6 +77,9 @@ export class MessagePlayer {
 
     scrollCheckbox.checkboxChanged.connect((sender: ScrollCheckbox, checked: boolean) => this.scrollToCellEnabled = checked, this);
     this.scrollToCellEnabled = scrollCheckbox.checked;
+
+    positionPlaybackCell.inputChanged.connect((sender: PositionPlaybackCell, value: number) => this._positionPlaybackCellPercent = value);
+    this._positionPlaybackCellPercent = positionPlaybackCell.value;
 
     keyBindings.keyPressed.connect(this.processCommand, this);
     mediaControls.buttonPressed.connect(this.processCommand, this);
@@ -170,6 +180,8 @@ export class MessagePlayer {
 
     if (this.isPlaying && !this.isPaused) {
 
+      this._authoringToolbarStatus.setStatus('Pausing...');
+
       this.isPaused = true;
 
       await new Promise((r, j) => {
@@ -195,12 +207,16 @@ export class MessagePlayer {
       }
 
       this._authoringStatus.setState(this._notebookPanel, 'pause');
+
+      this._authoringToolbarStatus.setStatus('Paused.');
     }
   }
 
   public async stop() {
 
     if (this.isPlaying) {
+
+      this._authoringToolbarStatus.setStatus('Stopping...');
 
       this.isPlaying = false;
 
@@ -211,8 +227,6 @@ export class MessagePlayer {
         this._eventTarget.dispatchEvent(new Event('stop'));
       }
       else if (this._mediaPlayer) {
-
-        this._authoringStatus.setSeconds(this._notebookPanel, 0);
 
         //  The audio player of the message player is not already paused; hence, pause the audio player.
         await new Promise<Event>((r, j) => {
@@ -235,6 +249,8 @@ export class MessagePlayer {
       }
 
       this._authoringStatus.setState(this._notebookPanel, 'stop');
+
+      this._authoringToolbarStatus.setStatus('Stopped.');
     }
   }
 
@@ -245,6 +261,8 @@ export class MessagePlayer {
       this._notebookPanel.content.model.fromJSON(this._contentModel);
 
       this._notebookPanel.content.model.initialize();
+
+      this._authoringToolbarStatus.reset();
     }
   }
 
@@ -252,9 +270,13 @@ export class MessagePlayer {
 
     if (!this.isPaused && !this.isPlaying) {
 
+      this._authoringToolbarStatus.setStatus('Starting Playback...');
+
       this._notebook.node.focus();
 
       await (this._player = this.playMessages());
+
+      this._authoringToolbarStatus.setStatus('Playback Stopped.');
     }
     else if (this.isPaused) {
 
@@ -291,6 +313,8 @@ export class MessagePlayer {
     //  This method handles the case where the mediaRecording isn't available; hence, call it without checking.
 
     this._authoringStatus.setState(this._notebookPanel, 'play');
+
+    this._authoringToolbarStatus.setStatus('Playing...');
 
     let startTimestamp = this.eventMessages[0].start_timestamp;
 
@@ -388,9 +412,12 @@ export class MessagePlayer {
 
               this._editor.doc.replaceRange(message.input[this._charIndex], pos);
 
-              if (this.scrollToCellEnabled) {
+              if (
+                this.scrollToCellEnabled &&
+                (cell.node.offsetTop + cell.node.offsetHeight) > (this._notebook.node.scrollTop + this._notebook.node.offsetHeight)
+              ) {
 
-                let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight;
+                let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight * (this._positionPlaybackCellPercent /100);
 
                 this._notebook.node.scrollTop = scrollTo;
               }
@@ -398,8 +425,6 @@ export class MessagePlayer {
               cell.update();
 
               if (this._mediaPlayer) {
-
-                this._authoringStatus.setSeconds(this._notebookPanel, Math.round(this._mediaPlayer.mediaElement.currentTime));
 
                 let dt = duration - (this._mediaPlayer.mediaElement.currentTime * 1000 - targetTime);
 
@@ -468,9 +493,12 @@ export class MessagePlayer {
           }
         }
 
-        if (this.scrollToCellEnabled) {
+        if (
+          this.scrollToCellEnabled &&
+          (cell.node.offsetTop + cell.node.offsetHeight) > (this._notebook.node.scrollTop + this._notebook.node.offsetHeight)
+        ) {
 
-          let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight;
+          let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight * (this._positionPlaybackCellPercent / 100);
 
           this._notebook.node.scrollTop = scrollTo;
         }
@@ -601,7 +629,6 @@ export class MessagePlayer {
 
       await mediaPlayer.mediaElement.play();
 
-      this._authoringStatus.setSeconds(this._notebookPanel, 0);
     }
     else {
 
@@ -648,8 +675,6 @@ export class MessagePlayer {
   }
 }
 
-
-
 export class MediaPlayer {
 
   private _videoElement: HTMLVideoElement;
@@ -657,24 +682,24 @@ export class MediaPlayer {
 
   constructor({ notebookPanel, blob }: { notebookPanel: NotebookPanel, blob: Blob }) {
 
-      this._notebookPanel = notebookPanel;
+    this._notebookPanel = notebookPanel;
 
-      let videoElement = this._videoElement = document.createElement('video');
+    let videoElement = this._videoElement = document.createElement('video');
 
-      this._videoElement.src = URL.createObjectURL(blob);
+    this._videoElement.src = URL.createObjectURL(blob);
 
-      videoElement.style.border = '5px solid white';
-      videoElement.style.position = 'absolute';
-      videoElement.style.right = '0px';
-      videoElement.style.top = '0px';
-      videoElement.style.width = '300px';
-      videoElement.style.zIndex = '9999';
-      videoElement.style.backgroundColor = 'black';
-      videoElement.style.opacity = '0';
+    videoElement.style.border = '5px solid white';
+    videoElement.style.position = 'absolute';
+    videoElement.style.right = '0px';
+    videoElement.style.top = '0px';
+    videoElement.style.width = '300px';
+    videoElement.style.zIndex = '9999';
+    videoElement.style.backgroundColor = 'black';
+    videoElement.style.opacity = '0';
   }
 
   get mediaElement(): HTMLVideoElement {
 
-      return this._videoElement;
+    return this._videoElement;
   }
 }

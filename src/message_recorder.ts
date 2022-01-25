@@ -8,7 +8,7 @@ import { AudioInputSelector, VideoInputSelector } from './av_input_selectors';
 import { AuthoringStatus } from './authoring_status';
 import { JupyterFrontEnd } from '@jupyterlab/application';
 import { KeyBindings } from './key_bindings';
-import { MediaControls, AdvanceLineColorPicker, RecordVideoCheckbox, ExecuteOnLastLineAdvance, PositionAdvanceLine } from './components';
+import { MediaControls, AdvanceLineColorPicker, RecordVideoCheckbox, ExecuteOnLastLineAdvance, PositionAdvanceLine, AuthoringToolbarStatus } from './components';
 import { Signal } from '@lumino/signaling';
 
 export class MessageRecorder {
@@ -36,6 +36,7 @@ export class MessageRecorder {
     private _recordVideoCheckbox: RecordVideoCheckbox;
     private _executeOnLastLineAdvance: ExecuteOnLastLineAdvance;
     private _positionAdvanceLine: PositionAdvanceLine;
+    private _authoringToolbarStatus: AuthoringToolbarStatus;
 
     constructor({
         app,
@@ -49,7 +50,8 @@ export class MessageRecorder {
         recordVideoCheckbox,
         executeOnLastLineAdvance,
         positionAdvanceLine,
-        authoringStatus
+        authoringStatus,
+        authoringToolbarStatus
     }:
         {
             app: JupyterFrontEnd,
@@ -63,7 +65,8 @@ export class MessageRecorder {
             recordVideoCheckbox: RecordVideoCheckbox,
             executeOnLastLineAdvance: ExecuteOnLastLineAdvance,
             positionAdvanceLine: PositionAdvanceLine,
-            authoringStatus: AuthoringStatus
+            authoringStatus: AuthoringStatus,
+            authoringToolbarStatus: AuthoringToolbarStatus
         }) {
 
         this._app = app;
@@ -77,6 +80,7 @@ export class MessageRecorder {
         this._recordVideoCheckbox = recordVideoCheckbox;
         this._executeOnLastLineAdvance = executeOnLastLineAdvance;
         this._positionAdvanceLine = positionAdvanceLine;
+        this._authoringToolbarStatus = authoringToolbarStatus;
 
         keyBindings.keyPressed.connect(this.processCommand, this);
         mediaControls.buttonPressed.connect(this.processCommand, this);
@@ -142,13 +146,17 @@ export class MessageRecorder {
 
             this._keyBindings.attachAdvanceKeyBinding();
 
+            this._authoringToolbarStatus.setStatus('Awaiting Media Recorder...');
+
             await this.startMediaRecorder();
+
+            this._authoringToolbarStatus.setStatus('Recording...');
 
             this.isRecording = true;
 
             this._authoringStatus.setState(this._notebookPanel, 'record');
-
-            this._authoringStatus.setSeconds(this._notebookPanel, 0);
+            
+            this._authoringStatus.setTime(this._notebookPanel, 0);
 
             this._eventMessages = [];
 
@@ -215,7 +223,7 @@ export class MessageRecorder {
 
                         seconds = seconds + 1;
 
-                        this._authoringStatus.setSeconds(this._notebookPanel, seconds);
+                        this._authoringStatus.setTime(this._notebookPanel, seconds);
                     });
 
                     this._mediaRecorder.addEventListener('stop', () => {
@@ -248,6 +256,8 @@ export class MessageRecorder {
     public async stop() {
 
         if (this.isRecording) {
+
+            this._authoringToolbarStatus.setStatus('Stopping...');
 
             this._keyBindings.detachAdvanceKeyBinding();
 
@@ -301,12 +311,16 @@ export class MessageRecorder {
             this._notebookPanel.content.node.focus();
 
             this._authoringStatus.setState(this._notebookPanel, 'stop');
+
+            this._authoringToolbarStatus.setStatus('Stopped.');
         }
     }
 
     public async save() {
 
         if (!this.isRecording) {
+
+            this._authoringToolbarStatus.setStatus('Saving...');
 
             let fileReader = new FileReader();
 
@@ -340,6 +354,8 @@ export class MessageRecorder {
             await notebookPanel.context.rename(name);
 
             await notebookPanel.context.saveAs();
+
+            this._authoringToolbarStatus.setStatus('Saved.');
         }
     }
 
