@@ -417,7 +417,7 @@ export class MessagePlayer {
                 (cell.node.offsetTop + cell.node.offsetHeight) > (this._notebook.node.scrollTop + this._notebook.node.offsetHeight)
               ) {
 
-                let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight * (this._positionPlaybackCellPercent /100);
+                let scrollTo = cell.node.offsetTop + cell.node.offsetHeight - this._notebook.node.offsetHeight * (this._positionPlaybackCellPercent / 100);
 
                 this._notebook.node.scrollTop = scrollTo;
               }

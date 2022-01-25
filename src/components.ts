@@ -344,6 +344,8 @@ export class ScrollCheckbox {
 
         input.classList.add('jp-mod-styled');
 
+        input.setAttribute('checked', 'true');
+
         let label = document.createElement('label');
 
         label.setAttribute('for', 'scroll');
