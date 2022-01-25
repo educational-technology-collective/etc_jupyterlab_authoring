@@ -454,7 +454,7 @@ export class MessageRecorder {
         if (this._editor) {
             //  The background color needs to advance with the cursor; hence, remove the background color from the current line before advancing.
 
-            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement).parentElement;
+            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement);
 
             wrapper.style.backgroundColor = null;
         }
@@ -513,13 +513,15 @@ export class MessageRecorder {
 
         if (this._editor) {
 
-            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement).parentElement;
+            let wrapper = (this._editor?.getWrapperElement().querySelectorAll('.CodeMirror-line')[this._lineIndex] as HTMLElement);
             //  The new line has been set; hence, set the background color.
-
+            
             wrapper.style.backgroundColor = this._advanceLineColor;
 
-            let scrollTo = this._cell.node.offsetTop + wrapper.offsetTop - this._notebookPanel.content.node.offsetHeight * (this._positionAdvanceLine.value / 100);
+            // let scrollTo = this._cell.node.offsetTop + wrapper.offsetTop - this._notebookPanel.content.node.offsetHeight * (this._positionAdvanceLine.value / 100);
             
+            let scrollTo = this._cell.node.offsetTop - this._notebookPanel.content.node.offsetHeight * (this._positionAdvanceLine.value / 100);
+
             this._notebookPanel.content.node.scrollTop = scrollTo;
             //  We want to position the advance line for the user; hence, scroll to specified position of the Notebook window.
         }
