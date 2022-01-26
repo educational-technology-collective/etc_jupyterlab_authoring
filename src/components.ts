@@ -175,6 +175,8 @@ export class ExecuteOnLastLineAdvance {
 
         input.classList.add('jp-mod-styled');
 
+        input.setAttribute('checked', 'true');
+
         let label = document.createElement('label');
 
         label.setAttribute('for', 'save');
