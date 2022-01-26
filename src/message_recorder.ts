@@ -165,7 +165,7 @@ export class MessageRecorder {
                 notebook_id: this._notebookPanel.content.id
             });
 
-            this._notebookPanel.content.node.focus();
+            this._notebookPanel.content.widgets[0].editor.focus();
 
             if (this._editor) {
 

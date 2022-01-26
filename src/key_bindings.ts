@@ -73,42 +73,42 @@ export class KeyBindings {
             command: `${PLUGIN_ID}:reset`,
             args: { command: 'reset' },
             keys: [settings.get('reset').composite as string],
-            selector: '.jp-Notebook'
+            selector: '.jp-LabShell'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:record`,
             args: { command: 'record' },
             keys: [settings.get('record').composite as string],
-            selector: '.jp-Notebook'
+            selector: '.jp-LabShell'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:stop`,
             args: { command: 'stop' },
             keys: [settings.get('stop').composite as string],
-            selector: '.jp-Notebook'
+            selector: '.jp-LabShell'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:play`,
             args: { command: 'play' },
             keys: [settings.get('play').composite as string],
-            selector: '.jp-Notebook'
+            selector: '.jp-LabShell'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:pause`,
             args: { command: 'pause' },
             keys: [settings.get('pause').composite as string],
-            selector: '.jp-Notebook'
+            selector: '.jp-LabShell'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
             command: `${PLUGIN_ID}:save`,
             args: { command: 'save' },
             keys: [settings.get('save').composite as string],
-            selector: '.jp-Notebook'
+            selector: '.jp-LabShell'
         }));
     }
 
@@ -120,7 +120,7 @@ export class KeyBindings {
             command: `${PLUGIN_ID}:advance`,
             args: { command: 'advance' },
             keys: [this._settings.get('advance').composite as string],
-            selector: '.jp-Notebook'
+            selector: '.jp-LabShell'
         });
     }
 

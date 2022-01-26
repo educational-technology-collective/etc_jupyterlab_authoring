@@ -1,15 +1,15 @@
 {
   "name": "@educational-technology-collective/etc_jupyterlab_authoring",
-  "version": "0.1.18",
+  "version": "0.1.19",
   "description": "A JupyterLab extension.",
   "keywords": [
     "jupyter",
     "jupyterlab",
     "jupyterlab-extension"
   ],
-  "homepage": "git@github.com:educational-technology-collective/etc_jupyterlab_authoring.git",
+  "homepage": "https://github.com/educational-technology-collective/etc_jupyterlab_authoring.git",
   "bugs": {
-    "url": "git@github.com:educational-technology-collective/etc_jupyterlab_authoring.git/issues"
+    "url": "https://github.com/educational-technology-collective/etc_jupyterlab_authoring.git/issues"
   },
   "license": "BSD-3-Clause",
   "author": {
@@ -26,7 +26,7 @@
   "style": "style/index.css",
   "repository": {
     "type": "git",
-    "url": "git@github.com:educational-technology-collective/etc_jupyterlab_authoring.git"
+    "url": "https://github.com/educational-technology-collective/etc_jupyterlab_authoring.git"
   },
   "scripts": {
     "build": "jlpm run build:lib && jlpm run build:labextension:dev",
