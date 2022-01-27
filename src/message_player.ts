@@ -109,11 +109,13 @@ export class MessagePlayer {
         }
         catch (e) {
 
-          console.error(e);
-        }
+          console.error('The audio cannot be obtained from the metadata.');
 
-        return null;
+          this._mediaPlayer = null;
+        }
       })();
+
+      this.mediaRecording.catch(null)
     }
   }
 
@@ -147,6 +149,11 @@ export class MessagePlayer {
     }
     catch (e) {
 
+      if (e instanceof Error) {
+
+        console.error(e.message);
+      }
+
       console.error(e);
     }
   }
@@ -160,9 +167,9 @@ export class MessagePlayer {
         this._mediaRecorder.addEventListener('resume', r, { once: true });
 
         this._mediaRecorder.addEventListener('error', j, { once: true });
+      });
 
-        this._mediaRecorder.resume();
-      })
+      this._mediaRecorder.resume();
     }
 
     this.isPaused = false;
@@ -174,6 +181,8 @@ export class MessagePlayer {
     await this._mediaPlayer?.mediaElement.play();
 
     this._authoringStatus.setState(this._notebookPanel, 'play');
+
+    this._authoringToolbarStatus.setStatus('Playing...');
   }
 
   public async pause() {
@@ -552,6 +561,7 @@ export class MessagePlayer {
   private async startDisplayRecording() {
 
     this._mediaRecorder = new MediaRecorder(
+
       await (navigator.mediaDevices as any).getDisplayMedia(
         {
           video: {
@@ -569,34 +579,26 @@ export class MessagePlayer {
 
     await new Promise((r, j) => setTimeout(r, 5000));
 
-    (async () => {
+    this._displayRecording = new Promise<Blob>((r, j) => {
 
-      try {
+      let recordings: Array<Blob> = [];
 
-        await (this._displayRecording = new Promise<Blob>((r, j) => {
+      this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
 
-          let recordings: Array<Blob> = [];
+        recordings.push(event.data);
+      });
 
-          this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+      this._mediaRecorder.addEventListener('stop', () => {
 
-            recordings.push(event.data);
-          });
+        r(new Blob(recordings));
+      });
 
-          this._mediaRecorder.addEventListener('stop', () => {
+      this._mediaRecorder.addEventListener('error', j);
+    });
 
-            r(new Blob(recordings));
-          });
+    this._displayRecording.catch(null);
 
-          this._mediaRecorder.addEventListener('error', j);
-
-          this._mediaRecorder.start();
-        }));
-      }
-      catch (e) {
-
-        console.error(e);
-      }
-    })();
+    this._mediaRecorder.start();
   }
 
   private async startMediaPlayback() {
@@ -608,27 +610,16 @@ export class MessagePlayer {
         blob: await this.mediaRecording
       });
 
-      (async () => {
+      this._mediaPlaybackEnded = new Promise((r, j) => {
 
-        try {
+        mediaPlayer.mediaElement.addEventListener('ended', r, { once: true });
 
-          this._mediaPlaybackEnded = new Promise((r, j) => {
+        mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
+      });
 
-            mediaPlayer.mediaElement.addEventListener('ended', r, { once: true });
-
-            mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
-          });
-
-          await this._mediaPlaybackEnded;
-        }
-        catch (e) {
-
-          console.error(e);
-        }
-      })();
+      this._mediaPlaybackEnded.catch(null);
 
       await mediaPlayer.mediaElement.play();
-
     }
     else {
 

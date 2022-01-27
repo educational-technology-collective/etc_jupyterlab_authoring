@@ -121,6 +121,11 @@ export class MessageRecorder {
         }
         catch (e) {
 
+            if (e instanceof Error) {
+
+                console.error(e.message);
+            }
+
             console.error(e);
         }
     }
@@ -165,12 +170,11 @@ export class MessageRecorder {
                 notebook_id: this._notebookPanel.content.id
             });
 
-            this._notebookPanel.content.widgets[0].editor.focus();
+            this._notebookPanel.content.widgets[0].editorWidget.editor.focus()
 
-            if (this._editor) {
+            document.querySelectorAll('.CodeMirror-cursor').forEach((value: Node) => (value as HTMLElement).classList.add('etc-jupyterlab-authoring-no-cursor'));
 
-                this._editor.focus();
-            }
+            // (this._notebookPanel.content.widgets[0].editorWidget.editor as CodeMirrorEditor).editor.getWrapperElement().focus();
         }
     }
 
@@ -207,42 +211,33 @@ export class MessageRecorder {
             mimeType: mimeType
         });
 
-        (async () => {
+        this._audioRecording = new Promise((r, j) => {
 
-            try {
+            let recordings: Array<Blob> = [];
 
-                this._audioRecording = new Promise((r, j) => {
+            let seconds = 0;
 
-                    let recordings: Array<Blob> = [];
+            this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
 
-                    let seconds = 0;
+                recordings.push(event.data);
 
-                    this._mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+                seconds = seconds + 1;
 
-                        recordings.push(event.data);
+                this._authoringStatus.setTime(this._notebookPanel, seconds);
+            });
 
-                        seconds = seconds + 1;
+            this._mediaRecorder.addEventListener('stop', () => {
 
-                        this._authoringStatus.setTime(this._notebookPanel, seconds);
-                    });
+                r(new Blob(recordings, { 'type': mimeType }));
+            });
 
-                    this._mediaRecorder.addEventListener('stop', () => {
+            this._mediaRecorder.addEventListener('error', j);
+        });
 
-                        r(new Blob(recordings, { 'type': mimeType }));
-                    });
-
-                    this._mediaRecorder.addEventListener('error', j);
-                });
-
-                await this._audioRecording;
-            }
-            catch (e) {
-
-                console.error(e);
-            }
-        })();
+        this._audioRecording.catch(null);
 
         await new Promise((r, j) => setTimeout(r, 2000));
+        //  Sometimes there is a delay is getting the media stream hooked up to the MediaRecorder; hence, wait 2 seconds.
 
         await new Promise((r, j) => {
 
@@ -313,6 +308,8 @@ export class MessageRecorder {
             this._authoringStatus.setState(this._notebookPanel, 'stop');
 
             this._authoringToolbarStatus.setStatus('Stopped.');
+
+            document.querySelectorAll('.CodeMirror-cursor').forEach((value: Node) => (value as HTMLElement).classList.add('etc-jupyterlab-authoring-auto-cursor'));
         }
     }
 
@@ -522,12 +519,12 @@ export class MessageRecorder {
 
             for (node = lineElement; !node.parentElement.classList.contains('CodeMirror-code'); node = node.parentElement);
 
-            // console.log(this._cell.node.offsetTop, node.offsetTop, lineElement.parentElement.offsetTop, lineElement.offsetTop, this._notebookPanel.content.node.offsetHeight);
-
             let scrollTo = this._cell.node.offsetTop + node.offsetTop - this._notebookPanel.content.node.offsetHeight * (this._positionAdvanceLine.value / 100);
 
             this._notebookPanel.content.node.scrollTop = scrollTo;
             //  We want to position the advance line for the user; hence, scroll to specified position of the Notebook window.
+        
+            document.querySelectorAll('.CodeMirror-cursor').forEach((value: Node) => (value as HTMLElement).classList.add('etc-jupyterlab-authoring-no-cursor'));
         }
     }
 

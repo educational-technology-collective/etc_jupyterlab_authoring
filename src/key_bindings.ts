@@ -59,7 +59,7 @@ export class KeyBindings {
     public dispose() {
 
         Signal.disconnectAll(this);
-        
+
         this._keyBindingDisposables.forEach((value: IDisposable) => value.dispose());
     }
 
@@ -122,6 +122,8 @@ export class KeyBindings {
             keys: [this._settings.get('advance').composite as string],
             selector: '.jp-LabShell'
         });
+
+        // console.log(this._commandRegistry.keyBindings.filter((value) => value.keys.some((value) => value.match(/Arrow/i))));
     }
 
     public detachAdvanceKeyBinding() {
