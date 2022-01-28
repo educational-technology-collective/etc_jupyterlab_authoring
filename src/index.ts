@@ -10,6 +10,19 @@ import {
 } from "@jupyterlab/notebook";
 
 import {
+  FileBrowser,
+  FileUploadStatus,
+  FilterFileBrowserModel,
+  IFileBrowserFactory
+} from '@jupyterlab/filebrowser'
+
+import { each } from '@lumino/algorithm'
+
+import {
+  IDocumentManager
+} from '@jupyterlab/docmanager'
+
+import {
   VideoInputSelectorContainer,
   AudioInputSelectorContainer,
   AuthoringPanel,
@@ -42,6 +55,8 @@ import { AudioInputSelector, VideoInputSelector } from "./av_input_selectors";
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { KeyBindings } from "./key_bindings";
 import { Collapse } from '@jupyterlab/apputils';
+import { CommandRegistry } from "@lumino/commands";
+import { Contents } from "@jupyterlab/services";
 
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
@@ -56,17 +71,41 @@ const extension: JupyterFrontEndPlugin<void> = {
     INotebookTracker,
     ILabShell,
     IStatusBar,
-    ISettingRegistry
+    ISettingRegistry,
+    IDocumentManager,
+    IFileBrowserFactory
   ],
   activate: async (
     app: JupyterFrontEnd,
     notebookTracker: INotebookTracker,
     labShell: ILabShell,
     statusBar: IStatusBar,
-    settingRegistry: ISettingRegistry
+    settingRegistry: ISettingRegistry,
+    documentManager: IDocumentManager,
+    fileBrowserFactory: IFileBrowserFactory
   ) => {
 
     console.log(`JupyterLab extension ${PLUGIN_ID} is activated!`);
+
+    // let model: Contents.IModel = fileBrowserFactory.tracker.currentWidget.createNewFile({'ext':'webm'})
+
+    // console.log(fileBrowserFactory.defaultBrowser.model.rootPath);
+
+    // let model: Contents.IModel  = await documentManager.services.contents.newUntitled({ 'ext': 'webm', 'path': '.', 'type': ''});
+
+    // console.log(model);
+
+    app.commands.commandExecuted.connect((sender: CommandRegistry, args: CommandRegistry.ICommandExecutedArgs) => {
+      console.log(args);
+    });
+
+    setTimeout(async () => {
+
+      let model = documentManager.createNew('TEST.webm', 'Editor');
+
+      console.log(model);
+
+    }, 2000)
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
@@ -112,7 +151,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     playerPanel.addWidget(scrollCheckbox.widget);
     playerPanel.addWidget(positionPlaybackCell.widget);
     playerPanel.addWidget(saveDisplayRecordingCheckbox.widget);
-    
+
 
     labShell.add(authoringPanel, 'right');
 
@@ -128,6 +167,10 @@ const extension: JupyterFrontEndPlugin<void> = {
 
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
+
+      // each(documentManager.registry.widgetFactories(), (value: any) => {
+      //   console.log(value);
+      // });
 
       authoringStatus.updateCurrentNotebookPanel(notebookPanel);
     });
