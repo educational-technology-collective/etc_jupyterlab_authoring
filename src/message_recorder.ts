@@ -10,6 +10,11 @@ import { JupyterFrontEnd } from '@jupyterlab/application';
 import { KeyBindings } from './key_bindings';
 import { MediaControls, AdvanceLineColorPicker, RecordVideoCheckbox, ExecuteOnLastLineAdvance, PositionAdvanceLine, AuthoringToolbarStatus } from './components';
 import { Signal } from '@lumino/signaling';
+import { requestAPI } from './handler';
+import {
+    JSONObject
+  } from '@lumino/coreutils';
+import * as _path from 'path-browserify';
 
 export class MessageRecorder {
 
@@ -37,6 +42,7 @@ export class MessageRecorder {
     private _executeOnLastLineAdvance: ExecuteOnLastLineAdvance;
     private _positionAdvanceLine: PositionAdvanceLine;
     private _authoringToolbarStatus: AuthoringToolbarStatus;
+    private _mimeType: string;
 
     constructor({
         app,
@@ -193,7 +199,7 @@ export class MessageRecorder {
                 }
             });
 
-            mimeType = 'video/webm; codecs="vp8, opus"';
+            this._mimeType = 'video/webm; codecs="vp8, opus"';
         }
         else {
 
@@ -203,12 +209,14 @@ export class MessageRecorder {
                 }
             });
 
-            mimeType = 'audio/webm; codecs=opus'
+            this._mimeType = 'audio/webm; codecs=opus';
         }
 
 
+        console.log('Record mimeType', this._mimeType);
+        
         this._mediaRecorder = new MediaRecorder(this._mediaStream, {
-            mimeType: mimeType
+            mimeType: this._mimeType
         });
 
         this._audioRecording = new Promise((r, j) => {
@@ -319,36 +327,53 @@ export class MessageRecorder {
 
             this._authoringToolbarStatus.setStatus('Saving...');
 
-            let fileReader = new FileReader();
-
             let audioRecording = await this._audioRecording;
 
-            let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
+            // let fileReader = new FileReader();
 
-                fileReader.addEventListener('load', r);
+            // let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
 
-                fileReader.addEventListener('error', j);
+            //     fileReader.addEventListener('load', r);
 
-                fileReader.readAsDataURL(audioRecording);
-            });
+            //     fileReader.addEventListener('error', j);
 
-            let value = {
-                eventMessages: this._eventMessages,
-                media: event.target.result
-            }
+            //     fileReader.readAsDataURL(audioRecording);
+            // });
+
+            let name = _path.parse(this._notebookPanel.context.localPath).name;
+
+            name = `${name.replace(/\..+$/, '')}_recorded_${Date.now().toString()}`;
+
+            let notebookFileName = `${name}.ipynb`;
 
             let notebookPanel: NotebookPanel = await this._app.commands.execute('notebook:create-new');
 
             await notebookPanel.context.ready;
 
+            let mediaFileName = `${_path.join(_path.dirname(notebookPanel.context.localPath), name)}.webm`;
+
+            let response = await requestAPI<Response>(`media/${mediaFileName}`, { 
+                method: 'PUT', 
+                body: audioRecording, 
+                headers: {
+                  'Content-Type': 'application/octet-stream'
+                } 
+              });
+
+            console.log(await response.text());
+
+            let metaData = {
+                eventMessages: this._eventMessages,
+                mediaFileName: mediaFileName,
+                mimeType: this._mimeType
+            }
+
             notebookPanel.content.model.metadata.set(
                 'etc_jupyterlab_authoring',
-                JSON.stringify(value)
+                (metaData as any)
             );
 
-            let name = `${notebookPanel.title.label.replace(/\..+$/, '')}_recorded_${Date.now().toString()}.ipynb`;
-
-            await notebookPanel.context.rename(name);
+            await notebookPanel.context.rename(notebookFileName);
 
             await notebookPanel.context.saveAs();
 

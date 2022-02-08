@@ -64,10 +64,13 @@
     "@lumino/commands": "^1.12.0",
     "@lumino/signaling": "^1.4.3",
     "@types/codemirror": "0.0.87",
-    "@types/dom-mediacapture-record": "^1.0.10"
+    "@types/dom-mediacapture-record": "^1.0.10",
+    "path-browserify": "^1.0.1"
   },
   "devDependencies": {
     "@jupyterlab/builder": "^3.0.0",
+    "@types/node": "^17.0.14",
+    "@types/path-browserify": "^1.0.0",
     "@typescript-eslint/eslint-plugin": "^4.8.1",
     "@typescript-eslint/parser": "^4.8.1",
     "eslint": "^7.14.0",

@@ -11,6 +11,8 @@ import { AuthoringStatus } from './authoring_status';
 import { KeyBindings } from './key_bindings';
 import { AuthoringToolbarStatus, ExecutionCheckbox, MediaControls, PositionPlaybackCell, SaveDisplayRecordingCheckbox, ScrollCheckbox } from './components';
 import { Signal } from '@lumino/signaling';
+import * as _path from 'path-browserify';
+import { requestAPI } from './handler';
 
 export class MessagePlayer {
 
@@ -37,6 +39,8 @@ export class MessagePlayer {
   private _eventTarget: EventTarget;
   private _player: Promise<void>;
   private _positionPlaybackCellPercent: number;
+  private _mimeType: string;
+  private _mediaFileName: string;
 
   constructor({
     notebookPanel,
@@ -86,9 +90,13 @@ export class MessagePlayer {
 
     if (this._notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
-      let data = JSON.parse(this._notebookPanel.content.model.metadata.get('etc_jupyterlab_authoring') as string);
+      let metaData = this._notebookPanel.content.model.metadata.get('etc_jupyterlab_authoring') as any;
 
-      this.eventMessages = data.eventMessages;
+      console.log('metaData', metaData);
+      
+      this.eventMessages = metaData.eventMessages;
+      this._mimeType = metaData.mimeType;
+      this._mediaFileName = metaData.mediaFileName;
 
       this._contentModel = notebookPanel.content.model.toJSON();
       //  The Notebook needs to be saved so that it can be reset; hence, freeze the Notebook.
@@ -97,15 +105,15 @@ export class MessagePlayer {
 
         try {
 
-          let media = data.audio ? data.audio : data.media;
-          // Previous implementation provided an audio property; hence, use it in place of the media property if it is available.
+          let response = await requestAPI<Response>(`media/${this._mediaFileName}`, { method: 'GET' });
 
-          new URL(media);
-          //  Check that the URL is valid; hence, throw if it isn't.
+          console.log('response', response);
 
-          let result = await fetch(media);
+          let blob = new Blob([await response.blob()], { type: this._mimeType });
 
-          return await result.blob();
+          console.log('blob', blob);
+
+          return blob;
         }
         catch (e) {
 

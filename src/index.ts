@@ -57,6 +57,7 @@ import { KeyBindings } from "./key_bindings";
 import { Collapse } from '@jupyterlab/apputils';
 import { CommandRegistry } from "@lumino/commands";
 import { Contents } from "@jupyterlab/services";
+import { requestAPI } from "./handler";
 
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
@@ -95,17 +96,21 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     // console.log(model);
 
+    // setTimeout(async () => {
+
+    //   let model0 = documentManager.createNew('TEST.webm', 'Editor');
+
+    //   let model1 = documentManager.open('TEST.webm');
+
+    //   console.log(model0, model1);
+    // }, 2000)
+
+
     app.commands.commandExecuted.connect((sender: CommandRegistry, args: CommandRegistry.ICommandExecutedArgs) => {
       console.log(args);
     });
 
-    setTimeout(async () => {
 
-      let model = documentManager.createNew('TEST.webm', 'Editor');
-
-      console.log(model);
-
-    }, 2000)
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
