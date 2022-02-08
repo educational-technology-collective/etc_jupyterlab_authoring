@@ -11,9 +11,7 @@ import { KeyBindings } from './key_bindings';
 import { MediaControls, AdvanceLineColorPicker, RecordVideoCheckbox, ExecuteOnLastLineAdvance, PositionAdvanceLine, AuthoringToolbarStatus } from './components';
 import { Signal } from '@lumino/signaling';
 import { requestAPI } from './handler';
-import {
-    JSONObject
-  } from '@lumino/coreutils';
+import { MarkdownCell } from '@jupyterlab/cells'
 import * as _path from 'path-browserify';
 
 export class MessageRecorder {
@@ -180,7 +178,15 @@ export class MessageRecorder {
 
             document.querySelectorAll('.CodeMirror-cursor').forEach((value: Node) => (value as HTMLElement).classList.add('etc-jupyterlab-authoring-no-cursor'));
 
-            // (this._notebookPanel.content.widgets[0].editorWidget.editor as CodeMirrorEditor).editor.getWrapperElement().focus();
+            for (let cell of this._notebookPanel.content.widgets) {
+
+                if (cell.model.type == 'markdown') {
+    
+                    (cell as MarkdownCell).rendered = false;
+
+                    await (cell as MarkdownCell).ready;
+                }
+            }
         }
     }
 
@@ -212,9 +218,6 @@ export class MessageRecorder {
             this._mimeType = 'audio/webm; codecs=opus';
         }
 
-
-        console.log('Record mimeType', this._mimeType);
-        
         this._mediaRecorder = new MediaRecorder(this._mediaStream, {
             mimeType: this._mimeType
         });
@@ -329,17 +332,6 @@ export class MessageRecorder {
 
             let audioRecording = await this._audioRecording;
 
-            // let fileReader = new FileReader();
-
-            // let event = await new Promise<ProgressEvent<FileReader>>((r, j) => {
-
-            //     fileReader.addEventListener('load', r);
-
-            //     fileReader.addEventListener('error', j);
-
-            //     fileReader.readAsDataURL(audioRecording);
-            // });
-
             let name = _path.parse(this._notebookPanel.context.localPath).name;
 
             name = `${name.replace(/\..+$/, '')}_recorded_${Date.now().toString()}`;
@@ -352,13 +344,13 @@ export class MessageRecorder {
 
             let mediaFileName = `${_path.join(_path.dirname(notebookPanel.context.localPath), name)}.webm`;
 
-            let response = await requestAPI<Response>(`media/${mediaFileName}`, { 
-                method: 'PUT', 
-                body: audioRecording, 
+            let response = await requestAPI<Response>(`media/${mediaFileName}`, {
+                method: 'PUT',
+                body: audioRecording,
                 headers: {
-                  'Content-Type': 'application/octet-stream'
-                } 
-              });
+                    'Content-Type': 'application/octet-stream'
+                }
+            });
 
             console.log(await response.text());
 
@@ -471,7 +463,7 @@ export class MessageRecorder {
         }
     }
 
-    private advanceCursor() {
+    private async advanceCursor() {
 
         if (this._editor) {
             //  The background color needs to advance with the cursor; hence, remove the background color from the current line before advancing.
@@ -548,7 +540,7 @@ export class MessageRecorder {
 
             this._notebookPanel.content.node.scrollTop = scrollTo;
             //  We want to position the advance line for the user; hence, scroll to specified position of the Notebook window.
-        
+
             document.querySelectorAll('.CodeMirror-cursor').forEach((value: Node) => (value as HTMLElement).classList.add('etc-jupyterlab-authoring-no-cursor'));
         }
     }

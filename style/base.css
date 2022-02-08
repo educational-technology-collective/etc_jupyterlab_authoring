@@ -125,5 +125,5 @@
 }
 
 .etc-jupyterlab-authoring-auto-cursor {
-  display: auto;
+  display: auto !important;
 }

@@ -88,29 +88,9 @@ const extension: JupyterFrontEndPlugin<void> = {
 
     console.log(`JupyterLab extension ${PLUGIN_ID} is activated!`);
 
-    // let model: Contents.IModel = fileBrowserFactory.tracker.currentWidget.createNewFile({'ext':'webm'})
-
-    // console.log(fileBrowserFactory.defaultBrowser.model.rootPath);
-
-    // let model: Contents.IModel  = await documentManager.services.contents.newUntitled({ 'ext': 'webm', 'path': '.', 'type': ''});
-
-    // console.log(model);
-
-    // setTimeout(async () => {
-
-    //   let model0 = documentManager.createNew('TEST.webm', 'Editor');
-
-    //   let model1 = documentManager.open('TEST.webm');
-
-    //   console.log(model0, model1);
-    // }, 2000)
-
-
     app.commands.commandExecuted.connect((sender: CommandRegistry, args: CommandRegistry.ICommandExecutedArgs) => {
       console.log(args);
     });
-
-
 
     let settings = await settingRegistry.load(PLUGIN_ID);
 
@@ -173,9 +153,6 @@ const extension: JupyterFrontEndPlugin<void> = {
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
 
-      // each(documentManager.registry.widgetFactories(), (value: any) => {
-      //   console.log(value);
-      // });
 
       authoringStatus.updateCurrentNotebookPanel(notebookPanel);
     });
