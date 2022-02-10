@@ -15,7 +15,7 @@ import {
 import { caretDownEmptyIcon } from '@jupyterlab/ui-components';
 import { ISettingRegistry } from "@jupyterlab/settingregistry";
 import { ISignal, Signal } from "@lumino/signaling";
-import { NotebookPanel } from "@jupyterlab/notebook";
+import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
 import { VideoInputSelector } from "./av_input_selectors";
 
 export class PositionPlaybackCell {
@@ -640,16 +640,21 @@ export class MediaControls {
     public panel: BoxPanel;
 
     private _buttonPressed: Signal<MediaControls, { command: string }> = new Signal<MediaControls, { command: string }>(this);
+    private _notebookPanel: NotebookPanel;
 
     constructor({
         notebookPanel,
         settings,
-        showMediaControlsCheckbox
+        showMediaControlsCheckbox,
+        notebookTracker
     }: {
         notebookPanel: NotebookPanel,
         settings: ISettingRegistry.ISettings,
-        showMediaControlsCheckbox: ShowMediaControlsCheckbox
+        showMediaControlsCheckbox: ShowMediaControlsCheckbox,
+        notebookTracker: INotebookTracker
     }) {
+
+        this._notebookPanel = notebookPanel;
 
         let mediaControlsBoxPanel = this.panel = new BoxPanel({ direction: 'left-to-right', alignment: 'start' });
 
@@ -688,11 +693,23 @@ export class MediaControls {
 
         settings.changed.connect(this.updateToolTips, this);
 
-        showMediaControlsCheckbox.checkboxChanged.connect(this.updatePanelVisibily, this);
+        showMediaControlsCheckbox.checkboxChanged.connect(this.updatePanelVisbility, this);
 
         this.updateToolTips(settings);
 
-        this.updatePanelVisibily(showMediaControlsCheckbox, showMediaControlsCheckbox.checked);
+        this.updatePanelVisbility(showMediaControlsCheckbox, showMediaControlsCheckbox.checked);
+
+        notebookTracker.currentChanged.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
+
+            if (notebookPanel == this._notebookPanel) {
+
+                await notebookPanel.revealed;
+                await notebookPanel.sessionContext.ready;
+
+                this.updatePanelVisbility(showMediaControlsCheckbox, showMediaControlsCheckbox.checked);
+
+            }
+        });
     }
 
     dispose() {
@@ -730,7 +747,7 @@ export class MediaControls {
         });
     }
 
-    private updatePanelVisibily(sender: ShowMediaControlsCheckbox, state: boolean) {
+    private updatePanelVisbility(sender: ShowMediaControlsCheckbox, state: boolean) {
 
         if (state) {
             this.panel.show();
@@ -798,12 +815,19 @@ export class AuthoringToolbarStatus {
 
     public panel: Panel;
     private content: HTMLElement;
+    private notebookPanel: NotebookPanel;
 
     constructor({
-        showToolbarStatusCheckbox
+        notebookPanel,
+        showToolbarStatusCheckbox,
+        notebookTracker
     }: {
-        showToolbarStatusCheckbox: ShowToolbarStatusCheckbox
+        notebookPanel: NotebookPanel,
+        showToolbarStatusCheckbox: ShowToolbarStatusCheckbox,
+        notebookTracker: INotebookTracker
     }) {
+
+        this.notebookPanel = notebookPanel;
 
         this.panel = new Panel();
 
@@ -829,6 +853,17 @@ export class AuthoringToolbarStatus {
         showToolbarStatusCheckbox.checkboxChanged.connect(this.updatePanelVisbility, this);
 
         this.updatePanelVisbility(showToolbarStatusCheckbox, showToolbarStatusCheckbox.checked)
+
+        notebookTracker.currentChanged.connect(async (sender: INotebookTracker, notebookPanel: NotebookPanel) => {
+
+            if (notebookPanel == this.notebookPanel) {
+
+                await notebookPanel.revealed;
+                await notebookPanel.sessionContext.ready;
+
+                this.updatePanelVisbility(showToolbarStatusCheckbox, showToolbarStatusCheckbox.checked);
+            }
+        });
     }
 
     private updatePanelVisbility(sender: ShowToolbarStatusCheckbox, checked: boolean) {
@@ -849,7 +884,7 @@ export class AuthoringToolbarStatus {
     }
 
     public reset() {
-        
+
         this.content.innerHTML = '';
     }
 }

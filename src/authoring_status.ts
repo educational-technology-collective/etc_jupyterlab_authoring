@@ -33,6 +33,13 @@ export class AuthoringStatus {
         this.stateMap = new WeakMap<NotebookPanel, string>();
 
         this.panel.addClass('jp-AuhtoringStatus');
+
+        stopStatus.element({
+            container: this.stateWidget.node,
+            stylesheet: 'toolbarButton',
+            alignSelf: 'normal',
+            height: '16px'
+        });
     }
 
     public updateCurrentNotebookPanel(notebookPanel: NotebookPanel) {
@@ -106,7 +113,7 @@ export class AuthoringStatus {
                         container: this.stateWidget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',
-                        height: '20px'
+                        height: '16px'
                     });
                     break;
                 case 'record':
@@ -114,7 +121,7 @@ export class AuthoringStatus {
                         container: this.stateWidget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',
-                        height: '22px'
+                        height: '16px'
                     });
                     break;
                 case 'play':
@@ -122,7 +129,7 @@ export class AuthoringStatus {
                         container: this.stateWidget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',
-                        height: '22px'
+                        height: '16px'
                     });
                     break;
                 case 'pause':
@@ -130,7 +137,7 @@ export class AuthoringStatus {
                         container: this.stateWidget.node,
                         stylesheet: 'toolbarButton',
                         alignSelf: 'normal',
-                        height: '22px'
+                        height: '16px'
                     });
                     break;
             }

@@ -84,13 +84,18 @@
 .jp-AuhtoringStatus {
   display: flex;
   flex-direction: row;
-  border-radius: 15px;
-  border: 1px solid white;
+  height: 18px;
+  margin: 2px 0px 2px 0px !important;
+  padding: 0 2px 0 2px;
+}
+
+.jp-AuhtoringStatus svg {
+  height: 16px;
 }
 
 .jp-AuhtoringStatus > div {
-  height: 22px;
-  line-height: 22px;
+  height: 16px;
+  line-height: 16px;
   padding: 0 .25em 0 .25em;
 }
 

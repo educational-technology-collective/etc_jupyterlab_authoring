@@ -153,7 +153,6 @@ const extension: JupyterFrontEndPlugin<void> = {
       await notebookPanel.revealed;
       await notebookPanel.sessionContext.ready;
 
-
       authoringStatus.updateCurrentNotebookPanel(notebookPanel);
     });
     //  There is one status indicator for all Notebooks; hence notify the status indicator whenever the user changes Notebooks.
@@ -165,9 +164,9 @@ const extension: JupyterFrontEndPlugin<void> = {
         await notebookPanel.revealed;
         await notebookPanel.sessionContext.ready;
 
-        let authoringToolbarStatus = new AuthoringToolbarStatus({ showToolbarStatusCheckbox });
+        let authoringToolbarStatus = new AuthoringToolbarStatus({ notebookPanel, showToolbarStatusCheckbox, notebookTracker });
 
-        let mediaControls = new MediaControls({ notebookPanel, settings, showMediaControlsCheckbox });
+        let mediaControls = new MediaControls({ notebookPanel, settings, showMediaControlsCheckbox, notebookTracker });
 
         if (notebookPanel.content.model.metadata.has('etc_jupyterlab_authoring')) {
 
