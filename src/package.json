@@ -1,6 +1,6 @@
 {
   "name": "@educational-technology-collective/etc_jupyterlab_authoring",
-  "version": "0.1.23",
+  "version": "0.1.25",
   "description": "A JupyterLab extension.",
   "keywords": [
     "jupyter",
