@@ -3,7 +3,6 @@ import { CodeCell, Cell, ICellModel } from '@jupyterlab/cells';
 import { Editor } from 'codemirror';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
 import * as nbformat from '@jupyterlab/nbformat';
-import { EventMessage } from './types';
 import { AudioInputSelector, VideoInputSelector } from './av_input_selectors';
 import { AuthoringStatus } from './authoring_status';
 import { JupyterFrontEnd } from '@jupyterlab/application';
@@ -181,7 +180,7 @@ export class MessageRecorder {
             for (let cell of this._notebookPanel.content.widgets) {
 
                 if (cell.model.type == 'markdown') {
-    
+
                     (cell as MarkdownCell).rendered = false;
 
                     await (cell as MarkdownCell).ready;
@@ -205,7 +204,11 @@ export class MessageRecorder {
                 }
             });
 
-            this._mimeType = 'video/webm; codecs="vp8, opus"';
+            // this._mimeType = 'video/webm; codecs="vp8, opus"';
+
+            // this._mimeType = 'video/x-matroska;codecs=avc1';
+
+            this._mimeType = 'video/webm; codecs="av01, flac'//; codecs="av01.2.19H.12.0.000.09.16.09.1, flac"';
         }
         else {
 
@@ -215,11 +218,18 @@ export class MessageRecorder {
                 }
             });
 
-            this._mimeType = 'audio/webm; codecs=opus';
+            // this._mimeType = 'audio/webm; codecs=opus';
+
+            // this._mimeType = 'video/x-matroska;codecs=avc1';
+
+            this._mimeType = 'video/webm'//; codecs="av01.2.19H.12.0.000.09.16.09.1, flac"';
         }
 
+        this._mimeType = 'video/webm; codecs=vp9';
+
         this._mediaRecorder = new MediaRecorder(this._mediaStream, {
-            mimeType: this._mimeType
+            mimeType: this._mimeType,
+            bitsPerSecond: 800 * 1024 * 1024
         });
 
         this._audioRecording = new Promise((r, j) => {
@@ -578,4 +588,19 @@ export class MessageRecorder {
 
         this._advanceLineColor = color;
     }
+}
+
+export interface EventMessage {
+    event: string;
+    notebook_id: string;
+    cell_id?: string;
+    cell_index?: number;
+    cell_type?: string;
+    line_index?: number;
+    input?: string;
+    outputs?: Array<nbformat.IOutput>;
+    start_timestamp?: number;
+    stop_timestamp?: number;
+    duration?: number;
+    offset?: number;
 }

@@ -18,6 +18,23 @@ import { ISignal, Signal } from "@lumino/signaling";
 import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
 import { VideoInputSelector } from "./av_input_selectors";
 
+
+export class AuthoringVersion {
+
+    public widget: Widget;
+
+    constructor({ version }: { version: string }) {
+
+        this.widget = new Widget();
+
+        this.widget.addClass('jp-AuthoringVersion');
+
+        this.widget.addClass('component');
+
+        this.widget.node.innerHTML = `Version ${version}`;
+    }
+}
+
 export class PositionPlaybackCell {
 
     public widget: Widget;

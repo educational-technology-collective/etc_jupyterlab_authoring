@@ -4,7 +4,7 @@ import {
   PartialJSONValue,
 } from '@lumino/coreutils';
 import { Notebook, NotebookActions, NotebookPanel } from "@jupyterlab/notebook";
-import { EventMessage } from "./types";
+import { EventMessage } from "./message_recorder";
 import { CodeCell, Cell, ICellModel, MarkdownCell } from '@jupyterlab/cells'
 import { CodeMirrorEditor } from "@jupyterlab/codemirror";
 import { AuthoringStatus } from './authoring_status';
@@ -93,7 +93,7 @@ export class MessagePlayer {
       let metaData = this._notebookPanel.content.model.metadata.get('etc_jupyterlab_authoring') as any;
 
       console.log('metaData', metaData);
-      
+
       this.eventMessages = metaData.eventMessages;
       this._mimeType = metaData.mimeType;
       this._mediaFileName = metaData.mediaFileName;
@@ -561,29 +561,31 @@ export class MessagePlayer {
 
     a.href = URL.createObjectURL(await this._displayRecording);
 
-    a.download = "recording.webm";
+    a.download = "recording.mp4";
 
     a.click();
   }
 
   private async startDisplayRecording() {
 
-    this._mediaRecorder = new MediaRecorder(
+    let stream = await (navigator.mediaDevices as any).getDisplayMedia(
+      {
+        video: {
+          "aspectRatio": 1.7777777777777777,
+          "cursor": "never",
+          "displaySurface": "browser",
+          "frameRate": 30,
+          "height": 2160,
+          "logicalSurface": true,
+          "resizeMode": "crop-and-scale",
+          "width": 3840
+        },
+        audio: true
+      });
 
-      await (navigator.mediaDevices as any).getDisplayMedia(
-        {
-          video: {
-            "aspectRatio": 1.7777777777777777,
-            "cursor": "never",
-            "displaySurface": "browser",
-            "frameRate": 30,
-            "height": 2160,
-            "logicalSurface": true,
-            "resizeMode": "crop-and-scale",
-            "width": 3840
-          },
-          audio: true
-        }));
+    this._mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'video/mp4'
+    });
 
     await new Promise((r, j) => setTimeout(r, 5000));
 
@@ -607,6 +609,8 @@ export class MessagePlayer {
     this._displayRecording.catch(null);
 
     this._mediaRecorder.start();
+
+    // console.log('this._mediaRecorder.mimeType', this._mediaRecorder.mimeType);
   }
 
   private async startMediaPlayback() {

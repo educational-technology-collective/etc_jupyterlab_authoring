@@ -10,19 +10,6 @@ import {
 } from "@jupyterlab/notebook";
 
 import {
-  FileBrowser,
-  FileUploadStatus,
-  FilterFileBrowserModel,
-  IFileBrowserFactory
-} from '@jupyterlab/filebrowser'
-
-import { each } from '@lumino/algorithm'
-
-import {
-  IDocumentManager
-} from '@jupyterlab/docmanager'
-
-import {
   VideoInputSelectorContainer,
   AudioInputSelectorContainer,
   AuthoringPanel,
@@ -40,7 +27,8 @@ import {
   PositionAdvanceLine,
   AuthoringToolbarStatus,
   PositionPlaybackCell,
-  ShowToolbarStatusCheckbox
+  ShowToolbarStatusCheckbox,
+  AuthoringVersion
 } from './components';
 
 import {
@@ -54,11 +42,9 @@ import { AudioInputSelector, VideoInputSelector } from "./av_input_selectors";
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { KeyBindings } from "./key_bindings";
-import { Collapse } from '@jupyterlab/apputils';
+import { Collapse, WidgetTracker } from '@jupyterlab/apputils';
 import { CommandRegistry } from "@lumino/commands";
-import { Contents } from "@jupyterlab/services";
-import { requestAPI } from "./handler";
-
+import * as packageJSON from './package.json';
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
 
@@ -72,21 +58,17 @@ const extension: JupyterFrontEndPlugin<void> = {
     INotebookTracker,
     ILabShell,
     IStatusBar,
-    ISettingRegistry,
-    IDocumentManager,
-    IFileBrowserFactory
+    ISettingRegistry
   ],
   activate: async (
     app: JupyterFrontEnd,
     notebookTracker: INotebookTracker,
     labShell: ILabShell,
     statusBar: IStatusBar,
-    settingRegistry: ISettingRegistry,
-    documentManager: IDocumentManager,
-    fileBrowserFactory: IFileBrowserFactory
+    settingRegistry: ISettingRegistry
   ) => {
 
-    console.log(`JupyterLab extension ${PLUGIN_ID} is activated!`);
+    console.log(`JupyterLab extension ${PLUGIN_ID} is activated!\nVersion ${(packageJSON as any).version}`);
 
     app.commands.commandExecuted.connect((sender: CommandRegistry, args: CommandRegistry.ICommandExecutedArgs) => {
       console.log(args);
@@ -121,10 +103,12 @@ const extension: JupyterFrontEndPlugin<void> = {
     let executeOnLastLineAdvance = new ExecuteOnLastLineAdvance();
     let positionAdvanceLine = new PositionAdvanceLine();
     let positionPlaybackCell = new PositionPlaybackCell();
+    let authoringVersion = new AuthoringVersion({version: (packageJSON as any).version});
 
     generalPanel.addWidget(showMediaControlsCheckbox.widget);
     generalPanel.addWidget(showToolbarStatusCheckbox.widget);
     generalPanel.addWidget(recordVideoCheckbox.widget);
+    generalPanel.addWidget(authoringVersion.widget);
 
     recorderPanel.addWidget(audioInputSelectorContainer.widget);
     recorderPanel.addWidget(videoInputSelectorContainer.widget);
