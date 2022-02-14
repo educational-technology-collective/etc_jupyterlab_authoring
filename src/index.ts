@@ -42,9 +42,10 @@ import { AudioInputSelector, VideoInputSelector } from "./av_input_selectors";
 
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { KeyBindings } from "./key_bindings";
-import { Collapse, WidgetTracker } from '@jupyterlab/apputils';
+import { Collapse } from '@jupyterlab/apputils';
 import { CommandRegistry } from "@lumino/commands";
-import * as packageJSON from './package.json';
+
+import pack from './package.json';
 
 export const PLUGIN_ID = '@educational-technology-collective/etc_jupyterlab_authoring:plugin';
 
@@ -68,7 +69,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     settingRegistry: ISettingRegistry
   ) => {
 
-    console.log(`JupyterLab extension ${PLUGIN_ID} is activated!\nVersion ${(packageJSON as any).version}`);
+    console.log(`JupyterLab extension ${PLUGIN_ID} is activated!\nVersion ${pack.version}`);
 
     app.commands.commandExecuted.connect((sender: CommandRegistry, args: CommandRegistry.ICommandExecutedArgs) => {
       console.log(args);
@@ -103,7 +104,7 @@ const extension: JupyterFrontEndPlugin<void> = {
     let executeOnLastLineAdvance = new ExecuteOnLastLineAdvance();
     let positionAdvanceLine = new PositionAdvanceLine();
     let positionPlaybackCell = new PositionPlaybackCell();
-    let authoringVersion = new AuthoringVersion({version: (packageJSON as any).version});
+    let authoringVersion = new AuthoringVersion({ version: pack.version });
 
     generalPanel.addWidget(showMediaControlsCheckbox.widget);
     generalPanel.addWidget(showToolbarStatusCheckbox.widget);
@@ -120,7 +121,6 @@ const extension: JupyterFrontEndPlugin<void> = {
     playerPanel.addWidget(scrollCheckbox.widget);
     playerPanel.addWidget(positionPlaybackCell.widget);
     playerPanel.addWidget(saveDisplayRecordingCheckbox.widget);
-
 
     labShell.add(authoringPanel, 'right');
 
