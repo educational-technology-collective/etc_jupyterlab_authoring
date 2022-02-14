@@ -1,6 +1,6 @@
 {
   "name": "@educational-technology-collective/etc_jupyterlab_authoring",
-  "version": "0.1.23",
+  "version": "0.1.24",
   "description": "A JupyterLab extension.",
   "keywords": [
     "jupyter",
@@ -29,7 +29,7 @@
     "url": "https://github.com/educational-technology-collective/etc_jupyterlab_authoring.git"
   },
   "scripts": {
-    "build": "jlpm run build:lib && jlpm run build:labextension:dev",
+    "build": "cp -v package.json src && jlpm run build:lib && jlpm run build:labextension:dev",
     "build:prod": "jlpm run clean && jlpm run build:lib && jlpm run build:labextension",
     "build:labextension": "jupyter labextension build .",
     "build:labextension:dev": "jupyter labextension build --development True .",
