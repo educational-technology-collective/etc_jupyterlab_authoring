@@ -4,43 +4,43 @@
   "description": "Settings for ETC JupyterLab Authoring",
   "type": "object",
   "properties": {
-    "reset": {
+    "key_binding.reset": {
       "type": "string",
       "title": "Reset Keystroke",
       "description": "The keystroke for the reset command.",
       "default": "Ctrl F6"
     },
-    "record": {
+    "key_binding.record": {
       "type": "string",
       "title": "Record Keystroke",
       "description": "The keystroke for the record command.",
       "default": "Ctrl F8"
     },
-    "stop": {
+    "key_binding.stop": {
       "type": "string",
       "title": "Stop Keystroke",
       "description": "The keystroke for the stop command.",
       "default": "Ctrl F9"
     },
-    "play": {
+    "key_binding.play": {
       "type": "string",
       "title": "Play Keystroke",
       "description": "The keystroke for the play command.",
       "default": "Ctrl F10"
     },
-    "pause": {
+    "key_binding.pause": {
       "type": "string",
       "title": "Pause Keystroke",
       "description": "The keystroke for the pause command.",
       "default": "Ctrl F7"
     },
-    "save": {
+    "key_binding.save": {
       "type": "string",
       "title": "Save Keystroke",
       "description": "The keystroke for the save command.",
       "default": "Ctrl F12"
     },
-    "advance": {
+    "key_binding.advance": {
       "type": "string",
       "title": "Advance Cursor",
       "description": "Advance the cursor when recording.",

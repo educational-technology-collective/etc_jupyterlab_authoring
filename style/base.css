@@ -11,12 +11,11 @@
   vertical-align: middle;
 }
 
-.jp-PositionAdvanceLine input {
+.jp-AuthoringPanel input[type='text'], input[type='color'] {
   width: 2.5em;
-}
-
-.jp-PositionPlaybackCell input {
-  width: 2.5em;
+  height: 24px;
+  font-size: var(--jp-ui-font-size1) !important;
+  line-height: var(--jp-ui-font-size1) !important;
 }
 
 .jp-AuthoringPanel label {

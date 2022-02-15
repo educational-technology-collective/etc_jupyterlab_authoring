@@ -23,31 +23,31 @@ export class KeyBindings {
         this._commandRegistry = commandRegistry;
         this._settings = settings;
 
-        commandRegistry.addCommand(`${PLUGIN_ID}:reset`, {
+        commandRegistry.addCommand(`${PLUGIN_ID}:key_binding.reset`, {
             execute: (args: any) => this._keyPressed.emit(args)
         });
 
-        commandRegistry.addCommand(`${PLUGIN_ID}:record`, {
+        commandRegistry.addCommand(`${PLUGIN_ID}:key_binding.record`, {
             execute: (args: any) => this._keyPressed.emit(args)
         });
 
-        commandRegistry.addCommand(`${PLUGIN_ID}:stop`, {
+        commandRegistry.addCommand(`${PLUGIN_ID}:key_binding.stop`, {
             execute: (args: any) => this._keyPressed.emit(args)
         });
 
-        commandRegistry.addCommand(`${PLUGIN_ID}:play`, {
+        commandRegistry.addCommand(`${PLUGIN_ID}:key_binding.play`, {
             execute: (args: any) => this._keyPressed.emit(args)
         });
 
-        commandRegistry.addCommand(`${PLUGIN_ID}:pause`, {
+        commandRegistry.addCommand(`${PLUGIN_ID}:key_binding.pause`, {
             execute: (args: any) => this._keyPressed.emit(args)
         });
 
-        commandRegistry.addCommand(`${PLUGIN_ID}:save`, {
+        commandRegistry.addCommand(`${PLUGIN_ID}:key_binding.save`, {
             execute: (args: any) => this._keyPressed.emit(args)
         });
 
-        commandRegistry.addCommand(`${PLUGIN_ID}:advance`, {
+        commandRegistry.addCommand(`${PLUGIN_ID}:key_binding.advance`, {
             execute: (args: any) => this._keyPressed.emit(args)
         });
 
@@ -70,45 +70,45 @@ export class KeyBindings {
         this._keyBindingDisposables = [];
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
-            command: `${PLUGIN_ID}:reset`,
+            command: `${PLUGIN_ID}:key_binding.reset`,
             args: { command: 'reset' },
-            keys: [settings.get('reset').composite as string],
-            selector: '.jp-LabShell'
+            keys: [settings.get('key_binding.reset').composite as string],
+            selector: 'body'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
-            command: `${PLUGIN_ID}:record`,
+            command: `${PLUGIN_ID}:key_binding.record`,
             args: { command: 'record' },
-            keys: [settings.get('record').composite as string],
-            selector: '.jp-LabShell'
+            keys: [settings.get('key_binding.record').composite as string],
+            selector: 'body'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
-            command: `${PLUGIN_ID}:stop`,
+            command: `${PLUGIN_ID}:key_binding.stop`,
             args: { command: 'stop' },
-            keys: [settings.get('stop').composite as string],
-            selector: '.jp-LabShell'
+            keys: [settings.get('key_binding.stop').composite as string],
+            selector: 'body'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
-            command: `${PLUGIN_ID}:play`,
+            command: `${PLUGIN_ID}:key_binding.play`,
             args: { command: 'play' },
-            keys: [settings.get('play').composite as string],
-            selector: '.jp-LabShell'
+            keys: [settings.get('key_binding.play').composite as string],
+            selector: 'body'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
-            command: `${PLUGIN_ID}:pause`,
+            command: `${PLUGIN_ID}:key_binding.pause`,
             args: { command: 'pause' },
-            keys: [settings.get('pause').composite as string],
-            selector: '.jp-LabShell'
+            keys: [settings.get('key_binding.pause').composite as string],
+            selector: 'body'
         }));
 
         this._keyBindingDisposables.push(this._commandRegistry.addKeyBinding({
-            command: `${PLUGIN_ID}:save`,
+            command: `${PLUGIN_ID}:key_binding.save`,
             args: { command: 'save' },
-            keys: [settings.get('save').composite as string],
-            selector: '.jp-LabShell'
+            keys: [settings.get('key_binding.save').composite as string],
+            selector: 'body'
         }));
     }
 
@@ -117,10 +117,10 @@ export class KeyBindings {
         this.detachAdvanceKeyBinding();
 
         this._advanceKeyBindingDisposable = this._commandRegistry.addKeyBinding({
-            command: `${PLUGIN_ID}:advance`,
+            command: `${PLUGIN_ID}:key_binding.advance`,
             args: { command: 'advance' },
-            keys: [this._settings.get('advance').composite as string],
-            selector: '.jp-LabShell'
+            keys: [this._settings.get('key_binding.advance').composite as string],
+            selector: 'body'
         });
     }
 

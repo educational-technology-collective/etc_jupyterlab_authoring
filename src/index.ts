@@ -114,13 +114,13 @@ const extension: JupyterFrontEndPlugin<void> = {
     recorderPanel.addWidget(audioInputSelectorContainer.widget);
     recorderPanel.addWidget(videoInputSelectorContainer.widget);
     recorderPanel.addWidget(executeOnLastLineAdvance.widget);
-    recorderPanel.addWidget(positionAdvanceLine.widget);
     recorderPanel.addWidget(advanceLineColorPicker.widget);
+    recorderPanel.addWidget(positionAdvanceLine.widget);
 
     playerPanel.addWidget(executionCheckbox.widget);
     playerPanel.addWidget(scrollCheckbox.widget);
-    playerPanel.addWidget(positionPlaybackCell.widget);
     playerPanel.addWidget(saveDisplayRecordingCheckbox.widget);
+    playerPanel.addWidget(positionPlaybackCell.widget);
 
     labShell.add(authoringPanel, 'right');
 

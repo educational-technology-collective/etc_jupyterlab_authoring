@@ -15,9 +15,7 @@ import * as _path from 'path-browserify';
 
 export class MessageRecorder {
 
-    public isRecording: boolean = false;
-    public isPaused: boolean = false;
-
+    private _isRecording: boolean = false;
     private _app: JupyterFrontEnd;
     private _isExecuting: boolean;
     private _notebookPanel: NotebookPanel;
@@ -108,7 +106,7 @@ export class MessageRecorder {
 
                 switch (args.command) {
                     case 'record':
-                        this.record();
+                        await this.record();
                         break;
                     case 'stop':
                         await this.stop();
@@ -137,7 +135,7 @@ export class MessageRecorder {
 
         if (this._notebookPanel == notebookPanel) {
 
-            if (this.isRecording) {
+            if (this._isRecording) {
 
                 this._keyBindings.attachAdvanceKeyBinding();
             }
@@ -150,7 +148,7 @@ export class MessageRecorder {
 
     public async record() {
 
-        if (!this.isRecording) {
+        if (!this._isRecording) {
 
             this._keyBindings.attachAdvanceKeyBinding();
 
@@ -160,7 +158,7 @@ export class MessageRecorder {
 
             this._authoringToolbarStatus.setStatus('Recording...');
 
-            this.isRecording = true;
+            this._isRecording = true;
 
             this._authoringStatus.setState(this._notebookPanel, 'record');
 
@@ -204,11 +202,7 @@ export class MessageRecorder {
                 }
             });
 
-            // this._mimeType = 'video/webm; codecs="vp8, opus"';
-
-            // this._mimeType = 'video/x-matroska;codecs=avc1';
-
-            this._mimeType = 'video/webm; codecs="av01, flac'//; codecs="av01.2.19H.12.0.000.09.16.09.1, flac"';
+            this._mimeType = 'video/webm; codecs="vp8, opus"';
         }
         else {
 
@@ -218,18 +212,12 @@ export class MessageRecorder {
                 }
             });
 
-            // this._mimeType = 'audio/webm; codecs=opus';
-
-            // this._mimeType = 'video/x-matroska;codecs=avc1';
-
-            this._mimeType = 'video/webm'//; codecs="av01.2.19H.12.0.000.09.16.09.1, flac"';
+            this._mimeType = 'audio/webm; codecs="opus"';
         }
-
-        this._mimeType = 'video/webm; codecs=vp9';
 
         this._mediaRecorder = new MediaRecorder(this._mediaStream, {
             mimeType: this._mimeType,
-            bitsPerSecond: 800 * 1024 * 1024
+            bitsPerSecond: 40000000
         });
 
         this._audioRecording = new Promise((r, j) => {
@@ -258,7 +246,7 @@ export class MessageRecorder {
         this._audioRecording.catch(null);
 
         await new Promise((r, j) => setTimeout(r, 2000));
-        //  Sometimes there is a delay is getting the media stream hooked up to the MediaRecorder; hence, wait 2 seconds.
+        //  Sometimes there is a delay in getting the media stream hooked up to the MediaRecorder; hence, wait 2 seconds.
 
         await new Promise((r, j) => {
 
@@ -271,7 +259,7 @@ export class MessageRecorder {
 
     public async stop() {
 
-        if (this.isRecording) {
+        if (this._isRecording) {
 
             this._authoringToolbarStatus.setStatus('Stopping...');
 
@@ -319,7 +307,7 @@ export class MessageRecorder {
                 });
             }
 
-            this.isRecording = false;
+            this._isRecording = false;
             this._cellIndex = null;
             this._editor = null;
             this._notebookPanel.content.widgets[0].editorWidget.editor.focus();
@@ -336,7 +324,7 @@ export class MessageRecorder {
 
     public async save() {
 
-        if (!this.isRecording) {
+        if (!this._isRecording) {
 
             this._authoringToolbarStatus.setStatus('Saving...');
 
@@ -344,7 +332,7 @@ export class MessageRecorder {
 
             let name = _path.parse(this._notebookPanel.context.localPath).name;
 
-            name = `${name.replace(/\..+$/, '')}_recorded_${Date.now().toString()}`;
+            name = `${name.replace(/\.[^.]+$/, '')}_media_recorded_${Date.now().toString()}`;
 
             let notebookFileName = `${name}.ipynb`;
 
@@ -385,7 +373,7 @@ export class MessageRecorder {
 
     public async advanceLine() {
 
-        if (this.isRecording && !this._isExecuting) {
+        if (this._isRecording && !this._isExecuting) {
 
             if (this._cellIndex === null) {
 
@@ -429,7 +417,7 @@ export class MessageRecorder {
 
     private executionScheduled(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
-        if (this.isRecording && args.notebook.isVisible) {
+        if (this._isRecording && args.notebook.isVisible) {
 
             this._isExecuting = true;
 
@@ -449,7 +437,7 @@ export class MessageRecorder {
 
     private executed(sender: any, args: { notebook: Notebook; cell: Cell<ICellModel> }) {
 
-        if (this.isRecording && this._notebookPanel.content == args.notebook) {
+        if (this._isRecording && this._notebookPanel.content == args.notebook) {
 
             let outputs: Array<nbformat.IOutput> = [];
 

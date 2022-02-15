@@ -1,5 +1,3 @@
-/// <reference types="@types/dom-mediacapture-record" />
-
 import {
   PartialJSONValue,
 } from '@lumino/coreutils';
@@ -16,14 +14,13 @@ import { requestAPI } from './handler';
 
 export class MessagePlayer {
 
-  public mediaRecording: Promise<Blob>;
-  public eventMessages: Array<EventMessage>;
-  public isPaused: boolean = false;
-  public isPlaying: boolean = false;
-  public executeCellEnabled: boolean = false;
-  public scrollToCellEnabled: boolean = false;
-  public saveDisplayRecordingEnabled: boolean = false;
-
+  private _mediaRecording: Promise<Blob>;
+  private _eventMessages: Array<EventMessage>;
+  private _isPaused: boolean = false;
+  private _isPlaying: boolean = false;
+  private _executeCellEnabled: boolean = false;
+  private _scrollToCellEnabled: boolean = false;
+  private _saveDisplayRecordingEnabled: boolean = false;
   private _contentModel: PartialJSONValue;
   private _notebookPanel: NotebookPanel;
   private _notebook: Notebook;
@@ -73,14 +70,14 @@ export class MessagePlayer {
 
     notebookPanel.disposed.connect(this.dispose, this);
 
-    saveDisplayRecordingCheckbox.checkboxChanged.connect((sender: SaveDisplayRecordingCheckbox, checked: boolean) => this.saveDisplayRecordingEnabled = checked, this);
-    this.saveDisplayRecordingEnabled = saveDisplayRecordingCheckbox.checked;
+    saveDisplayRecordingCheckbox.checkboxChanged.connect((sender: SaveDisplayRecordingCheckbox, checked: boolean) => this._saveDisplayRecordingEnabled = checked, this);
+    this._saveDisplayRecordingEnabled = saveDisplayRecordingCheckbox.checked;
 
-    executionCheckbox.checkboxChanged.connect((sender: ExecutionCheckbox, checked: boolean) => this.executeCellEnabled = checked, this);
-    this.executeCellEnabled = executionCheckbox.checked;
+    executionCheckbox.checkboxChanged.connect((sender: ExecutionCheckbox, checked: boolean) => this._executeCellEnabled = checked, this);
+    this._executeCellEnabled = executionCheckbox.checked;
 
-    scrollCheckbox.checkboxChanged.connect((sender: ScrollCheckbox, checked: boolean) => this.scrollToCellEnabled = checked, this);
-    this.scrollToCellEnabled = scrollCheckbox.checked;
+    scrollCheckbox.checkboxChanged.connect((sender: ScrollCheckbox, checked: boolean) => this._scrollToCellEnabled = checked, this);
+    this._scrollToCellEnabled = scrollCheckbox.checked;
 
     positionPlaybackCell.inputChanged.connect((sender: PositionPlaybackCell, value: number) => this._positionPlaybackCellPercent = value);
     this._positionPlaybackCellPercent = positionPlaybackCell.value;
@@ -94,14 +91,14 @@ export class MessagePlayer {
 
       console.log('metaData', metaData);
 
-      this.eventMessages = metaData.eventMessages;
+      this._eventMessages = metaData.eventMessages;
       this._mimeType = metaData.mimeType;
       this._mediaFileName = metaData.mediaFileName;
 
       this._contentModel = notebookPanel.content.model.toJSON();
       //  The Notebook needs to be saved so that it can be reset; hence, freeze the Notebook.
 
-      this.mediaRecording = (async () => {
+      this._mediaRecording = (async () => {
 
         try {
 
@@ -123,7 +120,7 @@ export class MessagePlayer {
         }
       })();
 
-      this.mediaRecording.catch(null)
+      this._mediaRecording.catch(null)
     }
   }
 
@@ -168,7 +165,7 @@ export class MessagePlayer {
 
   private async resume() {
 
-    if (this.saveDisplayRecordingEnabled) {
+    if (this._saveDisplayRecordingEnabled) {
 
       await new Promise((r, j) => {
 
@@ -180,9 +177,9 @@ export class MessagePlayer {
       this._mediaRecorder.resume();
     }
 
-    this.isPaused = false;
+    this._isPaused = false;
 
-    this.isPlaying = true;
+    this._isPlaying = true;
 
     this._eventTarget.dispatchEvent(new Event('resume'));
 
@@ -195,11 +192,11 @@ export class MessagePlayer {
 
   public async pause() {
 
-    if (this.isPlaying && !this.isPaused) {
+    if (this._isPlaying && !this._isPaused) {
 
       this._authoringToolbarStatus.setStatus('Pausing...');
 
-      this.isPaused = true;
+      this._isPaused = true;
 
       await new Promise((r, j) => {
 
@@ -218,7 +215,7 @@ export class MessagePlayer {
         });
       }
 
-      if (this.saveDisplayRecordingEnabled) {
+      if (this._saveDisplayRecordingEnabled) {
 
         this._mediaRecorder.pause();
       }
@@ -231,15 +228,15 @@ export class MessagePlayer {
 
   public async stop() {
 
-    if (this.isPlaying) {
+    if (this._isPlaying) {
 
       this._authoringToolbarStatus.setStatus('Stopping...');
 
-      this.isPlaying = false;
+      this._isPlaying = false;
 
-      if (this.isPaused) {
+      if (this._isPaused) {
 
-        this.isPaused = false;
+        this._isPaused = false;
 
         this._eventTarget.dispatchEvent(new Event('stop'));
       }
@@ -260,7 +257,7 @@ export class MessagePlayer {
 
       await this._player;
 
-      if (this.saveDisplayRecordingEnabled) {
+      if (this._saveDisplayRecordingEnabled) {
 
         await this.saveDisplayRecording();
       }
@@ -273,7 +270,7 @@ export class MessagePlayer {
 
   public reset() {
 
-    if (!this.isPlaying) {
+    if (!this._isPlaying) {
 
       this._notebookPanel.content.model.fromJSON(this._contentModel);
 
@@ -285,7 +282,7 @@ export class MessagePlayer {
 
   public async play() {
 
-    if (!this.isPaused && !this.isPlaying) {
+    if (!this._isPaused && !this._isPlaying) {
 
       this._authoringToolbarStatus.setStatus('Starting Playback...');
 
@@ -295,7 +292,7 @@ export class MessagePlayer {
 
       this._authoringToolbarStatus.setStatus('Playback Stopped.');
     }
-    else if (this.isPaused) {
+    else if (this._isPaused) {
 
       await this.resume();
     }
@@ -303,12 +300,12 @@ export class MessagePlayer {
 
   private async playMessages() {
 
-    if (this.saveDisplayRecordingEnabled) {
+    if (this._saveDisplayRecordingEnabled) {
 
       await this.startDisplayRecording();
     }
 
-    this.isPlaying = true;
+    this._isPlaying = true;
     this._messageIndex = 0;
     this._charIndex = 0;
 
@@ -327,17 +324,17 @@ export class MessagePlayer {
     //  The playback is done on an empty Notebook; hence remove all the cells from the current Notebook.
 
     await this.startMediaPlayback();
-    //  This method handles the case where the mediaRecording isn't available; hence, call it without checking.
+    //  This method handles the case where the _mediaRecording isn't available; hence, call it without checking.
 
     this._authoringStatus.setState(this._notebookPanel, 'play');
 
     this._authoringToolbarStatus.setStatus('Playing...');
 
-    let startTimestamp = this.eventMessages[0].start_timestamp;
+    let startTimestamp = this._eventMessages[0].start_timestamp;
 
-    while (this.isPlaying && this._messageIndex < this.eventMessages.length) {
+    while (this._isPlaying && this._messageIndex < this._eventMessages.length) {
 
-      if (this.isPaused) {
+      if (this._isPaused) {
 
         let proceed = await new Promise((r, j) => {
 
@@ -353,7 +350,7 @@ export class MessagePlayer {
         }
       }
 
-      let message = this.eventMessages[this._messageIndex];
+      let message = this._eventMessages[this._messageIndex];
 
       let targetTime = message.start_timestamp - startTimestamp;
 
@@ -404,9 +401,9 @@ export class MessagePlayer {
 
             let duration = message.duration / message.input.length;
 
-            while (this.isPlaying && this._charIndex < message.input.length) {
+            while (this._isPlaying && this._charIndex < message.input.length) {
 
-              if (this.isPaused) {
+              if (this._isPaused) {
 
                 let proceed = await new Promise((r, j) => {
 
@@ -430,7 +427,7 @@ export class MessagePlayer {
               this._editor.doc.replaceRange(message.input[this._charIndex], pos);
 
               if (
-                this.scrollToCellEnabled &&
+                this._scrollToCellEnabled &&
                 (cell.node.offsetTop + cell.node.offsetHeight) > (this._notebook.node.scrollTop + this._notebook.node.offsetHeight)
               ) {
 
@@ -469,7 +466,7 @@ export class MessagePlayer {
         }
         else if (message.event == "execution_finished") {
 
-          if (this.executeCellEnabled) {
+          if (this._executeCellEnabled) {
 
             let resolved = null;
 
@@ -511,7 +508,7 @@ export class MessagePlayer {
         }
 
         if (
-          this.scrollToCellEnabled &&
+          this._scrollToCellEnabled &&
           (cell.node.offsetTop + cell.node.offsetHeight) > (this._notebook.node.scrollTop + this._notebook.node.offsetHeight)
         ) {
 
@@ -530,16 +527,16 @@ export class MessagePlayer {
       this._messageIndex++; this._charIndex = 0;
     }
 
-    if (this.isPlaying) {
+    if (this._isPlaying) {
 
       await this._mediaPlaybackEnded;
 
-      if (this.saveDisplayRecordingEnabled) {
+      if (this._saveDisplayRecordingEnabled) {
 
         await this.saveDisplayRecording();
       }
 
-      this.isPlaying = false;
+      this._isPlaying = false;
 
       this._authoringStatus.setState(this._notebookPanel, 'stop');
 
@@ -557,13 +554,21 @@ export class MessagePlayer {
       this._mediaRecorder.stop();
     });
 
-    let a = document.createElement("a");
+    let name = _path.parse(this._notebookPanel.context.localPath).name;
 
-    a.href = URL.createObjectURL(await this._displayRecording);
+    name = `${name.replace(/\.[^.]+$/, '')}_playback_${Date.now().toString()}.webm`;
 
-    a.download = "recording.mp4";
+    let mediaFileName = `${_path.join(_path.dirname(this._notebookPanel.context.localPath), name)}`;
 
-    a.click();
+    let response = await requestAPI<Response>(`media/${mediaFileName}`, {
+      method: 'PUT',
+      body: await this._displayRecording,
+      headers: {
+        'Content-Type': 'application/octet-stream'
+      }
+    });
+
+    console.log(await response.text());
   }
 
   private async startDisplayRecording() {
@@ -584,7 +589,8 @@ export class MessagePlayer {
       });
 
     this._mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'video/mp4'
+      mimeType: 'video/webm; codecs="vp8, opus"',
+      bitsPerSecond: 40000000
     });
 
     await new Promise((r, j) => setTimeout(r, 5000));
@@ -609,17 +615,15 @@ export class MessagePlayer {
     this._displayRecording.catch(null);
 
     this._mediaRecorder.start();
-
-    // console.log('this._mediaRecorder.mimeType', this._mediaRecorder.mimeType);
   }
 
   private async startMediaPlayback() {
 
-    if (await this.mediaRecording) {
+    if (await this._mediaRecording) {
 
       let mediaPlayer = this._mediaPlayer = new MediaPlayer({
         notebookPanel: this._notebookPanel,
-        blob: await this.mediaRecording
+        blob: await this._mediaRecording
       });
 
       this._mediaPlaybackEnded = new Promise((r, j) => {

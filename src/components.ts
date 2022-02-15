@@ -18,7 +18,6 @@ import { ISignal, Signal } from "@lumino/signaling";
 import { INotebookTracker, NotebookPanel } from "@jupyterlab/notebook";
 import { VideoInputSelector } from "./av_input_selectors";
 
-
 export class AuthoringVersion {
 
     public widget: Widget;
@@ -70,7 +69,7 @@ export class PositionPlaybackCell {
 
         this.widget.node.appendChild(label);
 
-        this._input.addEventListener('change', this);
+        this._input.addEventListener('input', this);
     }
 
     public handleEvent(event: Event) {
@@ -137,7 +136,7 @@ export class PositionAdvanceLine {
 
         this.widget.node.appendChild(label);
 
-        this._input.addEventListener('change', this);
+        this._input.addEventListener('input', this);
     }
 
     public handleEvent(event: Event) {
@@ -754,7 +753,7 @@ export class MediaControls {
 
         ['record', 'stop', 'play', 'pause', 'reset', 'save'].forEach((value: string) => {
 
-            let keyBinding = settings.get(value).composite.toString();
+            let keyBinding = settings.get(`key_binding.${value}`).composite.toString();
 
             this.panel.node.querySelector(
                 `.${value}`

@@ -19,7 +19,7 @@
     "strict": true,
     "strictNullChecks": false, // true
     "target": "es2017",
-    "types": []
+    "types": ["dom-mediacapture-record"]
   },
   "include": ["src/*", "src/*.json"]
 }
