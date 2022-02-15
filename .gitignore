@@ -114,4 +114,4 @@ dmypy.json
 .vscode
 _archive
 *.ipynb
-TEST
+test
