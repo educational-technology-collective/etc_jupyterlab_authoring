@@ -336,11 +336,7 @@ export class MessageRecorder {
 
             let notebookFileName = `${name}.ipynb`;
 
-            let notebookPanel: NotebookPanel = await this._app.commands.execute('notebook:create-new');
-
-            await notebookPanel.context.ready;
-
-            let mediaFileName = `${_path.join(_path.dirname(notebookPanel.context.localPath), name)}.webm`;
+            let mediaFileName = `${_path.join(_path.dirname(this._notebookPanel.context.localPath), name)}.webm`;
 
             let response = await requestAPI<Response>(`media/${mediaFileName}`, {
                 method: 'PUT',
@@ -351,6 +347,10 @@ export class MessageRecorder {
             });
 
             console.log(await response.text());
+
+            let notebookPanel: NotebookPanel = await this._app.commands.execute('notebook:create-new');
+
+            await notebookPanel.context.ready;
 
             let metaData = {
                 eventMessages: this._eventMessages,
