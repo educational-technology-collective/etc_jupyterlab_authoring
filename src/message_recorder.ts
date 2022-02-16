@@ -243,7 +243,7 @@ export class MessageRecorder {
             this._mediaRecorder.addEventListener('error', j);
         });
 
-        this._audioRecording.catch(null);
+        this._audioRecording.catch(()=>{});
 
         await new Promise((r, j) => setTimeout(r, 2000));
         //  Sometimes there is a delay in getting the media stream hooked up to the MediaRecorder; hence, wait 2 seconds.

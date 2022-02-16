@@ -120,7 +120,7 @@ export class MessagePlayer {
         }
       })();
 
-      this._mediaRecording.catch(null)
+      this._mediaRecording.catch(()=>{})
     }
   }
 
@@ -612,7 +612,7 @@ export class MessagePlayer {
       this._mediaRecorder.addEventListener('error', j);
     });
 
-    this._displayRecording.catch(null);
+    this._displayRecording.catch(()=>{});
 
     this._mediaRecorder.start();
   }
@@ -633,7 +633,7 @@ export class MessagePlayer {
         mediaPlayer.mediaElement.addEventListener('error', j, { once: true });
       });
 
-      this._mediaPlaybackEnded.catch(null);
+      this._mediaPlaybackEnded.catch(()=>{});
 
       await mediaPlayer.mediaElement.play();
     }
