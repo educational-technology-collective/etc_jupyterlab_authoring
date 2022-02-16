@@ -528,7 +528,7 @@ export class MessagePlayer {
     }
 
     if (this._isPlaying) {
-
+      
       await this._mediaPlaybackEnded;
 
       if (this._saveDisplayRecordingEnabled) {
@@ -573,18 +573,19 @@ export class MessagePlayer {
 
   private async startDisplayRecording() {
 
+    // {
+    //   "aspectRatio": 1.7777777777777777,
+    //   "cursor": "never",
+    //   "displaySurface": "browser",
+    //   "frameRate": 30,
+    //   "height": 2160,
+    //   "logicalSurface": true,
+    //   "resizeMode": "crop-and-scale",
+    //   "width": 3840
+    // }
     let stream = await (navigator.mediaDevices as any).getDisplayMedia(
       {
-        video: {
-          "aspectRatio": 1.7777777777777777,
-          "cursor": "never",
-          "displaySurface": "browser",
-          "frameRate": 30,
-          "height": 2160,
-          "logicalSurface": true,
-          "resizeMode": "crop-and-scale",
-          "width": 3840
-        },
+        video: true,
         audio: true
       });
 
