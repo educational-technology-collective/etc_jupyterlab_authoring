@@ -49,7 +49,7 @@ python -m build
 Install the wheel package; this will install the extension.
 
 ```bash
-pip install ./dist/etc_jupyterlab_authoring-*-py3-none-any.whl
+pip install --user ./dist/etc_jupyterlab_authoring-*-py3-none-any.whl
 ```
 
 Start Jupyter Lab.
